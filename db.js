@@ -3,9 +3,8 @@ const db = new sqlite3.Database('./guidefit.db');
 const fs = require('fs');
 
 db.serialize(() => {
-  // Users
   db.run(`CREATE TABLE IF NOT EXISTS users (
-    tg_id INTEGER PRIMARY KEY,
+    tg_id TEXT PRIMARY KEY,
     name TEXT,
     goal TEXT,
     gender TEXT,
@@ -18,10 +17,9 @@ db.serialize(() => {
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
   )`);
 
-  // Food
   db.run(`CREATE TABLE IF NOT EXISTS food_logs (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    tg_id INTEGER,
+    tg_id TEXT,
     recipe_id INTEGER,
     timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
   )`);
@@ -38,7 +36,6 @@ db.serialize(() => {
     benefits TEXT
   )`);
 
-  // Exercises
   db.run(`CREATE TABLE IF NOT EXISTS exercises (
     id INTEGER PRIMARY KEY,
     name TEXT,
@@ -53,7 +50,6 @@ db.serialize(() => {
     tips TEXT
   )`);
 
-  // Workout programs
   db.run(`CREATE TABLE IF NOT EXISTS programs (
     id INTEGER PRIMARY KEY,
     name TEXT,
@@ -65,7 +61,6 @@ db.serialize(() => {
     difficulty TEXT
   )`);
 
-  // Program days (workouts within program)
   db.run(`CREATE TABLE IF NOT EXISTS program_days (
     id INTEGER PRIMARY KEY,
     program_id INTEGER,
@@ -75,9 +70,8 @@ db.serialize(() => {
     description TEXT
   )`);
 
-  // Program exercises (links)
   db.run(`CREATE TABLE IF NOT EXISTS program_exercises (
-    id INTEGER PRIMARY KEY,
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
     program_day_id INTEGER,
     exercise_id INTEGER,
     sets INTEGER,
@@ -86,10 +80,9 @@ db.serialize(() => {
     notes TEXT
   )`);
 
-  // User active program
   db.run(`CREATE TABLE IF NOT EXISTS user_programs (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    tg_id INTEGER,
+    tg_id TEXT,
     program_id INTEGER,
     start_date TEXT,
     current_week INTEGER DEFAULT 1,
@@ -98,10 +91,9 @@ db.serialize(() => {
     completed INTEGER DEFAULT 0
   )`);
 
-  // Workout logs (completed sessions)
   db.run(`CREATE TABLE IF NOT EXISTS workout_logs (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    tg_id INTEGER,
+    tg_id TEXT,
     program_id INTEGER,
     program_day_id INTEGER,
     date TEXT,
@@ -111,7 +103,6 @@ db.serialize(() => {
     completed INTEGER DEFAULT 1
   )`);
 
-  // Workout sets (detailed)
   db.run(`CREATE TABLE IF NOT EXISTS workout_sets (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     log_id INTEGER,
@@ -122,23 +113,20 @@ db.serialize(() => {
     completed INTEGER DEFAULT 1
   )`);
 
-  // Water
   db.run(`CREATE TABLE IF NOT EXISTS water_logs (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    tg_id INTEGER,
+    tg_id TEXT,
     date TEXT,
     amount_ml INTEGER DEFAULT 0
   )`);
 
-  // Weight history
   db.run(`CREATE TABLE IF NOT EXISTS weight_logs (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    tg_id INTEGER,
+    tg_id TEXT,
     date TEXT,
     weight REAL
   )`);
 
-  // Achievements
   db.run(`CREATE TABLE IF NOT EXISTS achievements (
     id INTEGER PRIMARY KEY,
     title TEXT,
@@ -148,15 +136,13 @@ db.serialize(() => {
     condition_value INTEGER
   )`);
 
-  // User achievements
   db.run(`CREATE TABLE IF NOT EXISTS user_achievements (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    tg_id INTEGER,
+    tg_id TEXT,
     achievement_id INTEGER,
     unlocked_at DATETIME DEFAULT CURRENT_TIMESTAMP
   )`);
 
-  // Seed recipes
   if (fs.existsSync('./recipes.json')) {
     const recipes = JSON.parse(fs.readFileSync('./recipes.json', 'utf8'));
     const stmt = db.prepare(`INSERT OR IGNORE INTO recipes 
@@ -169,7 +155,6 @@ db.serialize(() => {
     stmt.finalize();
   }
 
-  // Seed exercises
   if (fs.existsSync('./exercises.json')) {
     const exercises = JSON.parse(fs.readFileSync('./exercises.json', 'utf8'));
     const stmt = db.prepare(`INSERT OR IGNORE INTO exercises 
@@ -182,11 +167,8 @@ db.serialize(() => {
     stmt.finalize();
   }
 
-  // Seed programs
   if (fs.existsSync('./programs.json')) {
     const programs = JSON.parse(fs.readFileSync('./programs.json', 'utf8'));
-    
-    // Insert programs
     const progStmt = db.prepare(`INSERT OR IGNORE INTO programs 
       (id, name, location, type, goal, duration_weeks, description, difficulty) 
       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`);
@@ -195,7 +177,6 @@ db.serialize(() => {
     });
     progStmt.finalize();
 
-    // Insert program days and exercises
     programs.forEach(p => {
       if (p.days) {
         p.days.forEach(d => {
@@ -216,7 +197,6 @@ db.serialize(() => {
     });
   }
 
-  // Seed achievements
   const achievements = [
     {id: 1, title: 'Первый шаг', description: 'Завершена первая тренировка', icon: '🏃', condition_type: 'workouts', condition_value: 1},
     {id: 2, title: 'Неделя без пропусков', description: '7 дней тренировок подряд', icon: '🔥', condition_type: 'workout_streak', condition_value: 7},
