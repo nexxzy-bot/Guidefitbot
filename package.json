@@ -18,6 +18,10 @@
   },
   "devDependencies": {
     "@faker-js/faker": "^8.1.0",
-    "axios": "^1.5.1"
+    "autoprefixer": "^10.5.5",
+    "axios": "^1.5.1",
+    "daisyui": "^5.7.28",
+    "postcss": "^8.5.28",
+    "tailwindcss": "^4.3.3"
   }
 }

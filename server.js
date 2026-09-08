@@ -1,276 +1,64 @@
-const path = require('path'); 
-require('dotenv').config({ path: path.join(__dirname, '.env') });
-
-const TelegramBot = require('node-telegram-bot-api');
-const multer  = require('multer');
-const storage = multer.memoryStorage();
-const upload = multer({ storage: storage });
+// server.js
 const express = require('express');
-const crypto = require('crypto');
-const fs = require('fs');
-const sharp = require('sharp');
-const { BotDb } = require('./storage');
+require('dotenv').config();
+const db = require('./db');
 
-const db = new BotDb();
 const app = express();
-const bot = new TelegramBot(process.env.TELEGRAM_TOKEN, { polling: true });
-
-let recipes = [];
-try {
-  recipes = JSON.parse(fs.readFileSync(path.join(__dirname, 'recipes.json'), 'utf8'));
-} catch (e) {
-  console.error('Could not load recipes.json:', e.message);
-}
-
-const ACTIVITY_MULTIPLIERS = { 1: 1.2, 2: 1.375, 3: 1.55, 4: 1.725 };
-
-function computeCalorieNorm(user) {
-  const { gender, birthdate, height, weight, lifestyle, goal } = user;
-  const age = parseInt(birthdate, 10) || null;
-  if (!gender || !age || !height || !weight || !lifestyle || !goal) {
-    return null;
-  }
-  const w = parseFloat(weight);
-  const h = parseFloat(height);
-  const bmr = 10 * w + 6.25 * h - 5 * age + (gender == 2 ? -161 : 5);
-  const tdee = bmr * (ACTIVITY_MULTIPLIERS[lifestyle] || 1.2);
-  let norm = tdee;
-  if (goal == 'cut') norm = tdee - 500;
-  else if (goal == 'bulk') norm = tdee + 300;
-  return Math.round(norm);
-}
-
-function validateInitData(initData) {
-  const data = {};
-  const raw = {};
-  let hash;
-  for (let line of initData.split('&')) {
-    const pair = line.split('=');
-    if (pair.length == 2) {
-      const key = decodeURIComponent(pair[0]);
-      const value = decodeURIComponent(pair[1]);
-      if (key == 'hash') {
-        hash = value;
-      } else {
-        raw[key] = value;
-        data[key] = (key == 'user') ? JSON.parse(value) : value;
-      }
-    }
-  }
-  const keys = Object.keys(data);
-  keys.sort();
-
-  const list = [];
-  for (let key of keys) {
-    list.push(`${key}=${raw[key]}`);
-  }
-  const secretKey = crypto.createHmac('sha256', 'WebAppData').update(process.env.TELEGRAM_TOKEN).digest();
-  const correctHash = crypto.createHmac('sha256', secretKey).update(list.join('\n')).digest('hex');
-  
-  if (correctHash != hash) {
-    return null;
-  }
-  return data;
-}
-
-db.createTables();
-
-bot.onText(/^\/start/, (msg, match) => {
-  const chatId = msg.chat.id;
-  //bot.sendMessage(chatId, 'Hello');
-});
-
-bot.on('message', (msg) => {
-  
-});
-
-function userProfiles(rows) {
-  return rows.map(row => {
-    const user = {};
-    for (let k in row) {
-      if (['id', 'name', 'interests', 'about', 'birthdate', 'gender', 'display_gender', 'pronouns', 'sexuality', 'lookingfor', 'city', 'height', 'weight', 'photo_id', 'has_partner'].includes(k)) {
-        user[k] = row[k];
-      }
-    }
-    if (!user.name) {
-      user.name = row.first_name;
-    }
-    // TODO: compute age
-    return user;
-  });
-}
-
-function shuffle(array) {
-  let currentIndex = array.length,  randomIndex;
-  while (currentIndex > 0) {
-    randomIndex = Math.floor(Math.random() * currentIndex);
-    currentIndex--;
-    [array[currentIndex], array[randomIndex]] = [
-      array[randomIndex], array[currentIndex]];
-  }
-  return array;
-}
-
 app.use(express.json());
 app.use(express.static('static'));
-app.post('/init', async (req, res) => {
-  const initData = validateInitData(req.body.initData);
-  if (!initData) {
-    res.json({ error: 'Invalid initData' });
-    return;
-  }
-  const me = await db.upsertUserByTgUser(initData.user);
-  res.json({ user: me });
-});
-app.post('/update', async (req, res) => {
-  const initData = validateInitData(req.body.initData);
-  if (!initData) {
-    res.json({ error: 'Invalid initData' });
-    return;
-  }
 
-  const fields = {};
-  for (let key in req.body) {
-    if (!['name', 'interests', 'about', 'hide_profile', 'lang', 'gender', 'display_gender', 'pronouns', 'sexuality', 'lookingfor', 'birthdate', 'city', 'geo', 'height', 'weight', 'lifestyle', 'goal', 'onboarding_step', 'profile_step'].includes(key)) {
-      continue;
-    }
-    fields[key] = req.body[key];
-  }
-
-  await db.updateUserByTgId(initData.user.id, fields);
-  const updatedMe = await db.userByTgId(initData.user.id);
-  const calorieNorm = computeCalorieNorm(updatedMe);
-  if (calorieNorm && updatedMe.calorie_norm !== calorieNorm) {
-    await db.updateUserByTgId(initData.user.id, { calorie_norm: calorieNorm });
-  }
-  res.json({ ok: true, calorie_norm: calorieNorm });
+// Middleware to ensure all /api/ responses are JSON
+app.use('/api/', (req, res, next) => {
+    res.type('json');
+    next();
 });
 
-
-function getNormalSize({ width, height, orientation }) {
-  return (orientation || 0) >= 5
-    ? { width: height, height: width }
-    : { width, height };
-}
-app.post('/upload', upload.single('file'), async (req, res) => {
-  const initData = validateInitData(req.body.initData);
-  if (!initData) {
-    res.json({ error: 'Invalid initData' });
-    return;
-  }
-
-  const img = sharp(req.file.buffer);
-  const size = getNormalSize(await img.metadata());
-  const ratio = Math.max(0.92, Math.min(1.22, size.width / size.height));
-
-  const targetSize = [360, Math.floor(360 / ratio)];
-  const scaledImg = await img.resize(targetSize[0], targetSize[1], { fit: 'cover', position: 'attention' }).jpeg({ mozjpeg: true }).toBuffer();
-  const scaledImg2x = await img.resize(targetSize[0] * 2, targetSize[1] * 2, { fit: 'cover', position: 'attention' }).jpeg({ quality: 75, mozjpeg: true }).toBuffer();
-
-  const me = await db.userByTgId(initData.user.id);
-  const id = Math.floor(Math.random() * 1e14).toString(36) + Math.floor(Math.random() * 1e14).toString(36);
-  fs.mkdir(`static/files/${me.id}`, () => {
-    fs.writeFile(`static/files/${me.id}/${id}.jpg`, scaledImg, () => {
-      fs.writeFile(`static/files/${me.id}/${id}.2x.jpg`, scaledImg2x, async () => {
-        await db.updateUserByTgId(initData.user.id, {
-          photo_id: id,
-        });
-        res.json({ id });
-      });
+// Get dashboard stats
+app.post('/api/dashboard', (req, res) => {
+    const { tg_id } = req.body;
+    if (!tg_id) return res.status(400).json({ error: 'Missing tg_id' });
+    
+    db.get("SELECT goal, calorie_norm FROM users WHERE tg_id = ?", [tg_id], (err, user) => {
+        if (err) {
+            console.error("DB error:", err);
+            return res.status(500).json({ error: 'Database error' });
+        }
+        
+        const consumption = { calories: 1200, protein: 50, fat: 30, carbs: 100 };
+        const norms = { calories: user ? user.calorie_norm || 2000 : 2000, protein: 150, fat: 70, carbs: 250 };
+        
+        res.json({ streak: 1, consumption, norms });
     });
-  });
-});
-app.post('/matches', async (req, res) => {
-  const initData = validateInitData(req.body.initData);
-  if (!initData) {
-    res.json({ error: 'Invalid initData' });
-    return;
-  }
-  const me = await db.userByTgId(initData.user.id);
-  const feed = userProfiles(await db.matchesByLiker(me.id));
-  res.json({ feed });
-});
-app.post('/delete', async (req, res) => {
-  const initData = validateInitData(req.body.initData);
-  if (!initData) {
-    res.json({ error: 'Invalid initData' });
-    return;
-  }
-  const me = await db.userByTgId(initData.user.id);
-  await db.deleteLikesByLikerOrLikee(me.id);
-  await db.deleteUserById(me.id);
-  res.json({ ok: true });
-});
-app.post('/search', async (req, res) => {
-  const initData = validateInitData(req.body.initData);
-  if (!initData) {
-    res.json({ error: 'Invalid initData' });
-    return;
-  }
-
-  if (req.body.local) {
-    const lng = parseFloat(req.body.longitude);
-    const lat = parseFloat(req.body.latitude);
-    await db.updateUserByTgId(initData.user.id, { geo_lng: lng, geo_lat: lat });
-  }
-
-  const me = await db.userByTgId(initData.user.id);
-  const feed = shuffle(userProfiles(await db.usersByCriteria([me.id])));
-  res.json({ feed });
-});
-app.post('/like', async (req, res) => {
-  const initData = validateInitData(req.body.initData);
-  if (!initData) {
-    res.json({ error: 'Invalid initData' });
-    return;
-  }
-  if (req.body.type != 1 && req.body.type != -1) {
-    res.json({ error: 'Invalid like type' });
-    return;
-  }
-  const me = await db.userByTgId(initData.user.id);
-  const likeeId = req.body.id;
-  let likeType = req.body.type;
-
-  const likeBack = await db.likeByLikerLikee(likeeId, me.id);
-  if (likeType == 1) {
-    if (likeBack && likeBack.like_type > 0) { // Upgrade like to mutual
-      await db.likeUser(me.id, likeeId, 2);
-      await db.likeUser(likeeId, me.id, 2);
-      res.json({ ok: true, mutual: await db.userById(likeeId) });
-      // TODO: also notify other person
-      return;
-    }
-  } else {
-    if (likeBack && likeBack.like_type == 2) { // Downgrade like from mutual
-      await db.likeUser(likeeId, me.id, 1);
-    }
-  }
-  await db.likeUser(me.id, req.body.id, likeType);
-  res.json({ ok: true });
 });
 
-app.post('/meal', async (req, res) => {
-  const initData = validateInitData(req.body.initData);
-  if (!initData) {
-    res.json({ error: 'Invalid initData' });
-    return;
-  }
-  const me = await db.userByTgId(initData.user.id);
-  const category = req.body.category;
-  let pool = recipes.filter(r => r.category === category);
-  const byGoal = pool.filter(r => !r.goals || r.goals.includes(me.goal));
-  if (byGoal.length) {
-    pool = byGoal;
-  }
-  if (!pool.length) {
-    res.json({ error: 'No recipes found for this category' });
-    return;
-  }
-  const recipe = pool[Math.floor(Math.random() * pool.length)];
-  res.json({ recipe });
+app.post('/api/save-goal', (req, res) => {
+    const { tg_id, goal } = req.body;
+    if (!tg_id || !goal) return res.status(400).json({ error: 'Missing fields' });
+    db.run("INSERT OR REPLACE INTO users (tg_id, goal) VALUES (?, ?)", [tg_id, goal], (err) => {
+        if (err) return res.status(500).json({ error: err.message });
+        res.json({ status: 'ok' });
+    });
 });
 
-app.listen(process.env.MINIAPP_PORT, () => {
-  console.log(`@${process.env.TELEGRAM_USERNAME} listening on port ${process.env.MINIAPP_PORT}`);
+app.post('/api/get-meal', (req, res) => {
+    const { category } = req.body;
+    if (!category) return res.status(400).json({ error: 'Missing category' });
+    db.get("SELECT * FROM recipes WHERE category = ? ORDER BY RANDOM() LIMIT 1", [category], (err, row) => {
+        if (err) return res.status(500).json({ error: err.message });
+        if (!row) return res.status(404).json({ error: 'Recipe not found' });
+        res.json({ recipe: row });
+    });
+});
+
+app.post('/api/log-meal', (req, res) => {
+    const { tg_id, recipe_id } = req.body;
+    if (!tg_id || !recipe_id) return res.status(400).json({ error: 'Missing fields' });
+    db.run("INSERT INTO food_logs (tg_id, recipe_id) VALUES (?, ?)", [tg_id, recipe_id], (err) => {
+        if (err) return res.status(500).json({ error: err.message });
+        res.json({ status: 'ok' });
+    });
+});
+
+app.listen(process.env.MINIAPP_PORT || 3000, () => {
+    console.log(`GuideFit server started on port ${process.env.MINIAPP_PORT || 3000}`);
 });

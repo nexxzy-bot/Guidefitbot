@@ -1,196 +1,32 @@
 [
-  {
-    "category": "breakfast",
-    "goals": [
-      "cut",
-      "recomp"
-    ],
-    "name": "Овсянка с ягодами",
-    "calories": 320,
-    "protein": 15,
-    "fat": 8,
-    "carbs": 45,
-    "steps": [
-      "Залей 60г овсянки 200мл кипятка или молока",
-      "Дай настояться 5 минут",
-      "Добавь горсть ягод и 1 ч.л. мёда"
-    ]
-  },
-  {
-    "category": "breakfast",
-    "goals": [
-      "bulk",
-      "recomp"
-    ],
-    "name": "Омлет из 3 яиц с сыром",
-    "calories": 420,
-    "protein": 28,
-    "fat": 30,
-    "carbs": 4,
-    "steps": [
-      "Взбей 3 яйца с щепоткой соли",
-      "Вылей на разогретую сковороду с маслом",
-      "За минуту до готовности добавь тёртый сыр"
-    ]
-  },
-  {
-    "category": "breakfast",
-    "goals": [
-      "cut"
-    ],
-    "name": "Творог с бананом",
-    "calories": 280,
-    "protein": 25,
-    "fat": 5,
-    "carbs": 30,
-    "steps": [
-      "Смешай 200г творога 5% с половиной банана",
-      "По желанию добавь корицу"
-    ]
-  },
-  {
-    "category": "lunch",
-    "goals": [
-      "cut",
-      "recomp"
-    ],
-    "name": "Куриная грудка с гречкой и овощами",
-    "calories": 480,
-    "protein": 40,
-    "fat": 10,
-    "carbs": 50,
-    "steps": [
-      "Отвари 80г гречки",
-      "Обжарь 150г куриной грудки на гриле",
-      "Подавай с овощным салатом"
-    ]
-  },
-  {
-    "category": "lunch",
-    "goals": [
-      "bulk"
-    ],
-    "name": "Паста с говядиной",
-    "calories": 650,
-    "protein": 35,
-    "fat": 20,
-    "carbs": 70,
-    "steps": [
-      "Отвари 100г пасты",
-      "Обжарь 150г говяжьего фарша с луком",
-      "Смешай с томатным соусом и пастой"
-    ]
-  },
-  {
-    "category": "lunch",
-    "goals": [
-      "cut",
-      "bulk",
-      "recomp"
-    ],
-    "name": "Суп с чечевицей",
-    "calories": 350,
-    "protein": 20,
-    "fat": 8,
-    "carbs": 45,
-    "steps": [
-      "Отвари 100г чечевицы с овощами 25 минут",
-      "Приправь по вкусу"
-    ]
-  },
-  {
-    "category": "dinner",
-    "goals": [
-      "cut"
-    ],
-    "name": "Рыба на пару с брокколи",
-    "calories": 320,
-    "protein": 35,
-    "fat": 8,
-    "carbs": 15,
-    "steps": [
-      "Приготовь 150г белой рыбы на пару 15 минут",
-      "Отвари брокколи 5 минут",
-      "Подавай с лимоном"
-    ]
-  },
-  {
-    "category": "dinner",
-    "goals": [
-      "bulk",
-      "recomp"
-    ],
-    "name": "Стейк с картофелем",
-    "calories": 600,
-    "protein": 40,
-    "fat": 25,
-    "carbs": 45,
-    "steps": [
-      "Обжарь 180г стейка по 4 минуты с каждой стороны",
-      "Запеки картофель 20 минут",
-      "Дай стейку отдохнуть 5 минут"
-    ]
-  },
-  {
-    "category": "dinner",
-    "goals": [
-      "cut",
-      "recomp"
-    ],
-    "name": "Тушёная индейка с овощами",
-    "calories": 380,
-    "protein": 38,
-    "fat": 10,
-    "carbs": 20,
-    "steps": [
-      "Обжарь 150г индейки",
-      "Добавь нарезанные овощи и тушите 15 минут"
-    ]
-  },
-  {
-    "category": "snack",
-    "goals": [
-      "cut"
-    ],
-    "name": "Яблоко с миндалём",
-    "calories": 180,
-    "protein": 5,
-    "fat": 10,
-    "carbs": 20,
-    "steps": [
-      "Нарежь яблоко дольками",
-      "Съешь с горстью миндаля (15г)"
-    ]
-  },
-  {
-    "category": "snack",
-    "goals": [
-      "bulk",
-      "recomp"
-    ],
-    "name": "Протеиновый коктейль с бананом",
-    "calories": 320,
-    "protein": 30,
-    "fat": 5,
-    "carbs": 35,
-    "steps": [
-      "Смешай в блендере 1 мерную ложку протеина, банан и 250мл молока"
-    ]
-  },
-  {
-    "category": "snack",
-    "goals": [
-      "cut",
-      "bulk",
-      "recomp"
-    ],
-    "name": "Греческий йогурт с орехами",
-    "calories": 220,
-    "protein": 15,
-    "fat": 12,
-    "carbs": 12,
-    "steps": [
-      "Смешай 150г греческого йогурта с 20г орехов"
-    ]
-  }
+  {"id": 1, "title": "Овсянка с ягодами", "category": "breakfast", "calories": 300, "protein": 10, "fat": 5, "carbs": 55, "description": "Классическая овсянка на воде с горстью свежих ягод."},
+  {"id": 2, "title": "Яичница с овощами", "category": "breakfast", "calories": 350, "protein": 20, "fat": 20, "carbs": 10, "description": "Два яйца, помидоры, шпинат."},
+  {"id": 3, "title": "Творог с орехами", "category": "breakfast", "calories": 400, "protein": 30, "fat": 15, "carbs": 15, "description": "Обезжиренный творог с грецкими орехами."},
+  {"id": 4, "title": "Смузи-боул", "category": "breakfast", "calories": 320, "protein": 8, "fat": 6, "carbs": 60, "description": "Банан, черника, протеин, семена чиа."},
+  {"id": 5, "title": "Тост с авокадо и яйцом", "category": "breakfast", "calories": 380, "protein": 15, "fat": 18, "carbs": 35, "description": "Цельнозерновой хлеб, авокадо, яйцо пашот."},
+  {"id": 6, "title": "Куриная грудка с гречкой", "category": "lunch", "calories": 500, "protein": 40, "fat": 10, "carbs": 60, "description": "Отварная грудка, гречневая крупа."},
+  {"id": 7, "title": "Филе трески с рисом", "category": "lunch", "calories": 450, "protein": 35, "fat": 5, "carbs": 65, "description": "Запеченная треска, рис басмати."},
+  {"id": 8, "title": "Индейка с овощами гриль", "category": "lunch", "calories": 480, "protein": 45, "fat": 12, "carbs": 40, "description": "Филе индейки, кабачки, перец, баклажан."},
+  {"id": 9, "title": "Говядина с киноа", "category": "lunch", "calories": 550, "protein": 38, "fat": 18, "carbs": 50, "description": "Постная говядина, киноа."},
+  {"id": 10, "title": "Паста с морепродуктами", "category": "lunch", "calories": 600, "protein": 30, "fat": 15, "carbs": 80, "description": "Цельнозерновая паста, креветки, томатный соус."},
+  {"id": 11, "title": "Салат с тунцом", "category": "dinner", "calories": 350, "protein": 35, "fat": 10, "carbs": 20, "description": "Консервированный тунец, листья салата, огурец, яйцо."},
+  {"id": 12, "title": "Запеченная курица с брокколи", "category": "dinner", "calories": 400, "protein": 40, "fat": 15, "carbs": 15, "description": "Куриное филе, брокколи на пару."},
+  {"id": 13, "title": "Омлет с лососем", "category": "dinner", "calories": 420, "protein": 25, "fat": 25, "carbs": 5, "description": "Яйца, слабосоленый лосось, зелень."},
+  {"id": 14, "title": "Творожная запеканка", "category": "dinner", "calories": 380, "protein": 30, "fat": 10, "carbs": 25, "description": "Творог, яйцо, немного рисовой муки."},
+  {"id": 15, "title": "Креветки с салатом", "category": "dinner", "calories": 300, "protein": 35, "fat": 8, "carbs": 10, "description": "Креветки, микс салата, лимонный сок."},
+  {"id": 16, "title": "Протеиновый шейк", "category": "snack", "calories": 150, "protein": 25, "fat": 2, "carbs": 5, "description": "Сывороточный протеин на воде."},
+  {"id": 17, "title": "Яблоко и миндаль", "category": "snack", "calories": 200, "protein": 5, "fat": 12, "carbs": 20, "description": "Зеленое яблоко, горсть миндаля."},
+  {"id": 18, "title": "Греческий йогурт", "category": "snack", "calories": 120, "protein": 10, "fat": 4, "carbs": 8, "description": "Натуральный греческий йогурт без сахара."},
+  {"id": 19, "title": "Хумус с морковью", "category": "snack", "calories": 180, "protein": 6, "fat": 10, "carbs": 15, "description": "Хумус, палочки из свежей моркови."},
+  {"id": 20, "title": "Творожный сырок (ПП)", "category": "snack", "calories": 250, "protein": 15, "fat": 10, "carbs": 20, "description": "Домашний сырок из творога с медом."},
+  {"id": 21, "title": "Овсянка на кокосовом молоке", "category": "breakfast", "calories": 350, "protein": 8, "fat": 10, "carbs": 50, "description": "Овсянка, кокосовое молоко, семена чиа."},
+  {"id": 22, "title": "Сырники", "category": "breakfast", "calories": 400, "protein": 25, "fat": 15, "carbs": 30, "description": "Творог, рисовая мука, запеченные."},
+  {"id": 23, "title": "Котлеты из индейки", "category": "lunch", "calories": 450, "protein": 40, "fat": 15, "carbs": 20, "description": "Паровые котлеты, салат."},
+  {"id": 24, "title": "Чечевичный суп", "category": "lunch", "calories": 400, "protein": 20, "fat": 5, "carbs": 60, "description": "Чечевица, овощи, зелень."},
+  {"id": 25, "title": "Запеченный картофель с курицей", "category": "lunch", "calories": 550, "protein": 35, "fat": 15, "carbs": 70, "description": "Картофель, филе курицы."},
+  {"id": 26, "title": "Рыбные котлеты", "category": "dinner", "calories": 350, "protein": 35, "fat": 10, "carbs": 15, "description": "Белая рыба, зелень."},
+  {"id": 27, "title": "Овощное рагу", "category": "dinner", "calories": 250, "protein": 5, "fat": 8, "carbs": 35, "description": "Кабачки, баклажаны, перец."},
+  {"id": 28, "title": "Яйцо всмятку и овощи", "category": "dinner", "calories": 200, "protein": 15, "fat": 12, "carbs": 5, "description": "Два яйца, огурец, помидор."},
+  {"id": 29, "title": "Батончик протеиновый", "category": "snack", "calories": 200, "protein": 15, "fat": 8, "carbs": 20, "description": "Без сахара."},
+  {"id": 30, "title": "Груша и грецкие орехи", "category": "snack", "calories": 220, "protein": 4, "fat": 15, "carbs": 25, "description": "Груша, горсть орехов."}
 ]
