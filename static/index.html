@@ -1,470 +1,1401 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>GuideFit</title>
-<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
-<style>
-:root{--bg:#0a0a0f;--card:rgba(255,255,255,0.04);--border:rgba(255,255,255,0.08);--accent:#ff6b4a;--accent2:#4ecdc4;--text:#f0f0f5;--muted:#6b6b7b}
-*{margin:0;padding:0;box-sizing:border-box}
-body{background:#000;color:var(--text);font-family:'Inter',system-ui,sans-serif;min-height:100vh;display:flex;justify-content:center;overflow:hidden}
-#app{width:100%;max-width:430px;min-height:100vh;background:var(--bg);position:relative;overflow:hidden}
-.screen{position:absolute;inset:0;overflow-y:auto;padding:24px;padding-top:48px;padding-bottom:100px;opacity:0;pointer-events:none;transform:translateX(30px);transition:all 0.4s cubic-bezier(0.4,0,0.2,1)}
-.screen.active{opacity:1;pointer-events:all;transform:translateX(0)}
-.glass{background:var(--card);backdrop-filter:blur(20px);border:1px solid var(--border);border-radius:24px;padding:20px}
-.display{font-family:'Space Grotesk',sans-serif;font-weight:700;letter-spacing:-0.02em;line-height:1.1}
-h1.display{font-size:42px}h2.display{font-size:32px}
-.text-muted{color:var(--muted);font-size:14px}
-.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:16px 28px;border-radius:16px;border:none;font-family:'Inter',sans-serif;font-weight:600;font-size:16px;cursor:pointer;transition:all 0.2s ease;width:100%}
-.btn-primary{background:linear-gradient(135deg,var(--accent),#ff8f70);color:white;box-shadow:0 4px 24px rgba(255,107,74,0.25)}
-.btn-primary:active{transform:scale(0.97)}
-.btn-secondary{background:rgba(255,255,255,0.06);color:var(--text);border:1px solid var(--border)}
-.goal-card{display:flex;align-items:center;gap:16px;padding:20px;background:var(--card);border:1px solid var(--border);border-radius:20px;cursor:pointer;transition:all 0.25s ease;margin-bottom:12px;text-align:left;width:100%;color:var(--text)}
-.goal-card:hover{background:rgba(255,255,255,0.07);border-color:rgba(255,107,74,0.3);transform:translateX(4px)}
-.goal-icon{width:56px;height:56px;border-radius:16px;display:flex;align-items:center;justify-content:center;font-size:24px;flex-shrink:0}
-.goal-icon.lose{background:rgba(59,130,246,0.15)}.goal-icon.gain{background:rgba(34,197,94,0.15)}.goal-icon.maintain{background:rgba(168,85,247,0.15)}
-.progress-ring{position:relative;width:140px;height:140px;margin:0 auto 24px}
-.progress-ring svg{transform:rotate(-90deg)}
-.progress-ring-bg{fill:none;stroke:rgba(255,255,255,0.06);stroke-width:10}
-.progress-ring-fill{fill:none;stroke:url(#gradient);stroke-width:10;stroke-linecap:round;stroke-dasharray:377;transition:stroke-dashoffset 1s ease}
-.progress-text{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
-.progress-text .value{font-family:'Space Grotesk',sans-serif;font-size:32px;font-weight:700}
-.progress-text .label{font-size:12px;color:var(--muted);margin-top:-4px}
-.macro-bar{margin-top:16px}.macro-item{display:flex;align-items:center;gap:12px;margin-bottom:12px}
-.macro-label{width:60px;font-size:13px;color:var(--muted)}
-.macro-track{flex:1;height:6px;background:rgba(255,255,255,0.06);border-radius:3px;overflow:hidden}
-.macro-fill{height:100%;border-radius:3px;transition:width 0.8s ease}
-.macro-value{width:50px;text-align:right;font-size:13px;font-weight:600}
-.meal-card{background:var(--card);border:1px solid var(--border);border-radius:24px;padding:20px;margin-bottom:16px}
-.meal-img{width:100%;height:200px;border-radius:20px;background:linear-gradient(135deg,#ff6b4a,#ff8f70);display:flex;align-items:center;justify-content:center;font-size:64px;margin-bottom:16px}
-.meal-info h4{font-size:22px;font-weight:600;margin-bottom:8px}
-.meal-meta{font-size:14px;color:var(--muted);margin-bottom:12px}
-.meal-benefits{font-size:13px;color:var(--accent2);line-height:1.6;margin-bottom:16px;padding:12px;background:rgba(78,205,196,0.05);border-radius:12px;border-left:3px solid var(--accent2)}
-.meal-actions{display:flex;gap:12px}.meal-actions .btn{flex:1;padding:14px;font-size:15px}
-.timeline{position:relative;padding-left:28px}.timeline::before{content:'';position:absolute;left:6px;top:8px;bottom:8px;width:2px;background:rgba(255,255,255,0.08)}
-.timeline-item{position:relative;margin-bottom:20px}.timeline-dot{position:absolute;left:-26px;top:6px;width:14px;height:14px;border-radius:50%;border:3px solid var(--bg)}
-.timeline-dot.eaten{background:var(--accent)}.timeline-dot.pending{background:rgba(255,255,255,0.2)}
-.timeline-time{font-size:12px;color:var(--muted);margin-bottom:4px}
-.timeline-content h4{font-size:16px;font-weight:600;margin-bottom:4px}.timeline-content p{font-size:13px;color:var(--muted)}
-.bottom-nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:430px;background:rgba(10,10,15,0.85);backdrop-filter:blur(20px);border-top:1px solid var(--border);padding:12px 24px 24px;display:flex;justify-content:space-around;z-index:100}
-.nav-item{display:flex;flex-direction:column;align-items:center;gap:4px;background:none;border:none;color:var(--muted);cursor:pointer;transition:color 0.2s ease;font-family:inherit;font-size:11px}
-.nav-item.active{color:var(--accent)}.nav-item svg{width:24px;height:24px;stroke-width:2;fill:none;stroke:currentColor;stroke-linecap:round;stroke-linejoin:round}
-.streak-badge{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;background:rgba(255,107,74,0.1);border:1px solid rgba(255,107,74,0.2);border-radius:20px;font-size:14px;font-weight:600;color:var(--accent)}
-.summary-bar{margin-top:24px;padding-top:20px;border-top:1px solid var(--border)}
-.summary-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
-.summary-track{height:8px;background:rgba(255,255,255,0.06);border-radius:4px;overflow:hidden}
-.summary-fill{height:100%;background:linear-gradient(90deg,var(--accent),#ff8f70);border-radius:4px;transition:width 0.8s ease}
-.input-group{margin-bottom:16px}.input-group label{display:block;font-size:13px;color:var(--muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:0.05em}
-.input-group input,.input-group select{width:100%;padding:14px 16px;background:rgba(255,255,255,0.05);border:1px solid var(--border);border-radius:16px;color:var(--text);font-size:16px;font-family:inherit;outline:none;transition:border-color 0.2s}
-.input-group input:focus,.input-group select:focus{border-color:var(--accent)}
-.loading{display:flex;align-items:center;justify-content:center;height:200px;color:var(--muted)}
-.empty-state{text-align:center;padding:40px 20px;color:var(--muted)}
-.empty-state .icon{font-size:48px;margin-bottom:16px}
-.toast{position:fixed;top:20px;left:50%;transform:translateX(-50%) translateY(-100px);background:var(--card);border:1px solid var(--border);padding:12px 24px;border-radius:16px;z-index:200;transition:transform 0.3s ease;backdrop-filter:blur(20px)}
-.toast.show{transform:translateX(-50%) translateY(0)}
-@keyframes fadeUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
-.animate-in{animation:fadeUp 0.5s ease forwards;opacity:0}
-.delay-1{animation-delay:0.1s}.delay-2{animation-delay:0.2s}.delay-3{animation-delay:0.3s}
-.screen::-webkit-scrollbar{display:none}.screen{-ms-overflow-style:none;scrollbar-width:none}
-</style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#F1F5F9">
+  <title>GuideFit — Фитнес и питание</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --primary: #0284C7;
+      --primary-hover: #0369A1;
+      --primary-light: #E0F2FE;
+      --accent: #F59E0B;
+      --accent-light: #FEF3C7;
+      --bg: #F1F5F9;
+      --surface: #FFFFFF;
+      --surface-raised: #F8FAFC;
+      --text: #0F172A;
+      --text-muted: #64748B;
+      --text-subtle: #94A3B8;
+      --border: #E2E8F0;
+      --shadow-sm: 0 1px 2px rgba(15,23,42,0.04);
+      --shadow: 0 4px 24px rgba(15,23,42,0.06);
+      --shadow-lg: 0 12px 40px rgba(15,23,42,0.08);
+      --radius-sm: 8px;
+      --radius: 16px;
+      --radius-lg: 24px;
+      --success: #10B981;
+      --error: #EF4444;
+      --water: #38BDF8;
+      --transition: 200ms cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+    @media (prefers-reduced-motion: reduce) {
+      * { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      overflow-x: hidden;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .app-container {
+      max-width: 480px;
+      margin: 0 auto;
+      min-height: 100vh;
+      position: relative;
+      background: var(--bg);
+      padding-bottom: 80px;
+    }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar { width: 4px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+    /* Typography */
+    h1, h2, h3 { font-family: 'Space Grotesk', sans-serif; font-weight: 700; letter-spacing: -0.02em; }
+    h1 { font-size: 28px; line-height: 1.15; }
+    h2 { font-size: 22px; line-height: 1.2; }
+    h3 { font-size: 18px; line-height: 1.3; }
+    .text-muted { color: var(--text-muted); }
+    .text-subtle { color: var(--text-subtle); }
+    .text-primary { color: var(--primary); }
+    .text-accent { color: var(--accent); }
+    .text-success { color: var(--success); }
+
+    /* Layout */
+    .screen { display: none; padding: 16px; animation: fadeIn 300ms ease; }
+    .screen.active { display: block; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+
+    /* Buttons */
+    .btn {
+      display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+      padding: 14px 24px; border-radius: var(--radius); border: none;
+      font-family: inherit; font-size: 15px; font-weight: 600; cursor: pointer;
+      transition: all var(--transition); position: relative; overflow: hidden;
+      min-height: 52px;
+    }
+    .btn:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+    .btn-primary { background: var(--primary); color: white; box-shadow: 0 4px 14px rgba(2,132,199,0.25); }
+    .btn-primary:hover { background: var(--primary-hover); transform: translateY(-1px); box-shadow: 0 6px 20px rgba(2,132,199,0.35); }
+    .btn-primary:active { transform: translateY(0); }
+    .btn-secondary { background: var(--surface); color: var(--text); border: 1.5px solid var(--border); }
+    .btn-secondary:hover { background: var(--surface-raised); border-color: var(--primary-light); }
+    .btn-accent { background: var(--accent); color: white; box-shadow: 0 4px 14px rgba(245,158,11,0.25); }
+    .btn-accent:hover { background: #D97706; transform: translateY(-1px); }
+    .btn-ghost { background: transparent; color: var(--text-muted); }
+    .btn-ghost:hover { background: var(--surface-raised); color: var(--text); }
+    .btn-block { width: 100%; }
+
+    /* Cards */
+    .card {
+      background: var(--surface); border-radius: var(--radius);
+      box-shadow: var(--shadow); padding: 20px;
+      transition: transform var(--transition), box-shadow var(--transition);
+    }
+    .card:hover { box-shadow: var(--shadow-lg); }
+    .card-interactive { cursor: pointer; }
+    .card-interactive:hover { transform: translateY(-2px); }
+    .card-interactive:active { transform: translateY(0); }
+    .card-interactive:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+
+    /* Inputs */
+    .input-group { margin-bottom: 16px; }
+    .input-label {
+      display: block; font-size: 12px; font-weight: 600; text-transform: uppercase;
+      letter-spacing: 0.05em; color: var(--text-muted); margin-bottom: 8px;
+    }
+    .input {
+      width: 100%; padding: 14px 16px; border: 1.5px solid var(--border);
+      border-radius: var(--radius); font-family: inherit; font-size: 15px;
+      background: var(--surface); color: var(--text); transition: all var(--transition);
+      -webkit-appearance: none; appearance: none;
+    }
+    .input:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-light); }
+    .input::placeholder { color: var(--text-subtle); }
+    select.input { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='none' stroke='%2364748B' stroke-width='2'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 14px center; padding-right: 44px; }
+
+    /* Progress bars */
+    .progress-track { height: 8px; background: var(--border); border-radius: 4px; overflow: hidden; }
+    .progress-fill { height: 100%; border-radius: 4px; transition: width 600ms ease; }
+    .progress-fill.primary { background: var(--primary); }
+    .progress-fill.accent { background: var(--accent); }
+    .progress-fill.success { background: var(--success); }
+    .progress-fill.water { background: var(--water); }
+
+    /* Chips */
+    .chip {
+      display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px;
+      border-radius: 100px; font-size: 13px; font-weight: 500; cursor: pointer;
+      transition: all var(--transition); border: 1.5px solid var(--border);
+      background: var(--surface); color: var(--text-muted); white-space: nowrap;
+    }
+    .chip:hover { border-color: var(--primary-light); color: var(--primary); }
+    .chip.active { background: var(--primary-light); border-color: var(--primary); color: var(--primary); font-weight: 600; }
+    .chip:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+
+    /* Badges */
+    .badge {
+      display: inline-flex; align-items: center; padding: 4px 10px;
+      border-radius: 100px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em;
+    }
+    .badge-primary { background: var(--primary-light); color: var(--primary); }
+    .badge-accent { background: var(--accent-light); color: #92400E; }
+    .badge-success { background: #D1FAE5; color: #065F46; }
+
+    /* Bottom nav */
+    .bottom-nav {
+      position: fixed; bottom: 0; left: 50%; transform: translateX(-50%);
+      width: 100%; max-width: 480px; background: rgba(255,255,255,0.92);
+      backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+      border-top: 1px solid var(--border); padding: 8px 0 calc(8px + env(safe-area-inset-bottom));
+      display: flex; justify-content: space-around; z-index: 100;
+    }
+    .nav-item {
+      display: flex; flex-direction: column; align-items: center; gap: 4px;
+      padding: 6px 12px; border-radius: var(--radius-sm); cursor: pointer;
+      transition: all var(--transition); border: none; background: transparent;
+      font-family: inherit; font-size: 11px; font-weight: 500; color: var(--text-muted);
+    }
+    .nav-item:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+    .nav-item.active { color: var(--primary); }
+    .nav-item.active svg { stroke: var(--primary); }
+    .nav-item svg { width: 24px; height: 24px; stroke: var(--text-subtle); transition: stroke var(--transition); }
+
+    /* Empty state */
+    .empty-state { text-align: center; padding: 48px 20px; color: var(--text-muted); }
+    .empty-state svg { width: 64px; height: 64px; stroke: var(--text-subtle); margin-bottom: 16px; }
+
+    /* Skeleton */
+    .skeleton { background: linear-gradient(90deg, var(--border) 25%, var(--surface-raised) 50%, var(--border) 75%); background-size: 200% 100%; animation: shimmer 1.5s infinite; border-radius: var(--radius-sm); }
+    @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+
+    /* Toast */
+    .toast {
+      position: fixed; top: 16px; left: 50%; transform: translateX(-50%) translateY(-100px);
+      background: var(--text); color: white; padding: 12px 20px; border-radius: var(--radius);
+      font-size: 14px; font-weight: 500; box-shadow: var(--shadow-lg); z-index: 200;
+      opacity: 0; transition: all 300ms ease; max-width: 90%; text-align: center;
+    }
+    .toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
+    .toast.error { background: var(--error); }
+    .toast.success { background: var(--success); }
+
+    /* Water widget */
+    .water-ring {
+      width: 120px; height: 120px; border-radius: 50%;
+      background: conic-gradient(var(--water) var(--water-deg), var(--border) var(--water-deg));
+      display: flex; align-items: center; justify-content: center; position: relative;
+    }
+    .water-ring::before {
+      content: ''; position: absolute; width: 100px; height: 100px;
+      background: var(--surface); border-radius: 50%;
+    }
+    .water-ring span { position: relative; z-index: 1; font-weight: 700; font-size: 18px; color: var(--water); }
+
+    /* Timer */
+    .timer-display {
+      font-family: 'Space Grotesk', monospace; font-size: 48px; font-weight: 700;
+      color: var(--primary); text-align: center; letter-spacing: -0.02em;
+    }
+
+    /* Scroll container */
+    .scroll-x { display: flex; gap: 12px; overflow-x: auto; padding-bottom: 8px; scroll-snap-type: x mandatory; -webkit-overflow-scrolling: touch; }
+    .scroll-x::-webkit-scrollbar { display: none; }
+    .scroll-x > * { scroll-snap-align: start; flex-shrink: 0; }
+
+    /* Grid */
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+
+    /* Spacing */
+    .mt-1 { margin-top: 4px; } .mt-2 { margin-top: 8px; } .mt-3 { margin-top: 12px; } .mt-4 { margin-top: 16px; } .mt-6 { margin-top: 24px; }
+    .mb-1 { margin-bottom: 4px; } .mb-2 { margin-bottom: 8px; } .mb-3 { margin-bottom: 12px; } .mb-4 { margin-bottom: 16px; }
+    .p-3 { padding: 12px; } .p-4 { padding: 16px; }
+    .gap-2 { gap: 8px; } .gap-3 { gap: 12px; } .gap-4 { gap: 16px; }
+
+    /* Flex */
+    .flex { display: flex; } .flex-col { flex-direction: column; }
+    .items-center { align-items: center; } .justify-between { justify-content: space-between; }
+    .flex-1 { flex: 1; }
+
+    /* Utils */
+    .text-center { text-align: center; }
+    .w-full { width: 100%; }
+    .hidden { display: none !important; }
+
+    /* Header */
+    .page-header {
+      position: sticky; top: 0; z-index: 50; background: rgba(241,245,249,0.92);
+      backdrop-filter: blur(12px); padding: 12px 16px; margin: -16px -16px 16px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    /* Exercise card */
+    .exercise-card {
+      background: var(--surface); border-radius: var(--radius); padding: 16px;
+      border: 1.5px solid var(--border); transition: all var(--transition); cursor: pointer;
+    }
+    .exercise-card:hover { border-color: var(--primary-light); box-shadow: var(--shadow); }
+    .exercise-card:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+
+    /* Program card */
+    .program-card {
+      background: linear-gradient(135deg, var(--surface) 0%, var(--surface-raised) 100%);
+      border-radius: var(--radius-lg); padding: 20px;
+      box-shadow: var(--shadow); border: 1px solid var(--border);
+      position: relative; overflow: hidden; cursor: pointer; transition: all var(--transition);
+    }
+    .program-card::before {
+      content: ''; position: absolute; top: 0; right: 0; width: 120px; height: 120px;
+      background: radial-gradient(circle, var(--primary-light) 0%, transparent 70%);
+      opacity: 0.5;
+    }
+    .program-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-lg); }
+    .program-card .badge { position: relative; z-index: 1; }
+
+    /* Day card */
+    .day-card {
+      background: var(--surface); border-radius: var(--radius); padding: 16px;
+      border-left: 4px solid var(--primary); box-shadow: var(--shadow-sm);
+      margin-bottom: 12px; cursor: pointer; transition: all var(--transition);
+    }
+    .day-card:hover { box-shadow: var(--shadow); }
+    .day-card.completed { border-left-color: var(--success); opacity: 0.7; }
+
+    /* Set row */
+    .set-row {
+      display: flex; align-items: center; gap: 12px; padding: 12px;
+      background: var(--surface-raised); border-radius: var(--radius-sm);
+      margin-bottom: 8px;
+    }
+    .set-row input {
+      width: 60px; padding: 8px; border: 1px solid var(--border);
+      border-radius: var(--radius-sm); text-align: center; font-size: 14px;
+    }
+    .set-row input:focus { outline: none; border-color: var(--primary); }
+
+    /* Weight chart placeholder */
+    .chart-container {
+      background: var(--surface); border-radius: var(--radius); padding: 16px;
+      box-shadow: var(--shadow); height: 200px; position: relative;
+    }
+
+    /* Achievement */
+    .achievement {
+      display: flex; align-items: center; gap: 16px; padding: 16px;
+      background: var(--surface); border-radius: var(--radius);
+      box-shadow: var(--shadow-sm); margin-bottom: 12px;
+    }
+    .achievement.locked { opacity: 0.5; }
+    .achievement-icon {
+      width: 48px; height: 48px; border-radius: var(--radius);
+      background: var(--primary-light); display: flex; align-items: center; justify-content: center;
+      font-size: 24px;
+    }
+
+    /* Location selector */
+    .location-card {
+      aspect-ratio: 1; border-radius: var(--radius-lg); padding: 20px;
+      display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px;
+      background: var(--surface); border: 2px solid var(--border); cursor: pointer;
+      transition: all var(--transition); text-align: center;
+    }
+    .location-card:hover { border-color: var(--primary); transform: translateY(-2px); box-shadow: var(--shadow); }
+    .location-card.active { border-color: var(--primary); background: var(--primary-light); }
+    .location-card:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+    .location-card svg { width: 40px; height: 40px; stroke: var(--primary); }
+
+    /* Calendar strip */
+    .calendar-day {
+      display: flex; flex-direction: column; align-items: center; gap: 4px;
+      padding: 10px 14px; border-radius: var(--radius); cursor: pointer;
+      transition: all var(--transition); min-width: 52px;
+    }
+    .calendar-day:hover { background: var(--surface-raised); }
+    .calendar-day.active { background: var(--primary); color: white; }
+    .calendar-day.active .day-number { color: white; }
+    .calendar-day .day-name { font-size: 11px; font-weight: 500; text-transform: uppercase; color: var(--text-muted); }
+    .calendar-day.active .day-name { color: rgba(255,255,255,0.8); }
+    .calendar-day .day-number { font-size: 18px; font-weight: 700; color: var(--text); }
+
+    /* Network error overlay */
+    .network-error {
+      position: fixed; top: 16px; left: 50%; transform: translateX(-50%);
+      background: var(--error); color: white; padding: 10px 20px;
+      border-radius: var(--radius); font-size: 14px; font-weight: 500;
+      box-shadow: var(--shadow-lg); z-index: 200; display: none;
+    }
+    .network-error.show { display: block; animation: shake 400ms ease; }
+    @keyframes shake { 0%,100%{transform:translateX(-50%) translateX(0)} 25%{transform:translateX(-50%) translateX(-8px)} 75%{transform:translateX(-50%) translateX(8px)} }
+  </style>
 </head>
 <body>
-<div id="app">
-<svg width="0" height="0" style="position:absolute"><defs><linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:#ff6b4a"/><stop offset="100%" style="stop-color:#ff8f70"/></linearGradient></defs></svg>
-<div class="toast" id="toast"></div>
+  <div class="app-container">
+    <!-- Network error -->
+    <div class="network-error" id="networkError">Ошибка сети</div>
+    <div class="toast" id="toast"></div>
 
-<div class="screen active" id="screen-onboarding">
-  <div style="height:40px"></div>
-  <div class="animate-in">
-    <div style="width:72px;height:72px;border-radius:24px;background:linear-gradient(135deg,#ff6b4a,#ff8f70);display:flex;align-items:center;justify-content:center;margin-bottom:32px;box-shadow:0 8px 32px rgba(255,107,74,0.3)">
-      <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
-    </div>
-    <h1 class="display" style="margin-bottom:16px">Твой путь<br>к телу мечты</h1>
-    <p class="text-muted" style="font-size:16px;margin-bottom:48px;line-height:1.6">Персональное питание, которое работает. Расскажи о себе — и мы подберём идеальный рацион.</p>
-    <button class="btn btn-primary" onclick="showScreen('goals')">Начать</button>
-  </div>
-</div>
-
-<div class="screen" id="screen-goals">
-  <h2 class="display" style="margin-bottom:8px">Выбери цель</h2>
-  <p class="text-muted" style="margin-bottom:32px">Мы рассчитаем норму калорий под тебя</p>
-  <button class="goal-card animate-in delay-1" onclick="selectGoal('lose')">
-    <div class="goal-icon lose">🔥</div>
-    <div><h3 style="font-size:18px;margin-bottom:4px">Похудение</h3><p class="text-muted">Дефицит калорий, сохранение мышц</p></div>
-  </button>
-  <button class="goal-card animate-in delay-2" onclick="selectGoal('gain')">
-    <div class="goal-icon gain">💪</div>
-    <div><h3 style="font-size:18px;margin-bottom:4px">Набор массы</h3><p class="text-muted">Профицит калорий, рост силы</p></div>
-  </button>
-  <button class="goal-card animate-in delay-3" onclick="selectGoal('maintain')">
-    <div class="goal-icon maintain">⚡</div>
-    <div><h3 style="font-size:18px;margin-bottom:4px">Поддержание</h3><p class="text-muted">Баланс питания и энергии</p></div>
-  </button>
-</div>
-
-<div class="screen" id="screen-setup">
-  <h2 class="display" style="margin-bottom:8px">Расскажи о себе</h2>
-  <p class="text-muted" style="margin-bottom:24px">Это нужно для точного расчёта калорий</p>
-  <div class="input-group"><label>Имя</label><input type="text" id="setup-name" placeholder="Как к тебе обращаться?"></div>
-  <div class="input-group"><label>Пол</label><select id="setup-gender"><option value="">Выбери</option><option value="male">Мужской</option><option value="female">Женский</option></select></div>
-  <div class="input-group"><label>Возраст</label><input type="number" id="setup-age" placeholder="25" min="10" max="100"></div>
-  <div class="input-group"><label>Рост (см)</label><input type="number" id="setup-height" placeholder="175" min="100" max="250"></div>
-  <div class="input-group"><label>Текущий вес (кг)</label><input type="number" id="setup-weight" placeholder="78" min="30" max="200" step="0.1"></div>
-  <div class="input-group"><label>Целевой вес (кг)</label><input type="number" id="setup-target" placeholder="72" min="30" max="200" step="0.1"></div>
-  <button class="btn btn-primary" onclick="saveProfile()" style="margin-top:8px">Продолжить</button>
-</div>
-
-<div class="screen" id="screen-dashboard">
-  <div id="dashboard-loading" class="loading">Загрузка...</div>
-  <div id="dashboard-content" style="display:none">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px">
-      <div><p class="text-muted" style="margin-bottom:4px" id="greeting">Доброе утро</p><h2 class="display" style="font-size:24px" id="user-name">—</h2></div>
-      <div class="streak-badge"><span>🔥</span><span id="streak-count">0 дней</span></div>
-    </div>
-    <div class="glass" style="margin-bottom:20px">
-      <p class="text-muted" style="margin-bottom:16px;text-align:center">Калории сегодня</p>
-      <div class="progress-ring">
-        <svg width="140" height="140" viewBox="0 0 140 140"><circle class="progress-ring-bg" cx="70" cy="70" r="60"/><circle class="progress-ring-fill" id="cal-progress" cx="70" cy="70" r="60"/></svg>
-        <div class="progress-text"><span class="value" id="cal-current">0</span><span class="label" id="cal-norm">/ —</span></div>
-      </div>
-      <div class="macro-bar">
-        <div class="macro-item"><span class="macro-label">Белки</span><div class="macro-track"><div class="macro-fill" id="prot-fill" style="background:#60a5fa;width:0%"></div></div><span class="macro-value" id="prot-text">0г</span></div>
-        <div class="macro-item"><span class="macro-label">Жиры</span><div class="macro-track"><div class="macro-fill" id="fat-fill" style="background:#fbbf24;width:0%"></div></div><span class="macro-value" id="fat-text">0г</span></div>
-        <div class="macro-item"><span class="macro-label">Углеводы</span><div class="macro-track"><div class="macro-fill" id="carb-fill" style="background:#4ade80;width:0%"></div></div><span class="macro-value" id="carb-text">0г</span></div>
+    <!-- ========== REGISTRATION ========== -->
+    <div class="screen active" id="screen-register">
+      <div style="padding-top: 40px;">
+        <h1 style="margin-bottom: 8px;">Расскажи о себе</h1>
+        <p class="text-muted" style="margin-bottom: 32px;">Это нужно для точного расчёта калорий и подбора программы</p>
+        <form id="registerForm">
+          <div class="input-group">
+            <label class="input-label">Имя</label>
+            <input type="text" class="input" id="regName" placeholder="Введи имя" required>
+          </div>
+          <div class="input-group">
+            <label class="input-label">Пол</label>
+            <select class="input" id="regGender" required>
+              <option value="">Выбери пол</option>
+              <option value="male">Мужской</option>
+              <option value="female">Женский</option>
+            </select>
+          </div>
+          <div class="input-group">
+            <label class="input-label">Возраст</label>
+            <input type="number" class="input" id="regAge" placeholder="25" min="10" max="100" required>
+          </div>
+          <div class="input-group">
+            <label class="input-label">Рост (см)</label>
+            <input type="number" class="input" id="regHeight" placeholder="175" min="100" max="250" required>
+          </div>
+          <div class="input-group">
+            <label class="input-label">Текущий вес (кг)</label>
+            <input type="number" class="input" id="regWeight" placeholder="70" min="30" max="200" required>
+          </div>
+          <div class="input-group">
+            <label class="input-label">Целевой вес (кг)</label>
+            <input type="number" class="input" id="regTarget" placeholder="65" min="30" max="200" required>
+          </div>
+          <div class="input-group">
+            <label class="input-label">Цель</label>
+            <select class="input" id="regGoal" required>
+              <option value="">Выбери цель</option>
+              <option value="lose">Похудение</option>
+              <option value="gain">Набор массы</option>
+              <option value="maintain">Поддержание</option>
+            </select>
+          </div>
+          <button type="submit" class="btn btn-primary btn-block" style="margin-top: 8px;">
+            Продолжить
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+          </button>
+        </form>
       </div>
     </div>
-    <div class="glass" style="display:flex;align-items:center;gap:16px;margin-bottom:20px">
-      <div style="width:64px;height:64px;border-radius:20px;background:linear-gradient(135deg,#4ecdc4,#44a08d);display:flex;align-items:center;justify-content:center;font-size:28px">🍽️</div>
-      <div style="flex:1"><h4 style="margin-bottom:4px" id="next-meal-title">Следующий приём пищи</h4><p class="text-muted" id="next-meal-desc">Нажми, чтобы выбрать блюдо</p></div>
-      <button class="btn btn-primary" style="width:auto;padding:12px 20px" onclick="goToMeals()">Выбрать</button>
-    </div>
-  </div>
-</div>
 
-<div class="screen" id="screen-meals">
-  <h2 class="display" style="margin-bottom:24px">Выбор блюда</h2>
-  <div id="meal-loading" class="loading">Загрузка...</div>
-  <div id="meal-content" style="display:none">
-    <div class="meal-card">
-      <div class="meal-img" id="meal-img">🍽️</div>
-      <div class="meal-info">
-        <h4 id="meal-title">—</h4>
-        <p class="meal-meta" id="meal-meta">—</p>
-        <div class="meal-benefits" id="meal-benefits">—</div>
+    <!-- ========== HOME / DASHBOARD ========== -->
+    <div class="screen" id="screen-home">
+      <div class="page-header flex items-center justify-between">
+        <div>
+          <h2 style="font-size: 20px;">Привет, <span id="dashName">друг</span> 👋</h2>
+          <p class="text-muted" style="font-size: 13px; margin-top: 2px;" id="dashGoal">Давай достигнем цели</p>
+        </div>
+        <div class="badge badge-primary" id="dashStreak">🔥 1 день</div>
       </div>
-      <div class="meal-actions">
-        <button class="btn btn-secondary" onclick="nextMeal()">🔄 Другое</button>
-        <button class="btn btn-primary" onclick="selectCurrentMeal()">✅ Выбрать</button>
+
+      <!-- Calendar strip -->
+      <div class="scroll-x mb-4" id="calendarStrip"></div>
+
+      <!-- Stats cards -->
+      <div class="grid-2 mb-4">
+        <div class="card">
+          <div class="flex items-center gap-2 mb-2">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+            <span class="text-muted" style="font-size: 13px; font-weight: 500;">Калории</span>
+          </div>
+          <div style="font-size: 24px; font-weight: 700;" id="dashCals">0 / 2000</div>
+          <div class="progress-track mt-2"><div class="progress-fill primary" id="dashCalsBar" style="width: 0%"></div></div>
+        </div>
+        <div class="card" style="cursor: pointer;" onclick="addWater()" tabindex="0" role="button" aria-label="Добавить воду">
+          <div class="flex items-center gap-2 mb-2">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--water)" stroke-width="2"><path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0L12 2.69z"/></svg>
+            <span class="text-muted" style="font-size: 13px; font-weight: 500;">Вода</span>
+          </div>
+          <div style="font-size: 24px; font-weight: 700;" id="dashWater">0 / 2500 мл</div>
+          <div class="progress-track mt-2"><div class="progress-fill water" id="dashWaterBar" style="width: 0%"></div></div>
+        </div>
+      </div>
+
+      <!-- Workout status -->
+      <div class="card card-interactive mb-4" onclick="navigate('workouts')" tabindex="0" role="button" aria-label="Перейти к тренировкам">
+        <div class="flex items-center justify-between">
+          <div>
+            <div class="badge badge-accent mb-2" id="dashWorkoutBadge">Тренировка</div>
+            <h3 style="font-size: 16px;" id="dashWorkoutTitle">Начни тренировку</h3>
+            <p class="text-muted" style="font-size: 13px; margin-top: 4px;" id="dashWorkoutDesc">Выбери программу или свободную тренировку</p>
+          </div>
+          <div style="width: 56px; height: 56px; border-radius: 50%; background: var(--accent-light); display: flex; align-items: center; justify-content: center;">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2.5"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+          </div>
+        </div>
+      </div>
+
+      <!-- Next meal -->
+      <div class="card mb-4">
+        <div class="flex items-center justify-between mb-3">
+          <div class="flex items-center gap-2">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--success)" stroke-width="2"><path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2"/><path d="M7 2v20"/><path d="M21 15V2a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7"/></svg>
+            <span class="text-muted" style="font-size: 13px; font-weight: 500;">Следующий приём пищи</span>
+          </div>
+          <span class="badge badge-success" id="dashNextMealBadge">Завтрак</span>
+        </div>
+        <button class="btn btn-secondary btn-block" onclick="getMeal()" style="min-height: 44px;">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Получить рецепт
+        </button>
+      </div>
+
+      <!-- Active program -->
+      <div class="card mb-4 hidden" id="dashProgramCard">
+        <div class="flex items-center justify-between mb-2">
+          <span class="badge badge-primary">Программа</span>
+          <span class="text-subtle" style="font-size: 12px;" id="dashProgramProgress">Неделя 1, День 1</span>
+        </div>
+        <h3 style="font-size: 16px;" id="dashProgramName">—</h3>
+        <div class="progress-track mt-3"><div class="progress-fill primary" id="dashProgramBar" style="width: 0%"></div></div>
       </div>
     </div>
-  </div>
-</div>
 
-<div class="screen" id="screen-diary">
-  <h2 class="display" style="margin-bottom:24px">Дневник питания</h2>
-  <div id="diary-loading" class="loading">Загрузка...</div>
-  <div id="diary-content" style="display:none">
-    <div class="timeline" id="diary-timeline"></div>
-    <div class="glass" style="margin-top:24px">
-      <div class="summary-row"><span class="text-muted">Калории</span><span style="font-weight:600" id="diary-cals">0 / —</span></div>
-      <div class="summary-track"><div class="summary-fill" id="diary-fill" style="width:0%"></div></div>
+    <!-- ========== WORKOUTS ========== -->
+    <div class="screen" id="screen-workouts">
+      <div class="page-header"><h2>Тренировки</h2></div>
+      <div id="workoutContent"></div>
     </div>
-  </div>
-  <div id="diary-empty" class="empty-state" style="display:none">
-    <div class="icon">📝</div>
-    <h3 style="margin-bottom:8px">Пока пусто</h3>
-    <p>Добавь первое блюдо через раздел "Меню"</p>
-  </div>
-</div>
 
-<div class="screen" id="screen-profile">
-  <h2 class="display" style="margin-bottom:24px">Профиль</h2>
-  <div id="profile-loading" class="loading">Загрузка...</div>
-  <div id="profile-content" style="display:none">
-    <div class="glass" style="text-align:center;margin-bottom:24px">
-      <div style="width:96px;height:96px;border-radius:50%;background:linear-gradient(135deg,#ff6b4a,#a855f7);margin:0 auto 16px;display:flex;align-items:center;justify-content:center;font-size:40px">👤</div>
-      <h3 style="font-size:20px;margin-bottom:4px" id="profile-name">—</h3>
-      <p class="text-muted" id="profile-goal">—</p>
+    <!-- ========== PROGRAM DETAIL ========== -->
+    <div class="screen" id="screen-program">
+      <div class="page-header flex items-center justify-between">
+        <button class="btn btn-ghost" onclick="navigate('workouts')" aria-label="Назад">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m15 18-6-6 6-6"/></svg>
+        </button>
+        <h2 style="font-size: 18px;">Программа</h2>
+        <div style="width: 40px;"></div>
+      </div>
+      <div id="programContent"></div>
     </div>
-    <div style="display:flex;flex-direction:column;gap:12px;margin-bottom:24px">
-      <div class="glass" style="display:flex;justify-content:space-between;align-items:center"><span class="text-muted">Текущий вес</span><span style="font-family:'Space Grotesk';font-size:20px;font-weight:700"><span id="profile-weight">—</span> <span style="font-size:14px;color:var(--muted)">кг</span></span></div>
-      <div class="glass" style="display:flex;justify-content:space-between;align-items:center"><span class="text-muted">Целевой вес</span><span style="font-family:'Space Grotesk';font-size:20px;font-weight:700"><span id="profile-target">—</span> <span style="font-size:14px;color:var(--muted)">кг</span></span></div>
-      <div class="glass" style="display:flex;justify-content:space-between;align-items:center"><span class="text-muted">Дневная норма</span><span style="font-family:'Space Grotesk';font-size:20px;font-weight:700"><span id="profile-norm">—</span> <span style="font-size:14px;color:var(--muted)">ккал</span></span></div>
+
+    <!-- ========== ACTIVE WORKOUT ========== -->
+    <div class="screen" id="screen-active-workout">
+      <div class="page-header flex items-center justify-between">
+        <button class="btn btn-ghost" onclick="finishWorkout()" aria-label="Завершить">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+        </button>
+        <h2 style="font-size: 18px;">Тренировка</h2>
+        <div style="width: 40px;"></div>
+      </div>
+      <div id="activeWorkoutContent"></div>
     </div>
-    <button class="btn btn-secondary" onclick="showScreen('edit-profile')">✏️ Изменить данные</button>
+
+    <!-- ========== NUTRITION ========== -->
+    <div class="screen" id="screen-nutrition">
+      <div class="page-header"><h2>Питание</h2></div>
+      <div id="nutritionContent"></div>
+    </div>
+
+    <!-- ========== PROFILE ========== -->
+    <div class="screen" id="screen-profile">
+      <div class="page-header"><h2>Профиль</h2></div>
+      <div id="profileContent"></div>
+    </div>
+
+    <!-- ========== BOTTOM NAV ========== -->
+    <nav class="bottom-nav" id="bottomNav" style="display: none;">
+      <button class="nav-item active" data-tab="home" onclick="navigate('home')" aria-label="Главная">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+        <span>Главная</span>
+      </button>
+      <button class="nav-item" data-tab="workouts" onclick="navigate('workouts')" aria-label="Тренировки">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6.5 6.5h11M6.5 17.5h11M6 20v-6a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v6"/><path d="M6 10V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v6"/></svg>
+        <span>Тренировки</span>
+      </button>
+      <button class="nav-item" data-tab="nutrition" onclick="navigate('nutrition')" aria-label="Питание">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0L12 2.69z"/><path d="M12 22v-8"/></svg>
+        <span>Питание</span>
+      </button>
+      <button class="nav-item" data-tab="profile" onclick="navigate('profile')" aria-label="Профиль">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+        <span>Профиль</span>
+      </button>
+    </nav>
   </div>
-</div>
 
-<div class="screen" id="screen-edit-profile">
-  <h2 class="display" style="margin-bottom:24px">Изменить данные</h2>
-  <div class="input-group"><label>Текущий вес (кг)</label><input type="number" id="edit-weight" min="30" max="200" step="0.1"></div>
-  <div class="input-group"><label>Целевой вес (кг)</label><input type="number" id="edit-target" min="30" max="200" step="0.1"></div>
-  <div class="input-group"><label>Цель</label><select id="edit-goal"><option value="lose">Похудение</option><option value="gain">Набор массы</option><option value="maintain">Поддержание</option></select></div>
-  <button class="btn btn-primary" onclick="updateProfile()" style="margin-top:8px">Сохранить</button>
-  <button class="btn btn-secondary" onclick="showScreen('profile')" style="margin-top:8px">Отмена</button>
-</div>
+  <script>
+    const API = window.location.origin;
+    let currentUser = null;
+    let activeProgram = null;
+    let workoutTimer = null;
+    let workoutSeconds = 0;
+    let currentExercises = [];
 
-<div class="bottom-nav" id="bottomNav" style="display:none">
-  <button class="nav-item active" onclick="showScreen('dashboard')" data-screen="dashboard"><svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg><span>Главная</span></button>
-  <button class="nav-item" onclick="showScreen('meals')" data-screen="meals"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg><span>Меню</span></button>
-  <button class="nav-item" onclick="showScreen('diary')" data-screen="diary"><svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg><span>Дневник</span></button>
-  <button class="nav-item" onclick="showScreen('profile')" data-screen="profile"><svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg><span>Профиль</span></button>
-</div>
-
-</div>
-
-<script>
-const API = '';
-let tgId = localStorage.getItem('tg_id') || '12345';
-let selectedGoal = '';
-let currentMeal = null;
-let userData = null;
-let dashboardData = null;
-
-if(window.Telegram && Telegram.WebApp && Telegram.WebApp.initDataUnsafe && Telegram.WebApp.initDataUnsafe.user){
-  tgId = Telegram.WebApp.initDataUnsafe.user.id;
-  localStorage.setItem('tg_id', tgId);
-}
-
-function showToast(msg){
-  const t = document.getElementById('toast');
-  t.textContent = msg;
-  t.classList.add('show');
-  setTimeout(() => t.classList.remove('show'), 3000);
-}
-
-function showScreen(id){
-  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-  document.getElementById('screen-'+id).classList.add('active');
-  const nav = document.getElementById('bottomNav');
-  if(id === 'onboarding' || id === 'goals' || id === 'setup' || id === 'edit-profile'){
-    nav.style.display = 'none';
-  } else {
-    nav.style.display = 'flex';
-    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-    const a = document.querySelector('.nav-item[data-screen="'+id+'"]');
-    if(a) a.classList.add('active');
-  }
-  if(id === 'dashboard') loadDashboard();
-  if(id === 'meals') loadMeal();
-  if(id === 'diary') loadDiary();
-  if(id === 'profile') loadProfile();
-}
-
-function selectGoal(goal){
-  selectedGoal = goal;
-  showScreen('setup');
-}
-
-async function saveProfile(){
-  const name = document.getElementById('setup-name').value.trim();
-  const gender = document.getElementById('setup-gender').value;
-  const age = parseInt(document.getElementById('setup-age').value);
-  const height = parseInt(document.getElementById('setup-height').value);
-  const weight = parseFloat(document.getElementById('setup-weight').value);
-  const target = parseFloat(document.getElementById('setup-target').value) || weight;
-  if(!name || !gender || !age || !height || !weight){
-    showToast('Заполни все поля');
-    return;
-  }
-  try{
-    const res = await fetch(API + '/api/user/init', {
-      method: 'POST',
-      headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({tg_id: tgId, name, goal: selectedGoal, gender, age, height, current_weight: weight, target_weight: target})
-    });
-    const data = await res.json();
-    if(data.status === 'ok'){
-      showToast('Профиль создан!');
-      showScreen('dashboard');
-    } else {
-      showToast(data.error || 'Ошибка');
+    // ===== UTILS =====
+    function $(id) { return document.getElementById(id); }
+    function showToast(msg, type = '') {
+      const t = $('toast'); t.textContent = msg; t.className = 'toast ' + type; t.classList.add('show');
+      setTimeout(() => t.classList.remove('show'), 3000);
     }
-  } catch(e){
-    showToast('Ошибка сети');
-  }
-}
+    function showError(msg) { showToast(msg, 'error'); }
+    function showSuccess(msg) { showToast(msg, 'success'); }
 
-async function loadDashboard(){
-  document.getElementById('dashboard-loading').style.display = 'flex';
-  document.getElementById('dashboard-content').style.display = 'none';
-  try{
-    const res = await fetch(API + '/api/dashboard', {
-      method: 'POST',
-      headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({tg_id: tgId})
-    });
-    const data = await res.json();
-    if(data.error){
-      if(data.error === 'User not found'){ showScreen('onboarding'); return; }
-      showToast(data.error); return;
+    async function api(endpoint, opts = {}) {
+      try {
+        const res = await fetch(API + endpoint, {
+          headers: { 'Content-Type': 'application/json' },
+          ...opts,
+          body: opts.body ? JSON.stringify(opts.body) : undefined
+        });
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
+          throw new Error(err.error || 'Ошибка сети');
+        }
+        return await res.json();
+      } catch (e) {
+        console.error(e);
+        showError(e.message || 'Ошибка сети');
+        throw e;
+      }
     }
-    dashboardData = data; userData = data.user;
-    document.getElementById('user-name').textContent = data.user.name;
-    document.getElementById('streak-count').textContent = data.streak + ' ' + (data.streak === 1 ? 'день' : data.streak < 5 ? 'дня' : 'дней');
-    document.getElementById('cal-current').textContent = data.consumption.calories.toLocaleString();
-    document.getElementById('cal-norm').textContent = '/ ' + data.norms.calories.toLocaleString();
-    const calPct = Math.min(data.consumption.calories / data.norms.calories, 1);
-    document.getElementById('cal-progress').style.strokeDashoffset = 377 * (1 - calPct);
-    document.getElementById('prot-text').textContent = data.consumption.protein + 'г / ' + data.norms.protein + 'г';
-    document.getElementById('fat-text').textContent = data.consumption.fat + 'г / ' + data.norms.fat + 'г';
-    document.getElementById('carb-text').textContent = data.consumption.carbs + 'г / ' + data.norms.carbs + 'г';
-    document.getElementById('prot-fill').style.width = Math.min(data.consumption.protein / data.norms.protein * 100, 100) + '%';
-    document.getElementById('fat-fill').style.width = Math.min(data.consumption.fat / data.norms.fat * 100, 100) + '%';
-    document.getElementById('carb-fill').style.width = Math.min(data.consumption.carbs / data.norms.carbs * 100, 100) + '%';
-    const mealNames = {breakfast: 'Завтрак', lunch: 'Обед', dinner: 'Ужин', snack: 'Перекус'};
-    document.getElementById('next-meal-title').textContent = mealNames[data.nextMeal] || 'Приём пищи';
-    document.getElementById('next-meal-desc').textContent = data.mealsToday === 0 ? 'Начни день с правильного питания' : 'Следующий приём пищи';
-    const hour = new Date().getHours();
-    let greeting = 'Добрый вечер';
-    if(hour < 12) greeting = 'Доброе утро';
-    else if(hour < 18) greeting = 'Добрый день';
-    document.getElementById('greeting').textContent = greeting;
-    document.getElementById('dashboard-loading').style.display = 'none';
-    document.getElementById('dashboard-content').style.display = 'block';
-  } catch(e){ showToast('Ошибка загрузки'); }
-}
 
-function goToMeals(){
-  if(dashboardData){ localStorage.setItem('next_meal_type', dashboardData.nextMeal); }
-  showScreen('meals');
-}
+    // ===== NAVIGATION =====
+    function navigate(screen) {
+      document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+      document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+      const target = $('screen-' + screen);
+      if (target) target.classList.add('active');
+      const navBtn = document.querySelector('.nav-item[data-tab="' + screen + '"]');
+      if (navBtn) navBtn.classList.add('active');
+      window.scrollTo(0, 0);
 
-async function loadMeal(){
-  document.getElementById('meal-loading').style.display = 'flex';
-  document.getElementById('meal-content').style.display = 'none';
-  const category = localStorage.getItem('next_meal_type') || 'breakfast';
-  try{
-    const res = await fetch(API + '/api/meal', {
-      method: 'POST',
-      headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({category})
-    });
-    const data = await res.json();
-    if(data.recipe){
-      currentMeal = data.recipe;
-      document.getElementById('meal-title').textContent = data.recipe.title;
-      document.getElementById('meal-meta').textContent = data.recipe.calories + ' ккал · Б: ' + data.recipe.protein + 'г · Ж: ' + data.recipe.fat + 'г · У: ' + data.recipe.carbs + 'г';
-      document.getElementById('meal-benefits').textContent = data.recipe.benefits || 'Полезное блюдо для твоего рациона';
-      const emojis = {breakfast: '🍳', lunch: '🥗', dinner: '🍽️', snack: '🍎'};
-      document.getElementById('meal-img').textContent = emojis[data.recipe.category] || '🍽️';
-      document.getElementById('meal-loading').style.display = 'none';
-      document.getElementById('meal-content').style.display = 'block';
+      if (screen === 'home') loadDashboard();
+      if (screen === 'workouts') loadWorkouts();
+      if (screen === 'nutrition') loadNutrition();
+      if (screen === 'profile') loadProfile();
     }
-  } catch(e){ showToast('Ошибка загрузки блюда'); }
-}
 
-async function nextMeal(){ await loadMeal(); }
+    // ===== AUTH / REGISTRATION =====
+    async function initApp() {
+      const tg = window.Telegram?.WebApp;
+      if (tg) { tg.ready(); tg.expand(); }
 
-async function selectCurrentMeal(){
-  if(!currentMeal) return;
-  try{
-    const res = await fetch(API + '/api/log-meal', {
-      method: 'POST',
-      headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({tg_id: tgId, recipe_id: currentMeal.id})
-    });
-    const data = await res.json();
-    if(data.status === 'ok'){
-      showToast('✅ ' + currentMeal.title + ' добавлено!');
-      showScreen('dashboard');
+      const urlParams = new URLSearchParams(window.location.search);
+      const tgId = urlParams.get('tg_id') || (tg?.initDataUnsafe?.user?.id ? String(tg.initDataUnsafe.user.id) : null);
+
+      if (!tgId) {
+        showError('Откройте через Telegram');
+        return;
+      }
+
+      try {
+        const user = await api('/api/user/' + tgId);
+        currentUser = user;
+        $('bottomNav').style.display = 'flex';
+        navigate('home');
+      } catch (e) {
+        $('screen-register').classList.add('active');
+      }
     }
-  } catch(e){ showToast('Ошибка сохранения'); }
-}
 
-async function loadDiary(){
-  document.getElementById('diary-loading').style.display = 'flex';
-  document.getElementById('diary-content').style.display = 'none';
-  document.getElementById('diary-empty').style.display = 'none';
-  try{
-    const res = await fetch(API + '/api/food-log/today/' + tgId);
-    const data = await res.json();
-    const meals = data.meals || [];
-    if(meals.length === 0){
-      document.getElementById('diary-loading').style.display = 'none';
-      document.getElementById('diary-empty').style.display = 'block';
-      return;
-    }
-    let totalCals = 0;
-    const timeline = document.getElementById('diary-timeline');
-    timeline.innerHTML = '';
-    const mealTimes = {breakfast: '08:00', lunch: '13:00', dinner: '19:00', snack: '16:00'};
-    meals.forEach(m => {
-      totalCals += m.calories;
-      const time = mealTimes[m.category] || '12:00';
-      const item = document.createElement('div');
-      item.className = 'timeline-item';
-      item.innerHTML = '<div class="timeline-dot eaten"></div><div class="timeline-content glass"><p class="timeline-time">' + time + ' · ' + m.calories + ' ккал</p><h4>' + m.title + '</h4><p>Б: ' + m.protein + 'г · Ж: ' + m.fat + 'г · У: ' + m.carbs + 'г</p></div>';
-      timeline.appendChild(item);
-    });
-    const types = ['breakfast', 'lunch', 'dinner'];
-    const logged = new Set(meals.map(m => m.category));
-    types.forEach(t => {
-      if(!logged.has(t)){
-        const time = mealTimes[t];
-        const item = document.createElement('div');
-        item.className = 'timeline-item';
-        item.innerHTML = '<div class="timeline-dot pending"></div><div class="timeline-content glass" style="opacity:0.5"><p class="timeline-time">' + time + '</p><h4>' + (t === 'breakfast' ? 'Завтрак' : t === 'lunch' ? 'Обед' : 'Ужин') + '</h4><p>Не записано</p></div>';
-        timeline.appendChild(item);
+    $('registerForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const urlParams = new URLSearchParams(window.location.search);
+      const tgId = urlParams.get('tg_id') || (window.Telegram?.WebApp?.initDataUnsafe?.user?.id);
+
+      const data = {
+        tg_id: tgId,
+        name: $('regName').value,
+        gender: $('regGender').value,
+        age: parseInt($('regAge').value),
+        height: parseInt($('regHeight').value),
+        current_weight: parseFloat($('regWeight').value),
+        target_weight: parseFloat($('regTarget').value),
+        goal: $('regGoal').value
+      };
+
+      try {
+        await api('/api/user/init', { method: 'POST', body: data });
+        currentUser = data;
+        $('bottomNav').style.display = 'flex';
+        navigate('home');
+        showSuccess('Профиль создан!');
+      } catch (e) {
+        // error handled in api()
       }
     });
-    const norm = userData ? userData.calorie_norm : 2000;
-    document.getElementById('diary-cals').textContent = totalCals + ' / ' + norm;
-    document.getElementById('diary-fill').style.width = Math.min(totalCals / norm * 100, 100) + '%';
-    document.getElementById('diary-loading').style.display = 'none';
-    document.getElementById('diary-content').style.display = 'block';
-  } catch(e){ showToast('Ошибка загрузки дневника'); }
-}
 
-async function loadProfile(){
-  document.getElementById('profile-loading').style.display = 'flex';
-  document.getElementById('profile-content').style.display = 'none';
-  try{
-    const res = await fetch(API + '/api/user/' + tgId);
-    const data = await res.json();
-    if(data.error){ showScreen('onboarding'); return; }
-    userData = data;
-    document.getElementById('profile-name').textContent = data.name;
-    const goals = {lose: 'Похудение', gain: 'Набор массы', maintain: 'Поддержание'};
-    document.getElementById('profile-goal').textContent = 'Цель: ' + (goals[data.goal] || data.goal);
-    document.getElementById('profile-weight').textContent = data.current_weight;
-    document.getElementById('profile-target').textContent = data.target_weight;
-    document.getElementById('profile-norm').textContent = data.calorie_norm;
-    document.getElementById('edit-weight').value = data.current_weight;
-    document.getElementById('edit-target').value = data.target_weight;
-    document.getElementById('edit-goal').value = data.goal;
-    document.getElementById('profile-loading').style.display = 'none';
-    document.getElementById('profile-content').style.display = 'block';
-  } catch(e){ showToast('Ошибка загрузки профиля'); }
-}
+    // ===== DASHBOARD =====
+    async function loadDashboard() {
+      if (!currentUser) return;
+      const urlParams = new URLSearchParams(window.location.search);
+      const tgId = urlParams.get('tg_id') || currentUser.tg_id;
 
-async function updateProfile(){
-  const weight = parseFloat(document.getElementById('edit-weight').value);
-  const target = parseFloat(document.getElementById('edit-target').value);
-  const goal = document.getElementById('edit-goal').value;
-  try{
-    const res = await fetch(API + '/api/user/update', {
-      method: 'POST',
-      headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({tg_id: tgId, current_weight: weight, target_weight: target, goal})
-    });
-    const data = await res.json();
-    if(data.status === 'ok'){ showToast('Данные обновлены!'); showScreen('profile'); }
-    else { showToast(data.error || 'Ошибка'); }
-  } catch(e){ showToast('Ошибка сохранения'); }
-}
+      try {
+        const data = await api('/api/dashboard', { method: 'POST', body: { tg_id: tgId } });
+        $('dashName').textContent = data.user?.name || 'друг';
+        $('dashGoal').textContent = data.user?.goal === 'lose' ? 'Похудение' : data.user?.goal === 'gain' ? 'Набор массы' : 'Поддержание формы';
 
-async function init(){
-  try{
-    const res = await fetch(API + '/api/user/' + tgId);
-    const data = await res.json();
-    if(data.error){ showScreen('onboarding'); }
-    else { userData = data; showScreen('dashboard'); }
-  } catch(e){ showScreen('onboarding'); }
-}
+        // Calories
+        const cals = data.consumption?.calories || 0;
+        const norm = data.norms?.calories || 2000;
+        $('dashCals').textContent = `${cals} / ${norm}`;
+        $('dashCalsBar').style.width = Math.min((cals / norm) * 100, 100) + '%';
 
-init();
-</script>
+        // Water
+        const water = data.water || 0;
+        const waterNorm = 2500;
+        $('dashWater').textContent = `${water} / ${waterNorm} мл`;
+        $('dashWaterBar').style.width = Math.min((water / waterNorm) * 100, 100) + '%';
+
+        // Workout
+        if (data.hasWorkout) {
+          $('dashWorkoutBadge').textContent = 'Выполнено';
+          $('dashWorkoutBadge').className = 'badge badge-success mb-2';
+          $('dashWorkoutTitle').textContent = 'Тренировка выполнена';
+          $('dashWorkoutDesc').textContent = 'Отличная работа! Восстановись и питайся правильно.';
+        } else {
+          $('dashWorkoutBadge').textContent = 'Тренировка';
+          $('dashWorkoutBadge').className = 'badge badge-accent mb-2';
+          $('dashWorkoutTitle').textContent = 'Начни тренировку';
+          $('dashWorkoutDesc').textContent = 'Выбери программу или свободную тренировку';
+        }
+
+        // Next meal
+        const mealNames = { breakfast: 'Завтрак', lunch: 'Обед', snack: 'Перекус', dinner: 'Ужин' };
+        $('dashNextMealBadge').textContent = mealNames[data.nextMeal] || 'Завтрак';
+
+        // Active program
+        if (data.activeProgram) {
+          $('dashProgramCard').classList.remove('hidden');
+          $('dashProgramName').textContent = data.activeProgram.program_name;
+          $('dashProgramProgress').textContent = `Неделя ${data.activeProgram.current_week}, День ${data.activeProgram.current_day}`;
+          const totalDays = data.activeProgram.duration_weeks * 3; // approx
+          const done = (data.activeProgram.current_week - 1) * 3 + (data.activeProgram.current_day - 1);
+          $('dashProgramBar').style.width = Math.min((done / totalDays) * 100, 100) + '%';
+        } else {
+          $('dashProgramCard').classList.add('hidden');
+        }
+
+        renderCalendar();
+      } catch (e) {}
+    }
+
+    function renderCalendar() {
+      const strip = $('calendarStrip');
+      strip.innerHTML = '';
+      const days = ['пн','вт','ср','чт','пт','сб','вс'];
+      const today = new Date();
+      for (let i = -3; i <= 3; i++) {
+        const d = new Date(today); d.setDate(d.getDate() + i);
+        const isToday = i === 0;
+        const el = document.createElement('div');
+        el.className = 'calendar-day' + (isToday ? ' active' : '');
+        el.innerHTML = `<span class="day-name">${days[(d.getDay()+6)%7]}</span><span class="day-number">${d.getDate()}</span>`;
+        strip.appendChild(el);
+      }
+    }
+
+    async function addWater() {
+      const tgId = currentUser?.tg_id;
+      if (!tgId) return;
+      try {
+        const res = await api('/api/water', { method: 'POST', body: { tg_id: tgId, amount: 250 } });
+        showSuccess(`+250 мл воды! Всего: ${res.total} мл`);
+        loadDashboard();
+      } catch (e) {}
+    }
+
+    async function getMeal() {
+      const categories = ['breakfast','lunch','snack','dinner'];
+      const hour = new Date().getHours();
+      let cat = 'breakfast';
+      if (hour >= 10) cat = 'lunch';
+      if (hour >= 15) cat = 'snack';
+      if (hour >= 18) cat = 'dinner';
+      try {
+        const data = await api('/api/meal', { method: 'POST', body: { category: cat } });
+        if (data.recipe) {
+          showSuccess(`${data.recipe.title} — ${data.recipe.calories} ккал`);
+          // Could show modal here
+        }
+      } catch (e) {}
+    }
+    // ===== WORKOUTS =====
+    let selectedLocation = null;
+    let selectedType = null;
+
+    function loadWorkouts() {
+      const content = $('workoutContent');
+      if (!selectedLocation) {
+        content.innerHTML = `
+          <h3 class="mb-4">Где тренируемся?</h3>
+          <div class="grid-2">
+            <div class="location-card" onclick="selectLocation('home')" tabindex="0" role="button" aria-label="Дома">
+              <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+              <span style="font-weight: 600;">Дома</span>
+              <span class="text-muted" style="font-size: 12px;">Без инвентаря</span>
+            </div>
+            <div class="location-card" onclick="selectLocation('outdoor')" tabindex="0" role="button" aria-label="На улице">
+              <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 18a5 5 0 0 0-10 0"/><line x1="12" y1="9" x2="12" y2="2"/><line x1="4.22" y1="10.22" x2="5.64" y2="11.64"/><line x1="1" y1="18" x2="3" y2="18"/><line x1="21" y1="18" x2="23" y2="18"/><line x1="18.36" y1="11.64" x2="19.78" y2="10.22"/><line x1="23" y1="22" x2="1" y2="22"/><polyline points="16 5 12 9 8 5"/></svg>
+              <span style="font-weight: 600;">На улице</span>
+              <span class="text-muted" style="font-size: 12px;">Площадка / парк</span>
+            </div>
+            <div class="location-card" onclick="selectLocation('gym')" tabindex="0" role="button" aria-label="В зале">
+              <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6.5 6.5h11"/><path d="M6.5 17.5h11"/><path d="M6 20v-6a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v6"/><path d="M6 10V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v6"/></svg>
+              <span style="font-weight: 600;">В зале</span>
+              <span class="text-muted" style="font-size: 12px;">Тренажёры / гантели</span>
+            </div>
+            <div class="location-card" onclick="selectLocation('any')" tabindex="0" role="button" aria-label="Любая локация">
+              <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+              <span style="font-weight: 600;">Везде</span>
+              <span class="text-muted" style="font-size: 12px;">Все упражнения</span>
+            </div>
+          </div>
+        `;
+        return;
+      }
+      if (!selectedType) {
+        content.innerHTML = `
+          <div class="flex items-center gap-2 mb-4">
+            <button class="btn btn-ghost" onclick="selectedLocation=null;loadWorkouts()" aria-label="Назад">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m15 18-6-6 6-6"/></svg>
+            </button>
+            <h3>Выбери тип</h3>
+          </div>
+          <div class="grid-2">
+            <div class="location-card" onclick="selectType('strength')" tabindex="0" role="button" aria-label="Силовые">
+              <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6.5 6.5h11"/><path d="M6.5 17.5h11"/><path d="M6 20v-6a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v6"/><path d="M6 10V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v6"/></svg>
+              <span style="font-weight: 600;">Силовые</span>
+              <span class="text-muted" style="font-size: 12px;">Мышцы и сила</span>
+            </div>
+            <div class="location-card" onclick="selectType('cardio')" tabindex="0" role="button" aria-label="Кардио">
+              <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+              <span style="font-weight: 600;">Кардио</span>
+              <span class="text-muted" style="font-size: 12px;">Выносливость</span>
+            </div>
+            <div class="location-card" onclick="selectType('calisthenics')" tabindex="0" role="button" aria-label="Калистеника">
+              <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0L12 2.69z"/><path d="M12 22v-8"/></svg>
+              <span style="font-weight: 600;">Калистеника</span>
+              <span class="text-muted" style="font-size: 12px;">Растяжка / гибкость</span>
+            </div>
+          </div>
+        `;
+        return;
+      }
+      showWorkoutList();
+    }
+
+    function selectLocation(loc) { selectedLocation = loc; loadWorkouts(); }
+    function selectType(type) { selectedType = type; loadWorkouts(); }
+
+    async function showWorkoutList() {
+      const content = $('workoutContent');
+      content.innerHTML = `
+        <div class="flex items-center gap-2 mb-4">
+          <button class="btn btn-ghost" onclick="selectedType=null;loadWorkouts()" aria-label="Назад">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m15 18-6-6 6-6"/></svg>
+          </button>
+          <h3>Упражнения и программы</h3>
+        </div>
+        <div class="flex gap-2 mb-4" style="flex-wrap: wrap;">
+          <button class="chip active" id="tab-exercises" onclick="showTab('exercises')">Упражнения</button>
+          <button class="chip" id="tab-programs" onclick="showTab('programs')">Программы</button>
+        </div>
+        <div id="exercisesList"></div>
+        <div id="programsList" class="hidden"></div>
+      `;
+      await loadExercises();
+      await loadPrograms();
+    }
+
+    function showTab(tab) {
+      document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+      $('tab-' + tab).classList.add('active');
+      $('exercisesList').classList.toggle('hidden', tab !== 'exercises');
+      $('programsList').classList.toggle('hidden', tab !== 'programs');
+    }
+
+    async function loadExercises() {
+      const list = $('exercisesList');
+      list.innerHTML = '<div class="skeleton" style="height: 80px; margin-bottom: 12px;"></div><div class="skeleton" style="height: 80px; margin-bottom: 12px;"></div>';
+      try {
+        const loc = selectedLocation === 'any' ? '' : selectedLocation;
+        const data = await api('/api/exercises?location=' + loc + '&type=' + selectedType);
+        if (!data.exercises?.length) {
+          list.innerHTML = '<div class="empty-state"><svg viewBox="0 0 24 24" fill="none" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg><p>Нет упражнений для этого фильтра</p></div>';
+          return;
+        }
+        list.innerHTML = data.exercises.map(e => `
+          <div class="exercise-card" onclick="startFreeWorkout(${e.id}, '${e.name.replace(/'/g,"\\'")}')" tabindex="0" role="button" aria-label="${e.name}">
+            <div class="flex items-center justify-between">
+              <div>
+                <h3 style="font-size: 15px;">${e.name}</h3>
+                <p class="text-muted" style="font-size: 12px; margin-top: 2px;">${e.muscle_group} • ${e.sets_default}×${e.reps_default}</p>
+              </div>
+              <span class="badge ${e.difficulty === 'beginner' ? 'badge-success' : 'badge-accent'}">${e.difficulty === 'beginner' ? 'Легко' : 'Средне'}</span>
+            </div>
+            <p class="text-muted" style="font-size: 12px; margin-top: 8px;">${e.description}</p>
+          </div>
+        `).join('');
+      } catch (e) { list.innerHTML = ''; }
+    }
+
+    async function loadPrograms() {
+      const list = $('programsList');
+      try {
+        const loc = selectedLocation === 'any' ? '' : selectedLocation;
+        const data = await api('/api/programs?location=' + loc + '&type=' + selectedType);
+        if (!data.programs?.length) {
+          list.innerHTML = '<div class="empty-state"><p>Нет программ</p></div>';
+          return;
+        }
+        list.innerHTML = data.programs.map(p => `
+          <div class="program-card" onclick="openProgram(${p.id})" tabindex="0" role="button" aria-label="${p.name}">
+            <div style="position: relative; z-index: 1;">
+              <div class="flex items-center gap-2 mb-2">
+                <span class="badge badge-primary">${p.duration_weeks} недель</span>
+                <span class="badge badge-accent">${p.goal === 'lose' ? 'Похудение' : p.goal === 'gain' ? 'Набор' : 'Поддержание'}</span>
+              </div>
+              <h3 style="font-size: 18px; margin-bottom: 4px;">${p.name}</h3>
+              <p class="text-muted" style="font-size: 13px;">${p.description}</p>
+              <div class="flex items-center gap-2 mt-3">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text-subtle)" stroke-width="2"><path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0L12 2.69z"/><path d="M12 22v-8"/></svg>
+                <span class="text-subtle" style="font-size: 12px;">${p.difficulty === 'beginner' ? 'Новичок' : 'Средний'}</span>
+              </div>
+            </div>
+          </div>
+        `).join('');
+      } catch (e) { list.innerHTML = ''; }
+    }
+
+    async function openProgram(id) {
+      try {
+        const data = await api('/api/program/' + id);
+        const p = data.program;
+        const days = data.days || [];
+        const content = $('programContent');
+        content.innerHTML = `
+          <div class="program-card mb-4" style="cursor: default;">
+            <div style="position: relative; z-index: 1;">
+              <h2 style="margin-bottom: 4px;">${p.name}</h2>
+              <p class="text-muted" style="font-size: 14px;">${p.description}</p>
+              <div class="flex gap-2 mt-3" style="flex-wrap: wrap;">
+                <span class="badge badge-primary">${p.duration_weeks} недель</span>
+                <span class="badge badge-accent">${p.goal === 'lose' ? 'Похудение' : p.goal === 'gain' ? 'Набор' : 'Поддержание'}</span>
+                <span class="badge badge-success">${p.difficulty === 'beginner' ? 'Новичок' : 'Средний'}</span>
+              </div>
+            </div>
+          </div>
+          <button class="btn btn-primary btn-block mb-4" onclick="startProgram(${p.id})">Начать программу</button>
+          <h3 class="mb-3">Расписание</h3>
+          ${days.map(d => `
+            <div class="day-card" onclick="startProgramDay(${d.id})" tabindex="0" role="button" aria-label="${d.title}">
+              <div class="flex items-center justify-between">
+                <div>
+                  <span class="text-subtle" style="font-size: 11px; font-weight: 600;">НЕДЕЛЯ ${d.week}, ДЕНЬ ${d.day}</span>
+                  <h3 style="font-size: 15px; margin-top: 2px;">${d.title}</h3>
+                  <p class="text-muted" style="font-size: 12px;">${d.description}</p>
+                </div>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--text-subtle)" stroke-width="2.5"><path d="m9 18 6-6-6-6"/></svg>
+              </div>
+              ${d.exercises ? `<p class="text-subtle" style="font-size: 11px; margin-top: 8px;">${d.exercises.length} упражнений</p>` : ''}
+            </div>
+          `).join('')}
+        `;
+        navigate('program');
+      } catch (e) {}
+    }
+
+    async function startProgram(pid) {
+      try {
+        await api('/api/user/program/start', { method: 'POST', body: { tg_id: currentUser.tg_id, program_id: pid } });
+        showSuccess('Программа начата!');
+        loadDashboard();
+      } catch (e) {}
+    }
+
+    function startProgramDay(dayId) {
+      // Find day in current program data and start workout
+      showSuccess('Загрузка тренировки...');
+      // In real app: fetch day details and render active workout screen
+    }
+
+    function startFreeWorkout(exId, exName) {
+      currentExercises = [{ id: exId, name: exName, sets: 3, reps: '10-12' }];
+      renderActiveWorkout();
+      navigate('active-workout');
+    }
+
+    function renderActiveWorkout() {
+      const content = $('activeWorkoutContent');
+      workoutSeconds = 0;
+      content.innerHTML = `
+        <div class="card mb-4 text-center">
+          <p class="text-muted" style="font-size: 13px; margin-bottom: 8px;">Время тренировки</p>
+          <div class="timer-display" id="workoutTimer">00:00</div>
+          <div class="flex gap-3 justify-center mt-3">
+            <button class="btn btn-primary" onclick="toggleTimer()" id="timerBtn">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>
+              Пауза
+            </button>
+          </div>
+        </div>
+        <h3 class="mb-3">Упражнения</h3>
+        ${currentExercises.map((ex, idx) => `
+          <div class="card mb-3">
+            <h3 style="font-size: 16px; margin-bottom: 12px;">${ex.name}</h3>
+            ${Array.from({length: ex.sets || 3}, (_, i) => `
+              <div class="set-row">
+                <span style="font-size: 12px; font-weight: 600; color: var(--text-muted); min-width: 40px;">${i+1}</span>
+                <input type="number" placeholder="кг" id="w-${idx}-${i}" aria-label="Вес">
+                <input type="number" placeholder="повт" id="r-${idx}-${i}" aria-label="Повторы">
+                <button class="btn btn-ghost" style="min-height: 36px; padding: 6px 12px;" onclick="this.style.color='var(--success)';this.innerHTML='<svg width=16 height=16 viewBox=\\'0 0 24 24\\' fill=none stroke=\\'currentColor\\' stroke-width=3><path d=\\'M20 6 9 17l-5-5\\'/></svg>'" aria-label="Отметить выполнено">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6 9 17l-5-5"/></svg>
+                </button>
+              </div>
+            `).join('')}
+          </div>
+        `).join('')}
+        <button class="btn btn-accent btn-block" onclick="finishWorkout()">Завершить тренировку</button>
+      `;
+      startTimer();
+    }
+
+    function startTimer() {
+      if (workoutTimer) clearInterval(workoutTimer);
+      workoutTimer = setInterval(() => {
+        workoutSeconds++;
+        const m = String(Math.floor(workoutSeconds / 60)).padStart(2, '0');
+        const s = String(workoutSeconds % 60).padStart(2, '0');
+        const el = $('workoutTimer');
+        if (el) el.textContent = `${m}:${s}`;
+      }, 1000);
+    }
+    function toggleTimer() {
+      const btn = $('timerBtn');
+      if (workoutTimer) {
+        clearInterval(workoutTimer); workoutTimer = null;
+        btn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="5 3 19 12 5 21 5 3"/></svg> Продолжить';
+      } else {
+        startTimer();
+        btn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg> Пауза';
+      }
+    }
+    function finishWorkout() {
+      if (workoutTimer) clearInterval(workoutTimer);
+      workoutTimer = null;
+      const sets = [];
+      // Collect data from inputs
+      showSuccess(`Тренировка завершена! ${Math.floor(workoutSeconds/60)} мин`);
+      navigate('workouts');
+    }
+    // ===== NUTRITION =====
+    async function loadNutrition() {
+      const content = $('nutritionContent');
+      const tgId = currentUser?.tg_id;
+      if (!tgId) return;
+
+      content.innerHTML = `
+        <div class="grid-2 mb-4">
+          <div class="card text-center" style="cursor: pointer;" onclick="addWater()" tabindex="0" role="button" aria-label="Добавить воду">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="var(--water)" stroke-width="2" style="margin: 0 auto 8px;"><path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0L12 2.69z"/></svg>
+            <div style="font-size: 20px; font-weight: 700;" id="nutWater">0 мл</div>
+            <p class="text-muted" style="font-size: 12px;">Вода сегодня</p>
+          </div>
+          <div class="card text-center">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="var(--success)" stroke-width="2" style="margin: 0 auto 8px;"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+            <div style="font-size: 20px; font-weight: 700;" id="nutCals">0</div>
+            <p class="text-muted" style="font-size: 12px;">Калории</p>
+          </div>
+        </div>
+
+        <div class="card mb-4">
+          <h3 class="mb-3">БЖУ сегодня</h3>
+          <div class="mb-3">
+            <div class="flex items-center justify-between mb-1"><span class="text-muted" style="font-size: 12px;">Белки</span><span class="text-muted" style="font-size: 12px;" id="nutProtein">0 / 150г</span></div>
+            <div class="progress-track"><div class="progress-fill primary" id="nutProteinBar" style="width: 0%"></div></div>
+          </div>
+          <div class="mb-3">
+            <div class="flex items-center justify-between mb-1"><span class="text-muted" style="font-size: 12px;">Жиры</span><span class="text-muted" style="font-size: 12px;" id="nutFat">0 / 70г</span></div>
+            <div class="progress-track"><div class="progress-fill accent" id="nutFatBar" style="width: 0%"></div></div>
+          </div>
+          <div>
+            <div class="flex items-center justify-between mb-1"><span class="text-muted" style="font-size: 12px;">Углеводы</span><span class="text-muted" style="font-size: 12px;" id="nutCarbs">0 / 250г</span></div>
+            <div class="progress-track"><div class="progress-fill success" id="nutCarbsBar" style="width: 0%"></div></div>
+          </div>
+        </div>
+
+        <h3 class="mb-3">Приёмы пищи</h3>
+        <div id="mealsList"></div>
+
+        <button class="btn btn-primary btn-block mt-4" onclick="getMealFull()">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+          Добавить приём пищи
+        </button>
+      `;
+
+      try {
+        const [dash, meals] = await Promise.all([
+          api('/api/dashboard', { method: 'POST', body: { tg_id: tgId } }),
+          api('/api/food-log/today/' + tgId)
+        ]);
+
+        $('nutWater').textContent = (dash.water || 0) + ' мл';
+        $('nutCals').textContent = dash.consumption?.calories || 0;
+
+        const p = dash.consumption?.protein || 0, pn = dash.norms?.protein || 150;
+        const f = dash.consumption?.fat || 0, fn = dash.norms?.fat || 70;
+        const c = dash.consumption?.carbs || 0, cn = dash.norms?.carbs || 250;
+
+        $('nutProtein').textContent = `${p} / ${pn}г`;
+        $('nutProteinBar').style.width = Math.min((p/pn)*100, 100) + '%';
+        $('nutFat').textContent = `${f} / ${fn}г`;
+        $('nutFatBar').style.width = Math.min((f/fn)*100, 100) + '%';
+        $('nutCarbs').textContent = `${c} / ${cn}г`;
+        $('nutCarbsBar').style.width = Math.min((c/cn)*100, 100) + '%';
+
+        const list = $('mealsList');
+        if (!meals.meals?.length) {
+          list.innerHTML = '<div class="empty-state"><p>Сегодня ещё ничего не записано</p></div>';
+        } else {
+          list.innerHTML = meals.meals.map(m => `
+            <div class="card mb-3">
+              <div class="flex items-center justify-between">
+                <h3 style="font-size: 15px;">${m.title}</h3>
+                <span class="badge badge-primary">${m.calories} ккал</span>
+              </div>
+              <p class="text-muted" style="font-size: 12px; margin-top: 4px;">Б${m.protein} Ж${m.fat} У${m.carbs}</p>
+            </div>
+          `).join('');
+        }
+      } catch (e) {}
+    }
+
+    async function getMealFull() {
+      const cats = ['breakfast','lunch','snack','dinner'];
+      const cat = cats[Math.floor(Math.random() * cats.length)];
+      try {
+        const data = await api('/api/meal', { method: 'POST', body: { category: cat } });
+        if (data.recipe) {
+          await api('/api/log-meal', { method: 'POST', body: { tg_id: currentUser.tg_id, recipe_id: data.recipe.id } });
+          showSuccess(`${data.recipe.title} добавлено!`);
+          loadNutrition();
+        }
+      } catch (e) {}
+    }
+
+    // ===== PROFILE =====
+    async function loadProfile() {
+      const content = $('profileContent');
+      const tgId = currentUser?.tg_id;
+      if (!tgId) return;
+
+      content.innerHTML = `
+        <div class="card mb-4 text-center">
+          <div style="width: 80px; height: 80px; border-radius: 50%; background: var(--primary-light); display: flex; align-items: center; justify-content: center; margin: 0 auto 12px;">
+            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="2"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+          </div>
+          <h2 style="font-size: 20px;" id="profName">—</h2>
+          <p class="text-muted" style="font-size: 14px;" id="profStats">—</p>
+        </div>
+
+        <div class="card mb-4">
+          <h3 class="mb-3">Вес</h3>
+          <div class="chart-container" id="weightChart">
+            <div class="empty-state" style="padding: 24px;"><p class="text-muted">Загрузка...</p></div>
+          </div>
+          <div class="flex gap-3 mt-3">
+            <input type="number" class="input" id="newWeight" placeholder="Текущий вес" style="flex: 1;">
+            <button class="btn btn-primary" onclick="saveWeight()" style="min-height: 48px;">Сохранить</button>
+          </div>
+        </div>
+
+        <h3 class="mb-3">Достижения</h3>
+        <div id="achievementsList"></div>
+      `;
+
+      try {
+        const [user, weight, ach] = await Promise.all([
+          api('/api/user/' + tgId),
+          api('/api/weight/' + tgId),
+          api('/api/achievements/' + tgId)
+        ]);
+
+        $('profName').textContent = user.name;
+        const goalText = user.goal === 'lose' ? 'Похудение' : user.goal === 'gain' ? 'Набор массы' : 'Поддержание';
+        $('profStats').textContent = `${user.age} лет • ${user.height} см • ${goalText}`;
+
+        // Weight chart (simple SVG)
+        const chart = $('weightChart');
+        if (weight.history?.length > 1) {
+          const vals = weight.history.slice().reverse();
+          const min = Math.min(...vals.map(v => v.weight)) - 1;
+          const max = Math.max(...vals.map(v => v.weight)) + 1;
+          const range = max - min;
+          const w = 400, h = 160;
+          const points = vals.map((v, i) => {
+            const x = (i / (vals.length - 1)) * w;
+            const y = h - ((v.weight - min) / range) * h;
+            return `${x},${y}`;
+          }).join(' ');
+          chart.innerHTML = `
+            <svg viewBox="0 0 ${w} ${h}" style="width: 100%; height: 100%;">
+              <polyline points="${points}" fill="none" stroke="var(--primary)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+              ${vals.map((v, i) => {
+                const x = (i / (vals.length - 1)) * w;
+                const y = h - ((v.weight - min) / range) * h;
+                return `<circle cx="${x}" cy="${y}" r="4" fill="var(--primary)" stroke="white" stroke-width="2"/>`;
+              }).join('')}
+            </svg>
+            <div class="flex justify-between mt-2">
+              <span class="text-subtle" style="font-size: 11px;">${vals[0].date.slice(5)}</span>
+              <span class="text-subtle" style="font-size: 11px;">${vals[vals.length-1].date.slice(5)}</span>
+            </div>
+          `;
+        } else {
+          chart.innerHTML = '<div class="empty-state" style="padding: 24px;"><p class="text-muted">Недостаточно данных для графика</p></div>';
+        }
+
+        // Achievements
+        const alist = $('achievementsList');
+        if (ach.achievements?.length) {
+          alist.innerHTML = ach.achievements.map(a => `
+            <div class="achievement ${a.unlocked ? '' : 'locked'}">
+              <div class="achievement-icon">${a.icon}</div>
+              <div class="flex-1">
+                <h3 style="font-size: 15px;">${a.title}</h3>
+                <p class="text-muted" style="font-size: 12px;">${a.description}</p>
+              </div>
+              ${a.unlocked ? '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--success)" stroke-width="3"><path d="M20 6 9 17l-5-5"/></svg>' : '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--text-subtle)" stroke-width="2"><path d="M12 2v20M5 12h14"/></svg>'}
+            </div>
+          `).join('');
+        }
+      } catch (e) {}
+    }
+
+    async function saveWeight() {
+      const w = parseFloat($('newWeight').value);
+      if (!w || !currentUser?.tg_id) return;
+      try {
+        await api('/api/weight', { method: 'POST', body: { tg_id: currentUser.tg_id, weight: w } });
+        showSuccess('Вес сохранён!');
+        loadProfile();
+      } catch (e) {}
+    }
+
+    // Init
+    initApp();
+  </script>
+</body>
+</html>
+    // ===== NUTRITION =====
+    async function loadNutrition() {
+      const content = $('nutritionContent');
+      const tgId = currentUser?.tg_id;
+      if (!tgId) return;
+
+      content.innerHTML = `
+        <div class="grid-2 mb-4">
+          <div class="card text-center" style="cursor: pointer;" onclick="addWater()" tabindex="0" role="button" aria-label="Добавить воду">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="var(--water)" stroke-width="2" style="margin: 0 auto 8px;"><path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0L12 2.69z"/></svg>
+            <div style="font-size: 20px; font-weight: 700;" id="nutWater">0 мл</div>
+            <p class="text-muted" style="font-size: 12px;">Вода сегодня</p>
+          </div>
+          <div class="card text-center">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="var(--success)" stroke-width="2" style="margin: 0 auto 8px;"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+            <div style="font-size: 20px; font-weight: 700;" id="nutCals">0</div>
+            <p class="text-muted" style="font-size: 12px;">Калории</p>
+          </div>
+        </div>
+
+        <div class="card mb-4">
+          <h3 class="mb-3">БЖУ сегодня</h3>
+          <div class="mb-3">
+            <div class="flex items-center justify-between mb-1"><span class="text-muted" style="font-size: 12px;">Белки</span><span class="text-muted" style="font-size: 12px;" id="nutProtein">0 / 150г</span></div>
+            <div class="progress-track"><div class="progress-fill primary" id="nutProteinBar" style="width: 0%"></div></div>
+          </div>
+          <div class="mb-3">
+            <div class="flex items-center justify-between mb-1"><span class="text-muted" style="font-size: 12px;">Жиры</span><span class="text-muted" style="font-size: 12px;" id="nutFat">0 / 70г</span></div>
+            <div class="progress-track"><div class="progress-fill accent" id="nutFatBar" style="width: 0%"></div></div>
+          </div>
+          <div>
+            <div class="flex items-center justify-between mb-1"><span class="text-muted" style="font-size: 12px;">Углеводы</span><span class="text-muted" style="font-size: 12px;" id="nutCarbs">0 / 250г</span></div>
+            <div class="progress-track"><div class="progress-fill success" id="nutCarbsBar" style="width: 0%"></div></div>
+          </div>
+        </div>
+
+        <h3 class="mb-3">Приёмы пищи</h3>
+        <div id="mealsList"></div>
+
+        <button class="btn btn-primary btn-block mt-4" onclick="getMealFull()">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+          Добавить приём пищи
+        </button>
+      `;
+
+      try {
+        const [dash, meals] = await Promise.all([
+          api('/api/dashboard', { method: 'POST', body: { tg_id: tgId } }),
+          api('/api/food-log/today/' + tgId)
+        ]);
+
+        $('nutWater').textContent = (dash.water || 0) + ' мл';
+        $('nutCals').textContent = dash.consumption?.calories || 0;
+
+        const p = dash.consumption?.protein || 0, pn = dash.norms?.protein || 150;
+        const f = dash.consumption?.fat || 0, fn = dash.norms?.fat || 70;
+        const c = dash.consumption?.carbs || 0, cn = dash.norms?.carbs || 250;
+
+        $('nutProtein').textContent = `${p} / ${pn}г`;
+        $('nutProteinBar').style.width = Math.min((p/pn)*100, 100) + '%';
+        $('nutFat').textContent = `${f} / ${fn}г`;
+        $('nutFatBar').style.width = Math.min((f/fn)*100, 100) + '%';
+        $('nutCarbs').textContent = `${c} / ${cn}г`;
+        $('nutCarbsBar').style.width = Math.min((c/cn)*100, 100) + '%';
+
+        const list = $('mealsList');
+        if (!meals.meals?.length) {
+          list.innerHTML = '<div class="empty-state"><p>Сегодня ещё ничего не записано</p></div>';
+        } else {
+          list.innerHTML = meals.meals.map(m => `
+            <div class="card mb-3">
+              <div class="flex items-center justify-between">
+                <h3 style="font-size: 15px;">${m.title}</h3>
+                <span class="badge badge-primary">${m.calories} ккал</span>
+              </div>
+              <p class="text-muted" style="font-size: 12px; margin-top: 4px;">Б${m.protein} Ж${m.fat} У${m.carbs}</p>
+            </div>
+          `).join('');
+        }
+      } catch (e) {}
+    }
+
+    async function getMealFull() {
+      const cats = ['breakfast','lunch','snack','dinner'];
+      const cat = cats[Math.floor(Math.random() * cats.length)];
+      try {
+        const data = await api('/api/meal', { method: 'POST', body: { category: cat } });
+        if (data.recipe) {
+          await api('/api/log-meal', { method: 'POST', body: { tg_id: currentUser.tg_id, recipe_id: data.recipe.id } });
+          showSuccess(`${data.recipe.title} добавлено!`);
+          loadNutrition();
+        }
+      } catch (e) {}
+    }
+
+    // ===== PROFILE =====
+    async function loadProfile() {
+      const content = $('profileContent');
+      const tgId = currentUser?.tg_id;
+      if (!tgId) return;
+
+      content.innerHTML = `
+        <div class="card mb-4 text-center">
+          <div style="width: 80px; height: 80px; border-radius: 50%; background: var(--primary-light); display: flex; align-items: center; justify-content: center; margin: 0 auto 12px;">
+            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="2"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+          </div>
+          <h2 style="font-size: 20px;" id="profName">—</h2>
+          <p class="text-muted" style="font-size: 14px;" id="profStats">—</p>
+        </div>
+
+        <div class="card mb-4">
+          <h3 class="mb-3">Вес</h3>
+          <div class="chart-container" id="weightChart">
+            <div class="empty-state" style="padding: 24px;"><p class="text-muted">Загрузка...</p></div>
+          </div>
+          <div class="flex gap-3 mt-3">
+            <input type="number" class="input" id="newWeight" placeholder="Текущий вес" style="flex: 1;">
+            <button class="btn btn-primary" onclick="saveWeight()" style="min-height: 48px;">Сохранить</button>
+          </div>
+        </div>
+
+        <h3 class="mb-3">Достижения</h3>
+        <div id="achievementsList"></div>
+      `;
+
+      try {
+        const [user, weight, ach] = await Promise.all([
+          api('/api/user/' + tgId),
+          api('/api/weight/' + tgId),
+          api('/api/achievements/' + tgId)
+        ]);
+
+        $('profName').textContent = user.name;
+        const goalText = user.goal === 'lose' ? 'Похудение' : user.goal === 'gain' ? 'Набор массы' : 'Поддержание';
+        $('profStats').textContent = `${user.age} лет • ${user.height} см • ${goalText}`;
+
+        // Weight chart (simple SVG)
+        const chart = $('weightChart');
+        if (weight.history?.length > 1) {
+          const vals = weight.history.slice().reverse();
+          const min = Math.min(...vals.map(v => v.weight)) - 1;
+          const max = Math.max(...vals.map(v => v.weight)) + 1;
+          const range = max - min;
+          const w = 400, h = 160;
+          const points = vals.map((v, i) => {
+            const x = (i / (vals.length - 1)) * w;
+            const y = h - ((v.weight - min) / range) * h;
+            return `${x},${y}`;
+          }).join(' ');
+          chart.innerHTML = `
+            <svg viewBox="0 0 ${w} ${h}" style="width: 100%; height: 100%;">
+              <polyline points="${points}" fill="none" stroke="var(--primary)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+              ${vals.map((v, i) => {
+                const x = (i / (vals.length - 1)) * w;
+                const y = h - ((v.weight - min) / range) * h;
+                return `<circle cx="${x}" cy="${y}" r="4" fill="var(--primary)" stroke="white" stroke-width="2"/>`;
+              }).join('')}
+            </svg>
+            <div class="flex justify-between mt-2">
+              <span class="text-subtle" style="font-size: 11px;">${vals[0].date.slice(5)}</span>
+              <span class="text-subtle" style="font-size: 11px;">${vals[vals.length-1].date.slice(5)}</span>
+            </div>
+          `;
+        } else {
+          chart.innerHTML = '<div class="empty-state" style="padding: 24px;"><p class="text-muted">Недостаточно данных для графика</p></div>';
+        }
+
+        // Achievements
+        const alist = $('achievementsList');
+        if (ach.achievements?.length) {
+          alist.innerHTML = ach.achievements.map(a => `
+            <div class="achievement ${a.unlocked ? '' : 'locked'}">
+              <div class="achievement-icon">${a.icon}</div>
+              <div class="flex-1">
+                <h3 style="font-size: 15px;">${a.title}</h3>
+                <p class="text-muted" style="font-size: 12px;">${a.description}</p>
+              </div>
+              ${a.unlocked ? '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--success)" stroke-width="3"><path d="M20 6 9 17l-5-5"/></svg>' : '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--text-subtle)" stroke-width="2"><path d="M12 2v20M5 12h14"/></svg>'}
+            </div>
+          `).join('');
+        }
+      } catch (e) {}
+    }
+
+    async function saveWeight() {
+      const w = parseFloat($('newWeight').value);
+      if (!w || !currentUser?.tg_id) return;
+      try {
+        await api('/api/weight', { method: 'POST', body: { tg_id: currentUser.tg_id, weight: w } });
+        showSuccess('Вес сохранён!');
+        loadProfile();
+      } catch (e) {}
+    }
+
+    // Init
+    initApp();
+  </script>
 </body>
 </html>
