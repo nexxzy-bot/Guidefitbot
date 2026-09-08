@@ -1,159 +1,4279 @@
 [
   {
-    "id": 1, "name": "Домашний старт", "location": "home", "type": "strength", "goal": "lose", "duration_weeks": 4, "description": "Базовая силовая программа дома без инвентаря. Подходит для похудения и общего укрепления.", "difficulty": "beginner",
+    "id": 1,
+    "name": "Домашний старт",
+    "location": "home",
+    "type": "strength",
+    "goal": "lose",
+    "duration_weeks": 4,
+    "description": "Базовая силовая программа дома без инвентаря. Подходит для похудения и общего укрепления.",
+    "difficulty": "beginner",
     "days": [
-      {"id":101,"program_id":1,"week":1,"day":1,"title":"Верх тела","description":"Грудь, спина, руки","exercises":[{"exercise_id":1,"sets":3,"reps":"12-15","rest_seconds":60,"notes":"Медленно"},{"exercise_id":57,"sets":3,"reps":"10-12","rest_seconds":60,"notes":"Широкий хват"},{"exercise_id":58,"sets":3,"reps":"8-10","rest_seconds":60,"notes":"Узкий хват"},{"exercise_id":33,"sets":3,"reps":"12","rest_seconds":45,"notes":"С гантелями или бутылками"}]},
-      {"id":102,"program_id":1,"week":1,"day":2,"title":"Ноги и пресс","description":"Ноги, ягодицы, корпус","exercises":[{"exercise_id":2,"sets":3,"reps":"15-20","rest_seconds":60,"notes":"Глубоко"},{"exercise_id":4,"sets":3,"reps":"10 на ногу","rest_seconds":60,"notes":"Шаг широкий"},{"exercise_id":5,"sets":3,"reps":"15-20","rest_seconds":45,"notes":"Задержка вверху"},{"exercise_id":3,"sets":3,"reps":"30-45 сек","rest_seconds":45,"notes":"Ровное дыхание"}]},
-      {"id":103,"program_id":1,"week":1,"day":3,"title":"Кардио и пресс","description":"Сжигание калорий","exercises":[{"exercise_id":6,"sets":3,"reps":"8-10","rest_seconds":90,"notes":"В темпе"},{"exercise_id":7,"sets":3,"reps":"20-30","rest_seconds":45,"notes":"Быстро"},{"exercise_id":8,"sets":3,"reps":"45 сек","rest_seconds":30,"notes":"Ритмично"},{"exercise_id":10,"sets":3,"reps":"15-20","rest_seconds":45,"notes":"Медленно"}]},
-      {"id":104,"program_id":1,"week":2,"day":1,"title":"Верх тела","description":"Грудь, спина, руки","exercises":[{"exercise_id":1,"sets":4,"reps":"12-15","rest_seconds":60,"notes":"Больше повторов"},{"exercise_id":57,"sets":3,"reps":"12-15","rest_seconds":60,"notes":"Контроль"},{"exercise_id":58,"sets":3,"reps":"10-12","rest_seconds":60,"notes":"Техника"},{"exercise_id":24,"sets":3,"reps":"12-15","rest_seconds":60,"notes":"На стуле"}]},
-      {"id":105,"program_id":1,"week":2,"day":2,"title":"Ноги и пресс","description":"Ноги, ягодицы, корпус","exercises":[{"exercise_id":2,"sets":4,"reps":"15-20","rest_seconds":60,"notes":"Глубже"},{"exercise_id":4,"sets":3,"reps":"12 на ногу","rest_seconds":60,"notes":"Дольше"},{"exercise_id":5,"sets":3,"reps":"20","rest_seconds":45,"notes":"Вверху 2 сек"},{"exercise_id":54,"sets":2,"reps":"30 сек","rest_seconds":30,"notes":"Обе стороны"}]},
-      {"id":106,"program_id":1,"week":2,"day":3,"title":"Кардио и пресс","description":"Сжигание калорий","exercises":[{"exercise_id":6,"sets":4,"reps":"10","rest_seconds":90,"notes":"Быстрее"},{"exercise_id":7,"sets":3,"reps":"30","rest_seconds":45,"notes":"Интенсивно"},{"exercise_id":8,"sets":3,"reps":"60 сек","rest_seconds":30,"notes":"Без остановок"},{"exercise_id":9,"sets":3,"reps":"12-15","rest_seconds":45,"notes":"Медленно"}]},
-      {"id":107,"program_id":1,"week":3,"day":1,"title":"Верх тела","description":"Грудь, спина, руки","exercises":[{"exercise_id":1,"sets":4,"reps":"15-20","rest_seconds":60,"notes":"Максимум"},{"exercise_id":57,"sets":4,"reps":"12-15","rest_seconds":60,"notes":"Контроль"},{"exercise_id":58,"sets":3,"reps":"12","rest_seconds":60,"notes":"Чисто"},{"exercise_id":33,"sets":3,"reps":"15","rest_seconds":45,"notes":"С весом"}]},
-      {"id":108,"program_id":1,"week":3,"day":2,"title":"Ноги и пресс","description":"Ноги, ягодицы, корпус","exercises":[{"exercise_id":2,"sets":4,"reps":"20","rest_seconds":60,"notes":"Глубоко"},{"exercise_id":4,"sets":3,"reps":"15 на ногу","rest_seconds":60,"notes":"Широко"},{"exercise_id":5,"sets":4,"reps":"20","rest_seconds":45,"notes":"Задержка"},{"exercise_id":42,"sets":3,"reps":"10","rest_seconds":45,"notes":"Стабильно"}]},
-      {"id":109,"program_id":1,"week":3,"day":3,"title":"Кардио и пресс","description":"Сжигание калорий","exercises":[{"exercise_id":6,"sets":4,"reps":"12","rest_seconds":90,"notes":"Мощно"},{"exercise_id":7,"sets":4,"reps":"30","rest_seconds":45,"notes":"Быстро"},{"exercise_id":8,"sets":3,"reps":"60 сек","rest_seconds":30,"notes":"Ритм"},{"exercise_id":53,"sets":3,"reps":"15","rest_seconds":45,"notes":"Низкий пресс"}]},
-      {"id":110,"program_id":1,"week":4,"day":1,"title":"Верх тела","description":"Грудь, спина, руки","exercises":[{"exercise_id":1,"sets":4,"reps":"20","rest_seconds":60,"notes":"Финиш"},{"exercise_id":57,"sets":4,"reps":"15","rest_seconds":60,"notes":"Идеально"},{"exercise_id":58,"sets":4,"reps":"12","rest_seconds":60,"notes":"Чисто"},{"exercise_id":24,"sets":3,"reps":"15","rest_seconds":60,"notes":"На стуле"}]},
-      {"id":111,"program_id":1,"week":4,"day":2,"title":"Ноги и пресс","description":"Ноги, ягодицы, корпус","exercises":[{"exercise_id":2,"sets":4,"reps":"25","rest_seconds":60,"notes":"Максимум"},{"exercise_id":4,"sets":4,"reps":"15 на ногу","rest_seconds":60,"notes":"Идеально"},{"exercise_id":5,"sets":4,"reps":"25","rest_seconds":45,"notes":"Задержка 3 сек"},{"exercise_id":3,"sets":3,"reps":"60 сек","rest_seconds":45,"notes":"Ровно"}]},
-      {"id":112,"program_id":1,"week":4,"day":3,"title":"Кардио и пресс","description":"Сжигание калорий","exercises":[{"exercise_id":6,"sets":4,"reps":"15","rest_seconds":90,"notes":"Максимум"},{"exercise_id":7,"sets":4,"reps":"40","rest_seconds":45,"notes":"Скорость"},{"exercise_id":8,"sets":4,"reps":"60 сек","rest_seconds":30,"notes":"Без остановок"},{"exercise_id":10,"sets":4,"reps":"20","rest_seconds":45,"notes":"Медленно"}]}
+      {
+        "id": 101,
+        "program_id": 1,
+        "week": 1,
+        "day": 1,
+        "title": "Верх тела",
+        "description": "Грудь, спина, руки",
+        "exercises": [
+          {
+            "exercise_id": 1,
+            "sets": 3,
+            "reps": "12-15",
+            "rest_seconds": 60,
+            "notes": "Медленно"
+          },
+          {
+            "exercise_id": 57,
+            "sets": 3,
+            "reps": "10-12",
+            "rest_seconds": 60,
+            "notes": "Широкий хват"
+          },
+          {
+            "exercise_id": 58,
+            "sets": 3,
+            "reps": "8-10",
+            "rest_seconds": 60,
+            "notes": "Узкий хват"
+          },
+          {
+            "exercise_id": 33,
+            "sets": 3,
+            "reps": "12",
+            "rest_seconds": 45,
+            "notes": "С гантелями или бутылками"
+          }
+        ]
+      },
+      {
+        "id": 102,
+        "program_id": 1,
+        "week": 1,
+        "day": 2,
+        "title": "Ноги и пресс",
+        "description": "Ноги, ягодицы, корпус",
+        "exercises": [
+          {
+            "exercise_id": 2,
+            "sets": 3,
+            "reps": "15-20",
+            "rest_seconds": 60,
+            "notes": "Глубоко"
+          },
+          {
+            "exercise_id": 4,
+            "sets": 3,
+            "reps": "10 на ногу",
+            "rest_seconds": 60,
+            "notes": "Шаг широкий"
+          },
+          {
+            "exercise_id": 5,
+            "sets": 3,
+            "reps": "15-20",
+            "rest_seconds": 45,
+            "notes": "Задержка вверху"
+          },
+          {
+            "exercise_id": 3,
+            "sets": 3,
+            "reps": "30-45 сек",
+            "rest_seconds": 45,
+            "notes": "Ровное дыхание"
+          }
+        ]
+      },
+      {
+        "id": 103,
+        "program_id": 1,
+        "week": 1,
+        "day": 3,
+        "title": "Кардио и пресс",
+        "description": "Сжигание калорий",
+        "exercises": [
+          {
+            "exercise_id": 6,
+            "sets": 3,
+            "reps": "8-10",
+            "rest_seconds": 90,
+            "notes": "В темпе"
+          },
+          {
+            "exercise_id": 7,
+            "sets": 3,
+            "reps": "20-30",
+            "rest_seconds": 45,
+            "notes": "Быстро"
+          },
+          {
+            "exercise_id": 8,
+            "sets": 3,
+            "reps": "45 сек",
+            "rest_seconds": 30,
+            "notes": "Ритмично"
+          },
+          {
+            "exercise_id": 10,
+            "sets": 3,
+            "reps": "15-20",
+            "rest_seconds": 45,
+            "notes": "Медленно"
+          }
+        ]
+      },
+      {
+        "id": 104,
+        "program_id": 1,
+        "week": 2,
+        "day": 1,
+        "title": "Верх тела",
+        "description": "Грудь, спина, руки",
+        "exercises": [
+          {
+            "exercise_id": 1,
+            "sets": 4,
+            "reps": "12-15",
+            "rest_seconds": 60,
+            "notes": "Больше повторов"
+          },
+          {
+            "exercise_id": 57,
+            "sets": 3,
+            "reps": "12-15",
+            "rest_seconds": 60,
+            "notes": "Контроль"
+          },
+          {
+            "exercise_id": 58,
+            "sets": 3,
+            "reps": "10-12",
+            "rest_seconds": 60,
+            "notes": "Техника"
+          },
+          {
+            "exercise_id": 24,
+            "sets": 3,
+            "reps": "12-15",
+            "rest_seconds": 60,
+            "notes": "На стуле"
+          }
+        ]
+      },
+      {
+        "id": 105,
+        "program_id": 1,
+        "week": 2,
+        "day": 2,
+        "title": "Ноги и пресс",
+        "description": "Ноги, ягодицы, корпус",
+        "exercises": [
+          {
+            "exercise_id": 2,
+            "sets": 4,
+            "reps": "15-20",
+            "rest_seconds": 60,
+            "notes": "Глубже"
+          },
+          {
+            "exercise_id": 4,
+            "sets": 3,
+            "reps": "12 на ногу",
+            "rest_seconds": 60,
+            "notes": "Дольше"
+          },
+          {
+            "exercise_id": 5,
+            "sets": 3,
+            "reps": "20",
+            "rest_seconds": 45,
+            "notes": "Вверху 2 сек"
+          },
+          {
+            "exercise_id": 54,
+            "sets": 2,
+            "reps": "30 сек",
+            "rest_seconds": 30,
+            "notes": "Обе стороны"
+          }
+        ]
+      },
+      {
+        "id": 106,
+        "program_id": 1,
+        "week": 2,
+        "day": 3,
+        "title": "Кардио и пресс",
+        "description": "Сжигание калорий",
+        "exercises": [
+          {
+            "exercise_id": 6,
+            "sets": 4,
+            "reps": "10",
+            "rest_seconds": 90,
+            "notes": "Быстрее"
+          },
+          {
+            "exercise_id": 7,
+            "sets": 3,
+            "reps": "30",
+            "rest_seconds": 45,
+            "notes": "Интенсивно"
+          },
+          {
+            "exercise_id": 8,
+            "sets": 3,
+            "reps": "60 сек",
+            "rest_seconds": 30,
+            "notes": "Без остановок"
+          },
+          {
+            "exercise_id": 9,
+            "sets": 3,
+            "reps": "12-15",
+            "rest_seconds": 45,
+            "notes": "Медленно"
+          }
+        ]
+      },
+      {
+        "id": 107,
+        "program_id": 1,
+        "week": 3,
+        "day": 1,
+        "title": "Верх тела",
+        "description": "Грудь, спина, руки",
+        "exercises": [
+          {
+            "exercise_id": 1,
+            "sets": 4,
+            "reps": "15-20",
+            "rest_seconds": 60,
+            "notes": "Максимум"
+          },
+          {
+            "exercise_id": 57,
+            "sets": 4,
+            "reps": "12-15",
+            "rest_seconds": 60,
+            "notes": "Контроль"
+          },
+          {
+            "exercise_id": 58,
+            "sets": 3,
+            "reps": "12",
+            "rest_seconds": 60,
+            "notes": "Чисто"
+          },
+          {
+            "exercise_id": 33,
+            "sets": 3,
+            "reps": "15",
+            "rest_seconds": 45,
+            "notes": "С весом"
+          }
+        ]
+      },
+      {
+        "id": 108,
+        "program_id": 1,
+        "week": 3,
+        "day": 2,
+        "title": "Ноги и пресс",
+        "description": "Ноги, ягодицы, корпус",
+        "exercises": [
+          {
+            "exercise_id": 2,
+            "sets": 4,
+            "reps": "20",
+            "rest_seconds": 60,
+            "notes": "Глубоко"
+          },
+          {
+            "exercise_id": 4,
+            "sets": 3,
+            "reps": "15 на ногу",
+            "rest_seconds": 60,
+            "notes": "Широко"
+          },
+          {
+            "exercise_id": 5,
+            "sets": 4,
+            "reps": "20",
+            "rest_seconds": 45,
+            "notes": "Задержка"
+          },
+          {
+            "exercise_id": 42,
+            "sets": 3,
+            "reps": "10",
+            "rest_seconds": 45,
+            "notes": "Стабильно"
+          }
+        ]
+      },
+      {
+        "id": 109,
+        "program_id": 1,
+        "week": 3,
+        "day": 3,
+        "title": "Кардио и пресс",
+        "description": "Сжигание калорий",
+        "exercises": [
+          {
+            "exercise_id": 6,
+            "sets": 4,
+            "reps": "12",
+            "rest_seconds": 90,
+            "notes": "Мощно"
+          },
+          {
+            "exercise_id": 7,
+            "sets": 4,
+            "reps": "30",
+            "rest_seconds": 45,
+            "notes": "Быстро"
+          },
+          {
+            "exercise_id": 8,
+            "sets": 3,
+            "reps": "60 сек",
+            "rest_seconds": 30,
+            "notes": "Ритм"
+          },
+          {
+            "exercise_id": 53,
+            "sets": 3,
+            "reps": "15",
+            "rest_seconds": 45,
+            "notes": "Низкий пресс"
+          }
+        ]
+      },
+      {
+        "id": 110,
+        "program_id": 1,
+        "week": 4,
+        "day": 1,
+        "title": "Верх тела",
+        "description": "Грудь, спина, руки",
+        "exercises": [
+          {
+            "exercise_id": 1,
+            "sets": 4,
+            "reps": "20",
+            "rest_seconds": 60,
+            "notes": "Финиш"
+          },
+          {
+            "exercise_id": 57,
+            "sets": 4,
+            "reps": "15",
+            "rest_seconds": 60,
+            "notes": "Идеально"
+          },
+          {
+            "exercise_id": 58,
+            "sets": 4,
+            "reps": "12",
+            "rest_seconds": 60,
+            "notes": "Чисто"
+          },
+          {
+            "exercise_id": 24,
+            "sets": 3,
+            "reps": "15",
+            "rest_seconds": 60,
+            "notes": "На стуле"
+          }
+        ]
+      },
+      {
+        "id": 111,
+        "program_id": 1,
+        "week": 4,
+        "day": 2,
+        "title": "Ноги и пресс",
+        "description": "Ноги, ягодицы, корпус",
+        "exercises": [
+          {
+            "exercise_id": 2,
+            "sets": 4,
+            "reps": "25",
+            "rest_seconds": 60,
+            "notes": "Максимум"
+          },
+          {
+            "exercise_id": 4,
+            "sets": 4,
+            "reps": "15 на ногу",
+            "rest_seconds": 60,
+            "notes": "Идеально"
+          },
+          {
+            "exercise_id": 5,
+            "sets": 4,
+            "reps": "25",
+            "rest_seconds": 45,
+            "notes": "Задержка 3 сек"
+          },
+          {
+            "exercise_id": 3,
+            "sets": 3,
+            "reps": "60 сек",
+            "rest_seconds": 45,
+            "notes": "Ровно"
+          }
+        ]
+      },
+      {
+        "id": 112,
+        "program_id": 1,
+        "week": 4,
+        "day": 3,
+        "title": "Кардио и пресс",
+        "description": "Сжигание калорий",
+        "exercises": [
+          {
+            "exercise_id": 6,
+            "sets": 4,
+            "reps": "15",
+            "rest_seconds": 90,
+            "notes": "Максимум"
+          },
+          {
+            "exercise_id": 7,
+            "sets": 4,
+            "reps": "40",
+            "rest_seconds": 45,
+            "notes": "Скорость"
+          },
+          {
+            "exercise_id": 8,
+            "sets": 4,
+            "reps": "60 сек",
+            "rest_seconds": 30,
+            "notes": "Без остановок"
+          },
+          {
+            "exercise_id": 10,
+            "sets": 4,
+            "reps": "20",
+            "rest_seconds": 45,
+            "notes": "Медленно"
+          }
+        ]
+      }
     ]
   },
   {
-    "id": 2, "name": "Домашний набор", "location": "home", "type": "strength", "goal": "gain", "duration_weeks": 6, "description": "Программа для набора мышечной массы дома. Прогрессия по повторам и подходам.", "difficulty": "intermediate",
+    "id": 2,
+    "name": "Домашний набор",
+    "location": "home",
+    "type": "strength",
+    "goal": "gain",
+    "duration_weeks": 6,
+    "description": "Программа для набора мышечной массы дома. Прогрессия по повторам и подходам.",
+    "difficulty": "intermediate",
     "days": [
-      {"id":201,"program_id":2,"week":1,"day":1,"title":"Грудь и трицепс","description":"Акцент на верх","exercises":[{"exercise_id":1,"sets":4,"reps":"8-12","rest_seconds":90,"notes":"Медленный негатив"},{"exercise_id":57,"sets":3,"reps":"10-12","rest_seconds":90,"notes":"Контроль"},{"exercise_id":58,"sets":3,"reps":"8-10","rest_seconds":90,"notes":"Узкий хват"},{"exercise_id":24,"sets":3,"reps":"10-12","rest_seconds":60,"notes":"На стуле"}]},
-      {"id":202,"program_id":2,"week":1,"day":2,"title":"Ноги","description":"Мощные ноги","exercises":[{"exercise_id":2,"sets":4,"reps":"15-20","rest_seconds":90,"notes":"Глубоко"},{"exercise_id":4,"sets":3,"reps":"12 на ногу","rest_seconds":90,"notes":"С весом"},{"exercise_id":5,"sets":4,"reps":"15-20","rest_seconds":60,"notes":"Задержка"},{"exercise_id":37,"sets":3,"reps":"12","rest_seconds":90,"notes":"С гантелями"}]},
-      {"id":203,"program_id":2,"week":1,"day":3,"title":"Спина и бицепс","description":"Тяга и сгибания","exercises":[{"exercise_id":20,"sets":4,"reps":"5-8","rest_seconds":120,"notes":"Если есть турник"},{"exercise_id":21,"sets":3,"reps":"6-8","rest_seconds":90,"notes":"Обратный хват"},{"exercise_id":30,"sets":3,"reps":"10-12","rest_seconds":60,"notes":"С гантелей"},{"exercise_id":33,"sets":3,"reps":"10-12","rest_seconds":60,"notes":"Контроль"}]},
-      {"id":204,"program_id":2,"week":2,"day":1,"title":"Грудь и трицепс","description":"Акцент на верх","exercises":[{"exercise_id":1,"sets":4,"reps":"10-15","rest_seconds":90,"notes":"Больше"},{"exercise_id":57,"sets":4,"reps":"12-15","rest_seconds":90,"notes":"Широко"},{"exercise_id":58,"sets":3,"reps":"10-12","rest_seconds":90,"notes":"Чисто"},{"exercise_id":24,"sets":3,"reps":"12-15","rest_seconds":60,"notes":"Медленно"}]},
-      {"id":205,"program_id":2,"week":2,"day":2,"title":"Ноги","description":"Мощные ноги","exercises":[{"exercise_id":2,"sets":4,"reps":"20","rest_seconds":90,"notes":"Глубоко"},{"exercise_id":4,"sets":4,"reps":"12 на ногу","rest_seconds":90,"notes":"С весом"},{"exercise_id":5,"sets":4,"reps":"20","rest_seconds":60,"notes":"Задержка 2 сек"},{"exercise_id":37,"sets":3,"reps":"15","rest_seconds":90,"notes":"С гантелями"}]},
-      {"id":206,"program_id":2,"week":2,"day":3,"title":"Спина и бицепс","description":"Тяга и сгибания","exercises":[{"exercise_id":20,"sets":4,"reps":"6-8","rest_seconds":120,"notes":"Больше"},{"exercise_id":21,"sets":4,"reps":"6-8","rest_seconds":90,"notes":"Обратный хват"},{"exercise_id":30,"sets":3,"reps":"12-15","rest_seconds":60,"notes":"С гантелей"},{"exercise_id":33,"sets":3,"reps":"12-15","rest_seconds":60,"notes":"Контроль"}]},
-      {"id":207,"program_id":2,"week":3,"day":1,"title":"Грудь и трицепс","description":"Акцент на верх","exercises":[{"exercise_id":1,"sets":4,"reps":"12-15","rest_seconds":90,"notes":"Максимум"},{"exercise_id":57,"sets":4,"reps":"15","rest_seconds":90,"notes":"Широко"},{"exercise_id":58,"sets":4,"reps":"10-12","rest_seconds":90,"notes":"Чисто"},{"exercise_id":24,"sets":3,"reps":"15","rest_seconds":60,"notes":"Медленно"}]},
-      {"id":208,"program_id":2,"week":3,"day":2,"title":"Ноги","description":"Мощные ноги","exercises":[{"exercise_id":2,"sets":4,"reps":"20-25","rest_seconds":90,"notes":"Глубоко"},{"exercise_id":4,"sets":4,"reps":"15 на ногу","rest_seconds":90,"notes":"С весом"},{"exercise_id":5,"sets":4,"reps":"20-25","rest_seconds":60,"notes":"Задержка 3 сек"},{"exercise_id":37,"sets":3,"reps":"15-20","rest_seconds":90,"notes":"С гантелями"}]},
-      {"id":209,"program_id":2,"week":3,"day":3,"title":"Спина и бицепс","description":"Тяга и сгибания","exercises":[{"exercise_id":20,"sets":4,"reps":"8-10","rest_seconds":120,"notes":"Максимум"},{"exercise_id":21,"sets":4,"reps":"8-10","rest_seconds":90,"notes":"Обратный хват"},{"exercise_id":30,"sets":3,"reps":"15","rest_seconds":60,"notes":"С гантелей"},{"exercise_id":33,"sets":3,"reps":"15","rest_seconds":60,"notes":"Контроль"}]},
-      {"id":210,"program_id":2,"week":4,"day":1,"title":"Грудь и трицепс","description":"Акцент на верх","exercises":[{"exercise_id":1,"sets":4,"reps":"15-20","rest_seconds":90,"notes":"Финиш"},{"exercise_id":57,"sets":4,"reps":"15-20","rest_seconds":90,"notes":"Широко"},{"exercise_id":58,"sets":4,"reps":"12-15","rest_seconds":90,"notes":"Чисто"},{"exercise_id":24,"sets":4,"reps":"15","rest_seconds":60,"notes":"Медленно"}]},
-      {"id":211,"program_id":2,"week":4,"day":2,"title":"Ноги","description":"Мощные ноги","exercises":[{"exercise_id":2,"sets":4,"reps":"25","rest_seconds":90,"notes":"Глубоко"},{"exercise_id":4,"sets":4,"reps":"15 на ногу","rest_seconds":90,"notes":"С весом"},{"exercise_id":5,"sets":4,"reps":"25","rest_seconds":60,"notes":"Задержка 3 сек"},{"exercise_id":37,"sets":4,"reps":"15-20","rest_seconds":90,"notes":"С гантелями"}]},
-      {"id":212,"program_id":2,"week":4,"day":3,"title":"Спина и бицепс","description":"Тяга и сгибания","exercises":[{"exercise_id":20,"sets":4,"reps":"8-12","rest_seconds":120,"notes":"Финиш"},{"exercise_id":21,"sets":4,"reps":"8-12","rest_seconds":90,"notes":"Обратный хват"},{"exercise_id":30,"sets":4,"reps":"15","rest_seconds":60,"notes":"С гантелей"},{"exercise_id":33,"sets":4,"reps":"15","rest_seconds":60,"notes":"Контроль"}]}
+      {
+        "id": 201,
+        "program_id": 2,
+        "week": 1,
+        "day": 1,
+        "title": "Грудь и трицепс",
+        "description": "Акцент на верх",
+        "exercises": [
+          {
+            "exercise_id": 1,
+            "sets": 4,
+            "reps": "8-12",
+            "rest_seconds": 90,
+            "notes": "Медленный негатив"
+          },
+          {
+            "exercise_id": 57,
+            "sets": 3,
+            "reps": "10-12",
+            "rest_seconds": 90,
+            "notes": "Контроль"
+          },
+          {
+            "exercise_id": 58,
+            "sets": 3,
+            "reps": "8-10",
+            "rest_seconds": 90,
+            "notes": "Узкий хват"
+          },
+          {
+            "exercise_id": 24,
+            "sets": 3,
+            "reps": "10-12",
+            "rest_seconds": 60,
+            "notes": "На стуле"
+          }
+        ]
+      },
+      {
+        "id": 202,
+        "program_id": 2,
+        "week": 1,
+        "day": 2,
+        "title": "Ноги",
+        "description": "Мощные ноги",
+        "exercises": [
+          {
+            "exercise_id": 2,
+            "sets": 4,
+            "reps": "15-20",
+            "rest_seconds": 90,
+            "notes": "Глубоко"
+          },
+          {
+            "exercise_id": 4,
+            "sets": 3,
+            "reps": "12 на ногу",
+            "rest_seconds": 90,
+            "notes": "С весом"
+          },
+          {
+            "exercise_id": 5,
+            "sets": 4,
+            "reps": "15-20",
+            "rest_seconds": 60,
+            "notes": "Задержка"
+          },
+          {
+            "exercise_id": 37,
+            "sets": 3,
+            "reps": "12",
+            "rest_seconds": 90,
+            "notes": "С гантелями"
+          }
+        ]
+      },
+      {
+        "id": 203,
+        "program_id": 2,
+        "week": 1,
+        "day": 3,
+        "title": "Спина и бицепс",
+        "description": "Тяга и сгибания",
+        "exercises": [
+          {
+            "exercise_id": 20,
+            "sets": 4,
+            "reps": "5-8",
+            "rest_seconds": 120,
+            "notes": "Если есть турник"
+          },
+          {
+            "exercise_id": 21,
+            "sets": 3,
+            "reps": "6-8",
+            "rest_seconds": 90,
+            "notes": "Обратный хват"
+          },
+          {
+            "exercise_id": 30,
+            "sets": 3,
+            "reps": "10-12",
+            "rest_seconds": 60,
+            "notes": "С гантелей"
+          },
+          {
+            "exercise_id": 33,
+            "sets": 3,
+            "reps": "10-12",
+            "rest_seconds": 60,
+            "notes": "Контроль"
+          }
+        ]
+      },
+      {
+        "id": 204,
+        "program_id": 2,
+        "week": 2,
+        "day": 1,
+        "title": "Грудь и трицепс",
+        "description": "Акцент на верх",
+        "exercises": [
+          {
+            "exercise_id": 1,
+            "sets": 4,
+            "reps": "10-15",
+            "rest_seconds": 90,
+            "notes": "Больше"
+          },
+          {
+            "exercise_id": 57,
+            "sets": 4,
+            "reps": "12-15",
+            "rest_seconds": 90,
+            "notes": "Широко"
+          },
+          {
+            "exercise_id": 58,
+            "sets": 3,
+            "reps": "10-12",
+            "rest_seconds": 90,
+            "notes": "Чисто"
+          },
+          {
+            "exercise_id": 24,
+            "sets": 3,
+            "reps": "12-15",
+            "rest_seconds": 60,
+            "notes": "Медленно"
+          }
+        ]
+      },
+      {
+        "id": 205,
+        "program_id": 2,
+        "week": 2,
+        "day": 2,
+        "title": "Ноги",
+        "description": "Мощные ноги",
+        "exercises": [
+          {
+            "exercise_id": 2,
+            "sets": 4,
+            "reps": "20",
+            "rest_seconds": 90,
+            "notes": "Глубоко"
+          },
+          {
+            "exercise_id": 4,
+            "sets": 4,
+            "reps": "12 на ногу",
+            "rest_seconds": 90,
+            "notes": "С весом"
+          },
+          {
+            "exercise_id": 5,
+            "sets": 4,
+            "reps": "20",
+            "rest_seconds": 60,
+            "notes": "Задержка 2 сек"
+          },
+          {
+            "exercise_id": 37,
+            "sets": 3,
+            "reps": "15",
+            "rest_seconds": 90,
+            "notes": "С гантелями"
+          }
+        ]
+      },
+      {
+        "id": 206,
+        "program_id": 2,
+        "week": 2,
+        "day": 3,
+        "title": "Спина и бицепс",
+        "description": "Тяга и сгибания",
+        "exercises": [
+          {
+            "exercise_id": 20,
+            "sets": 4,
+            "reps": "6-8",
+            "rest_seconds": 120,
+            "notes": "Больше"
+          },
+          {
+            "exercise_id": 21,
+            "sets": 4,
+            "reps": "6-8",
+            "rest_seconds": 90,
+            "notes": "Обратный хват"
+          },
+          {
+            "exercise_id": 30,
+            "sets": 3,
+            "reps": "12-15",
+            "rest_seconds": 60,
+            "notes": "С гантелей"
+          },
+          {
+            "exercise_id": 33,
+            "sets": 3,
+            "reps": "12-15",
+            "rest_seconds": 60,
+            "notes": "Контроль"
+          }
+        ]
+      },
+      {
+        "id": 207,
+        "program_id": 2,
+        "week": 3,
+        "day": 1,
+        "title": "Грудь и трицепс",
+        "description": "Акцент на верх",
+        "exercises": [
+          {
+            "exercise_id": 1,
+            "sets": 4,
+            "reps": "12-15",
+            "rest_seconds": 90,
+            "notes": "Максимум"
+          },
+          {
+            "exercise_id": 57,
+            "sets": 4,
+            "reps": "15",
+            "rest_seconds": 90,
+            "notes": "Широко"
+          },
+          {
+            "exercise_id": 58,
+            "sets": 4,
+            "reps": "10-12",
+            "rest_seconds": 90,
+            "notes": "Чисто"
+          },
+          {
+            "exercise_id": 24,
+            "sets": 3,
+            "reps": "15",
+            "rest_seconds": 60,
+            "notes": "Медленно"
+          }
+        ]
+      },
+      {
+        "id": 208,
+        "program_id": 2,
+        "week": 3,
+        "day": 2,
+        "title": "Ноги",
+        "description": "Мощные ноги",
+        "exercises": [
+          {
+            "exercise_id": 2,
+            "sets": 4,
+            "reps": "20-25",
+            "rest_seconds": 90,
+            "notes": "Глубоко"
+          },
+          {
+            "exercise_id": 4,
+            "sets": 4,
+            "reps": "15 на ногу",
+            "rest_seconds": 90,
+            "notes": "С весом"
+          },
+          {
+            "exercise_id": 5,
+            "sets": 4,
+            "reps": "20-25",
+            "rest_seconds": 60,
+            "notes": "Задержка 3 сек"
+          },
+          {
+            "exercise_id": 37,
+            "sets": 3,
+            "reps": "15-20",
+            "rest_seconds": 90,
+            "notes": "С гантелями"
+          }
+        ]
+      },
+      {
+        "id": 209,
+        "program_id": 2,
+        "week": 3,
+        "day": 3,
+        "title": "Спина и бицепс",
+        "description": "Тяга и сгибания",
+        "exercises": [
+          {
+            "exercise_id": 20,
+            "sets": 4,
+            "reps": "8-10",
+            "rest_seconds": 120,
+            "notes": "Максимум"
+          },
+          {
+            "exercise_id": 21,
+            "sets": 4,
+            "reps": "8-10",
+            "rest_seconds": 90,
+            "notes": "Обратный хват"
+          },
+          {
+            "exercise_id": 30,
+            "sets": 3,
+            "reps": "15",
+            "rest_seconds": 60,
+            "notes": "С гантелей"
+          },
+          {
+            "exercise_id": 33,
+            "sets": 3,
+            "reps": "15",
+            "rest_seconds": 60,
+            "notes": "Контроль"
+          }
+        ]
+      },
+      {
+        "id": 210,
+        "program_id": 2,
+        "week": 4,
+        "day": 1,
+        "title": "Грудь и трицепс",
+        "description": "Акцент на верх",
+        "exercises": [
+          {
+            "exercise_id": 1,
+            "sets": 4,
+            "reps": "15-20",
+            "rest_seconds": 90,
+            "notes": "Финиш"
+          },
+          {
+            "exercise_id": 57,
+            "sets": 4,
+            "reps": "15-20",
+            "rest_seconds": 90,
+            "notes": "Широко"
+          },
+          {
+            "exercise_id": 58,
+            "sets": 4,
+            "reps": "12-15",
+            "rest_seconds": 90,
+            "notes": "Чисто"
+          },
+          {
+            "exercise_id": 24,
+            "sets": 4,
+            "reps": "15",
+            "rest_seconds": 60,
+            "notes": "Медленно"
+          }
+        ]
+      },
+      {
+        "id": 211,
+        "program_id": 2,
+        "week": 4,
+        "day": 2,
+        "title": "Ноги",
+        "description": "Мощные ноги",
+        "exercises": [
+          {
+            "exercise_id": 2,
+            "sets": 4,
+            "reps": "25",
+            "rest_seconds": 90,
+            "notes": "Глубоко"
+          },
+          {
+            "exercise_id": 4,
+            "sets": 4,
+            "reps": "15 на ногу",
+            "rest_seconds": 90,
+            "notes": "С весом"
+          },
+          {
+            "exercise_id": 5,
+            "sets": 4,
+            "reps": "25",
+            "rest_seconds": 60,
+            "notes": "Задержка 3 сек"
+          },
+          {
+            "exercise_id": 37,
+            "sets": 4,
+            "reps": "15-20",
+            "rest_seconds": 90,
+            "notes": "С гантелями"
+          }
+        ]
+      },
+      {
+        "id": 212,
+        "program_id": 2,
+        "week": 4,
+        "day": 3,
+        "title": "Спина и бицепс",
+        "description": "Тяга и сгибания",
+        "exercises": [
+          {
+            "exercise_id": 20,
+            "sets": 4,
+            "reps": "8-12",
+            "rest_seconds": 120,
+            "notes": "Финиш"
+          },
+          {
+            "exercise_id": 21,
+            "sets": 4,
+            "reps": "8-12",
+            "rest_seconds": 90,
+            "notes": "Обратный хват"
+          },
+          {
+            "exercise_id": 30,
+            "sets": 4,
+            "reps": "15",
+            "rest_seconds": 60,
+            "notes": "С гантелей"
+          },
+          {
+            "exercise_id": 33,
+            "sets": 4,
+            "reps": "15",
+            "rest_seconds": 60,
+            "notes": "Контроль"
+          }
+        ]
+      }
     ]
   },
   {
-    "id": 3, "name": "Утренняя зарядка", "location": "home", "type": "calisthenics", "goal": "maintain", "duration_weeks": 4, "description": "Лёгкая утренняя разминка и растяжка для поддержания тонуса.", "difficulty": "beginner",
+    "id": 3,
+    "name": "Утренняя зарядка",
+    "location": "home",
+    "type": "calisthenics",
+    "goal": "maintain",
+    "duration_weeks": 4,
+    "description": "Лёгкая утренняя разминка и растяжка для поддержания тонуса.",
+    "difficulty": "beginner",
     "days": [
-      {"id":301,"program_id":3,"week":1,"day":1,"title":"Пробуждение тела","description":"Мягкий старт","exercises":[{"exercise_id":11,"sets":2,"reps":"10","rest_seconds":30,"notes":"Плавно"},{"exercise_id":12,"sets":1,"reps":"60 сек","rest_seconds":30,"notes":"Расслабься"},{"exercise_id":8,"sets":2,"reps":"30 сек","rest_seconds":30,"notes":"Легко"},{"exercise_id":3,"sets":2,"reps":"20 сек","rest_seconds":30,"notes":"Ровно"}]},
-      {"id":302,"program_id":3,"week":1,"day":2,"title":"Гибкость спины","description":"Растяжка корпуса","exercises":[{"exercise_id":11,"sets":2,"reps":"12","rest_seconds":30,"notes":"Глубоко"},{"exercise_id":50,"sets":2,"reps":"30 сек","rest_seconds":20,"notes":"Расслабь мышцы"},{"exercise_id":12,"sets":1,"reps":"60 сек","rest_seconds":30,"notes":"Дыши"},{"exercise_id":9,"sets":2,"reps":"10","rest_seconds":30,"notes":"Медленно"}]},
-      {"id":303,"program_id":3,"week":1,"day":3,"title":"Ноги и бёдра","description":"Растяжка нижней части","exercises":[{"exercise_id":25,"sets":2,"reps":"30 сек","rest_seconds":20,"notes":"Без боли"},{"exercise_id":49,"sets":2,"reps":"30 сек","rest_seconds":20,"notes":"Расслабься"},{"exercise_id":52,"sets":2,"reps":"30 сек","rest_seconds":20,"notes":"Тяни"},{"exercise_id":12,"sets":1,"reps":"60 сек","rest_seconds":30,"notes":"Расслабь"}]},
-      {"id":304,"program_id":3,"week":2,"day":1,"title":"Пробуждение тела","description":"Мягкий старт","exercises":[{"exercise_id":11,"sets":2,"reps":"12","rest_seconds":30,"notes":"Плавно"},{"exercise_id":12,"sets":1,"reps":"90 сек","rest_seconds":30,"notes":"Расслабься"},{"exercise_id":8,"sets":2,"reps":"45 сек","rest_seconds":30,"notes":"Легко"},{"exercise_id":3,"sets":2,"reps":"30 сек","rest_seconds":30,"notes":"Ровно"}]},
-      {"id":305,"program_id":3,"week":2,"day":2,"title":"Гибкость спины","description":"Растяжка корпуса","exercises":[{"exercise_id":11,"sets":2,"reps":"15","rest_seconds":30,"notes":"Глубоко"},{"exercise_id":50,"sets":2,"reps":"45 сек","rest_seconds":20,"notes":"Расслабь мышцы"},{"exercise_id":12,"sets":1,"reps":"90 сек","rest_seconds":30,"notes":"Дыши"},{"exercise_id":9,"sets":2,"reps":"12","rest_seconds":30,"notes":"Медленно"}]},
-      {"id":306,"program_id":3,"week":2,"day":3,"title":"Ноги и бёдра","description":"Растяжка нижней части","exercises":[{"exercise_id":25,"sets":2,"reps":"45 сек","rest_seconds":20,"notes":"Без боли"},{"exercise_id":49,"sets":2,"reps":"45 сек","rest_seconds":20,"notes":"Расслабься"},{"exercise_id":52,"sets":2,"reps":"45 сек","rest_seconds":20,"notes":"Тяни"},{"exercise_id":12,"sets":1,"reps":"90 сек","rest_seconds":30,"notes":"Расслабь"}]},
-      {"id":307,"program_id":3,"week":3,"day":1,"title":"Пробуждение тела","description":"Мягкий старт","exercises":[{"exercise_id":11,"sets":3,"reps":"12","rest_seconds":30,"notes":"Плавно"},{"exercise_id":12,"sets":1,"reps":"90 сек","rest_seconds":30,"notes":"Расслабься"},{"exercise_id":8,"sets":3,"reps":"45 сек","rest_seconds":30,"notes":"Легко"},{"exercise_id":3,"sets":2,"reps":"45 сек","rest_seconds":30,"notes":"Ровно"}]},
-      {"id":308,"program_id":3,"week":3,"day":2,"title":"Гибкость спины","description":"Растяжка корпуса","exercises":[{"exercise_id":11,"sets":3,"reps":"15","rest_seconds":30,"notes":"Глубоко"},{"exercise_id":50,"sets":2,"reps":"60 сек","rest_seconds":20,"notes":"Расслабь мышцы"},{"exercise_id":12,"sets":1,"reps":"90 сек","rest_seconds":30,"notes":"Дыши"},{"exercise_id":9,"sets":3,"reps":"12","rest_seconds":30,"notes":"Медленно"}]},
-      {"id":309,"program_id":3,"week":3,"day":3,"title":"Ноги и бёдра","description":"Растяжка нижней части","exercises":[{"exercise_id":25,"sets":3,"reps":"45 сек","rest_seconds":20,"notes":"Без боли"},{"exercise_id":49,"sets":3,"reps":"45 сек","rest_seconds":20,"notes":"Расслабься"},{"exercise_id":52,"sets":3,"reps":"45 сек","rest_seconds":20,"notes":"Тяни"},{"exercise_id":12,"sets":1,"reps":"90 сек","rest_seconds":30,"notes":"Расслабь"}]},
-      {"id":310,"program_id":3,"week":4,"day":1,"title":"Пробуждение тела","description":"Мягкий старт","exercises":[{"exercise_id":11,"sets":3,"reps":"15","rest_seconds":30,"notes":"Плавно"},{"exercise_id":12,"sets":1,"reps":"120 сек","rest_seconds":30,"notes":"Расслабься"},{"exercise_id":8,"sets":3,"reps":"60 сек","rest_seconds":30,"notes":"Легко"},{"exercise_id":3,"sets":3,"reps":"45 сек","rest_seconds":30,"notes":"Ровно"}]},
-      {"id":311,"program_id":3,"week":4,"day":2,"title":"Гибкость спины","description":"Растяжка корпуса","exercises":[{"exercise_id":11,"sets":3,"reps":"15","rest_seconds":30,"notes":"Глубоко"},{"exercise_id":50,"sets":3,"reps":"60 сек","rest_seconds":20,"notes":"Расслабь мышцы"},{"exercise_id":12,"sets":1,"reps":"120 сек","rest_seconds":30,"notes":"Дыши"},{"exercise_id":9,"sets":3,"reps":"15","rest_seconds":30,"notes":"Медленно"}]},
-      {"id":312,"program_id":3,"week":4,"day":3,"title":"Ноги и бёдра","description":"Растяжка нижней части","exercises":[{"exercise_id":25,"sets":3,"reps":"60 сек","rest_seconds":20,"notes":"Без боли"},{"exercise_id":49,"sets":3,"reps":"60 сек","rest_seconds":20,"notes":"Расслабься"},{"exercise_id":52,"sets":3,"reps":"60 сек","rest_seconds":20,"notes":"Тяни"},{"exercise_id":12,"sets":1,"reps":"120 сек","rest_seconds":30,"notes":"Расслабь"}]}
+      {
+        "id": 301,
+        "program_id": 3,
+        "week": 1,
+        "day": 1,
+        "title": "Пробуждение тела",
+        "description": "Мягкий старт",
+        "exercises": [
+          {
+            "exercise_id": 11,
+            "sets": 2,
+            "reps": "10",
+            "rest_seconds": 30,
+            "notes": "Плавно"
+          },
+          {
+            "exercise_id": 12,
+            "sets": 1,
+            "reps": "60 сек",
+            "rest_seconds": 30,
+            "notes": "Расслабься"
+          },
+          {
+            "exercise_id": 8,
+            "sets": 2,
+            "reps": "30 сек",
+            "rest_seconds": 30,
+            "notes": "Легко"
+          },
+          {
+            "exercise_id": 3,
+            "sets": 2,
+            "reps": "20 сек",
+            "rest_seconds": 30,
+            "notes": "Ровно"
+          }
+        ]
+      },
+      {
+        "id": 302,
+        "program_id": 3,
+        "week": 1,
+        "day": 2,
+        "title": "Гибкость спины",
+        "description": "Растяжка корпуса",
+        "exercises": [
+          {
+            "exercise_id": 11,
+            "sets": 2,
+            "reps": "12",
+            "rest_seconds": 30,
+            "notes": "Глубоко"
+          },
+          {
+            "exercise_id": 50,
+            "sets": 2,
+            "reps": "30 сек",
+            "rest_seconds": 20,
+            "notes": "Расслабь мышцы"
+          },
+          {
+            "exercise_id": 12,
+            "sets": 1,
+            "reps": "60 сек",
+            "rest_seconds": 30,
+            "notes": "Дыши"
+          },
+          {
+            "exercise_id": 9,
+            "sets": 2,
+            "reps": "10",
+            "rest_seconds": 30,
+            "notes": "Медленно"
+          }
+        ]
+      },
+      {
+        "id": 303,
+        "program_id": 3,
+        "week": 1,
+        "day": 3,
+        "title": "Ноги и бёдра",
+        "description": "Растяжка нижней части",
+        "exercises": [
+          {
+            "exercise_id": 25,
+            "sets": 2,
+            "reps": "30 сек",
+            "rest_seconds": 20,
+            "notes": "Без боли"
+          },
+          {
+            "exercise_id": 49,
+            "sets": 2,
+            "reps": "30 сек",
+            "rest_seconds": 20,
+            "notes": "Расслабься"
+          },
+          {
+            "exercise_id": 52,
+            "sets": 2,
+            "reps": "30 сек",
+            "rest_seconds": 20,
+            "notes": "Тяни"
+          },
+          {
+            "exercise_id": 12,
+            "sets": 1,
+            "reps": "60 сек",
+            "rest_seconds": 30,
+            "notes": "Расслабь"
+          }
+        ]
+      },
+      {
+        "id": 304,
+        "program_id": 3,
+        "week": 2,
+        "day": 1,
+        "title": "Пробуждение тела",
+        "description": "Мягкий старт",
+        "exercises": [
+          {
+            "exercise_id": 11,
+            "sets": 2,
+            "reps": "12",
+            "rest_seconds": 30,
+            "notes": "Плавно"
+          },
+          {
+            "exercise_id": 12,
+            "sets": 1,
+            "reps": "90 сек",
+            "rest_seconds": 30,
+            "notes": "Расслабься"
+          },
+          {
+            "exercise_id": 8,
+            "sets": 2,
+            "reps": "45 сек",
+            "rest_seconds": 30,
+            "notes": "Легко"
+          },
+          {
+            "exercise_id": 3,
+            "sets": 2,
+            "reps": "30 сек",
+            "rest_seconds": 30,
+            "notes": "Ровно"
+          }
+        ]
+      },
+      {
+        "id": 305,
+        "program_id": 3,
+        "week": 2,
+        "day": 2,
+        "title": "Гибкость спины",
+        "description": "Растяжка корпуса",
+        "exercises": [
+          {
+            "exercise_id": 11,
+            "sets": 2,
+            "reps": "15",
+            "rest_seconds": 30,
+            "notes": "Глубоко"
+          },
+          {
+            "exercise_id": 50,
+            "sets": 2,
+            "reps": "45 сек",
+            "rest_seconds": 20,
+            "notes": "Расслабь мышцы"
+          },
+          {
+            "exercise_id": 12,
+            "sets": 1,
+            "reps": "90 сек",
+            "rest_seconds": 30,
+            "notes": "Дыши"
+          },
+          {
+            "exercise_id": 9,
+            "sets": 2,
+            "reps": "12",
+            "rest_seconds": 30,
+            "notes": "Медленно"
+          }
+        ]
+      },
+      {
+        "id": 306,
+        "program_id": 3,
+        "week": 2,
+        "day": 3,
+        "title": "Ноги и бёдра",
+        "description": "Растяжка нижней части",
+        "exercises": [
+          {
+            "exercise_id": 25,
+            "sets": 2,
+            "reps": "45 сек",
+            "rest_seconds": 20,
+            "notes": "Без боли"
+          },
+          {
+            "exercise_id": 49,
+            "sets": 2,
+            "reps": "45 сек",
+            "rest_seconds": 20,
+            "notes": "Расслабься"
+          },
+          {
+            "exercise_id": 52,
+            "sets": 2,
+            "reps": "45 сек",
+            "rest_seconds": 20,
+            "notes": "Тяни"
+          },
+          {
+            "exercise_id": 12,
+            "sets": 1,
+            "reps": "90 сек",
+            "rest_seconds": 30,
+            "notes": "Расслабь"
+          }
+        ]
+      },
+      {
+        "id": 307,
+        "program_id": 3,
+        "week": 3,
+        "day": 1,
+        "title": "Пробуждение тела",
+        "description": "Мягкий старт",
+        "exercises": [
+          {
+            "exercise_id": 11,
+            "sets": 3,
+            "reps": "12",
+            "rest_seconds": 30,
+            "notes": "Плавно"
+          },
+          {
+            "exercise_id": 12,
+            "sets": 1,
+            "reps": "90 сек",
+            "rest_seconds": 30,
+            "notes": "Расслабься"
+          },
+          {
+            "exercise_id": 8,
+            "sets": 3,
+            "reps": "45 сек",
+            "rest_seconds": 30,
+            "notes": "Легко"
+          },
+          {
+            "exercise_id": 3,
+            "sets": 2,
+            "reps": "45 сек",
+            "rest_seconds": 30,
+            "notes": "Ровно"
+          }
+        ]
+      },
+      {
+        "id": 308,
+        "program_id": 3,
+        "week": 3,
+        "day": 2,
+        "title": "Гибкость спины",
+        "description": "Растяжка корпуса",
+        "exercises": [
+          {
+            "exercise_id": 11,
+            "sets": 3,
+            "reps": "15",
+            "rest_seconds": 30,
+            "notes": "Глубоко"
+          },
+          {
+            "exercise_id": 50,
+            "sets": 2,
+            "reps": "60 сек",
+            "rest_seconds": 20,
+            "notes": "Расслабь мышцы"
+          },
+          {
+            "exercise_id": 12,
+            "sets": 1,
+            "reps": "90 сек",
+            "rest_seconds": 30,
+            "notes": "Дыши"
+          },
+          {
+            "exercise_id": 9,
+            "sets": 3,
+            "reps": "12",
+            "rest_seconds": 30,
+            "notes": "Медленно"
+          }
+        ]
+      },
+      {
+        "id": 309,
+        "program_id": 3,
+        "week": 3,
+        "day": 3,
+        "title": "Ноги и бёдра",
+        "description": "Растяжка нижней части",
+        "exercises": [
+          {
+            "exercise_id": 25,
+            "sets": 3,
+            "reps": "45 сек",
+            "rest_seconds": 20,
+            "notes": "Без боли"
+          },
+          {
+            "exercise_id": 49,
+            "sets": 3,
+            "reps": "45 сек",
+            "rest_seconds": 20,
+            "notes": "Расслабься"
+          },
+          {
+            "exercise_id": 52,
+            "sets": 3,
+            "reps": "45 сек",
+            "rest_seconds": 20,
+            "notes": "Тяни"
+          },
+          {
+            "exercise_id": 12,
+            "sets": 1,
+            "reps": "90 сек",
+            "rest_seconds": 30,
+            "notes": "Расслабь"
+          }
+        ]
+      },
+      {
+        "id": 310,
+        "program_id": 3,
+        "week": 4,
+        "day": 1,
+        "title": "Пробуждение тела",
+        "description": "Мягкий старт",
+        "exercises": [
+          {
+            "exercise_id": 11,
+            "sets": 3,
+            "reps": "15",
+            "rest_seconds": 30,
+            "notes": "Плавно"
+          },
+          {
+            "exercise_id": 12,
+            "sets": 1,
+            "reps": "120 сек",
+            "rest_seconds": 30,
+            "notes": "Расслабься"
+          },
+          {
+            "exercise_id": 8,
+            "sets": 3,
+            "reps": "60 сек",
+            "rest_seconds": 30,
+            "notes": "Легко"
+          },
+          {
+            "exercise_id": 3,
+            "sets": 3,
+            "reps": "45 сек",
+            "rest_seconds": 30,
+            "notes": "Ровно"
+          }
+        ]
+      },
+      {
+        "id": 311,
+        "program_id": 3,
+        "week": 4,
+        "day": 2,
+        "title": "Гибкость спины",
+        "description": "Растяжка корпуса",
+        "exercises": [
+          {
+            "exercise_id": 11,
+            "sets": 3,
+            "reps": "15",
+            "rest_seconds": 30,
+            "notes": "Глубоко"
+          },
+          {
+            "exercise_id": 50,
+            "sets": 3,
+            "reps": "60 сек",
+            "rest_seconds": 20,
+            "notes": "Расслабь мышцы"
+          },
+          {
+            "exercise_id": 12,
+            "sets": 1,
+            "reps": "120 сек",
+            "rest_seconds": 30,
+            "notes": "Дыши"
+          },
+          {
+            "exercise_id": 9,
+            "sets": 3,
+            "reps": "15",
+            "rest_seconds": 30,
+            "notes": "Медленно"
+          }
+        ]
+      },
+      {
+        "id": 312,
+        "program_id": 3,
+        "week": 4,
+        "day": 3,
+        "title": "Ноги и бёдра",
+        "description": "Растяжка нижней части",
+        "exercises": [
+          {
+            "exercise_id": 25,
+            "sets": 3,
+            "reps": "60 сек",
+            "rest_seconds": 20,
+            "notes": "Без боли"
+          },
+          {
+            "exercise_id": 49,
+            "sets": 3,
+            "reps": "60 сек",
+            "rest_seconds": 20,
+            "notes": "Расслабься"
+          },
+          {
+            "exercise_id": 52,
+            "sets": 3,
+            "reps": "60 сек",
+            "rest_seconds": 20,
+            "notes": "Тяни"
+          },
+          {
+            "exercise_id": 12,
+            "sets": 1,
+            "reps": "120 сек",
+            "rest_seconds": 30,
+            "notes": "Расслабь"
+          }
+        ]
+      }
     ]
   },
   {
-    "id": 4, "name": "Уличный боец", "location": "outdoor", "type": "strength", "goal": "lose", "duration_weeks": 4, "description": "Силовая программа на уличных площадках. Турник, брусья, скамейки.", "difficulty": "intermediate",
+    "id": 4,
+    "name": "Уличный боец",
+    "location": "outdoor",
+    "type": "strength",
+    "goal": "lose",
+    "duration_weeks": 4,
+    "description": "Силовая программа на уличных площадках. Турник, брусья, скамейки.",
+    "difficulty": "intermediate",
     "days": [
-      {"id":401,"program_id":4,"week":1,"day":1,"title":"Верх тела","description":"Турник и брусья","exercises":[{"exercise_id":20,"sets":3,"reps":"5-8","rest_seconds":120,"notes":"Полная амплитуда"},{"exercise_id":21,"sets":3,"reps":"6-8","rest_seconds":90,"notes":"Обратный хват"},{"exercise_id":22,"sets":3,"reps":"6-8","rest_seconds":90,"notes":"Корпус вперёд"},{"exercise_id":19,"sets":3,"reps":"12-15","rest_seconds":60,"notes":"На скамейке"}]},
-      {"id":402,"program_id":4,"week":1,"day":2,"title":"Ноги и кор","description":"Выпады и пресс","exercises":[{"exercise_id":13,"sets":3,"reps":"20 шагов","rest_seconds":60,"notes":"Широкий шаг"},{"exercise_id":17,"sets":3,"reps":"8-10","rest_seconds":60,"notes":"Мягкая посадка"},{"exercise_id":23,"sets":3,"reps":"8-10","rest_seconds":60,"notes":"Без раскачки"},{"exercise_id":18,"sets":3,"reps":"30-45 сек","rest_seconds":45,"notes":"Стабильно"}]},
-      {"id":403,"program_id":4,"week":1,"day":3,"title":"Кардио","description":"Бег и интервалы","exercises":[{"exercise_id":14,"sets":1,"reps":"15 мин","rest_seconds":0,"notes":"Лёгкий темп"},{"exercise_id":15,"sets":4,"reps":"1 мин / 2 мин","rest_seconds":0,"notes":"Интервалы"},{"exercise_id":16,"sets":3,"reps":"30 сек","rest_seconds":30,"notes":"Быстро"}]},
-      {"id":404,"program_id":4,"week":2,"day":1,"title":"Верх тела","description":"Турник и брусья","exercises":[{"exercise_id":20,"sets":4,"reps":"6-8","rest_seconds":120,"notes":"Полная амплитуда"},{"exercise_id":21,"sets":3,"reps":"6-8","rest_seconds":90,"notes":"Обратный хват"},{"exercise_id":22,"sets":3,"reps":"6-8","rest_seconds":90,"notes":"Корпус вперёд"},{"exercise_id":19,"sets":3,"reps":"12-15","rest_seconds":60,"notes":"На скамейке"}]},
-      {"id":405,"program_id":4,"week":2,"day":2,"title":"Ноги и кор","description":"Выпады и пресс","exercises":[{"exercise_id":13,"sets":4,"reps":"20 шагов","rest_seconds":60,"notes":"Широкий шаг"},{"exercise_id":17,"sets":3,"reps":"10","rest_seconds":60,"notes":"Мягкая посадка"},{"exercise_id":23,"sets":3,"reps":"10","rest_seconds":60,"notes":"Без раскачки"},{"exercise_id":18,"sets":3,"reps":"45 сек","rest_seconds":45,"notes":"Стабильно"}]},
-      {"id":406,"program_id":4,"week":2,"day":3,"title":"Кардио","description":"Бег и интервалы","exercises":[{"exercise_id":14,"sets":1,"reps":"20 мин","rest_seconds":0,"notes":"Средний темп"},{"exercise_id":15,"sets":5,"reps":"1 мин / 2 мин","rest_seconds":0,"notes":"Интервалы"},{"exercise_id":16,"sets":3,"reps":"45 сек","rest_seconds":30,"notes":"Быстро"}]},
-      {"id":407,"program_id":4,"week":3,"day":1,"title":"Верх тела","description":"Турник и брусья","exercises":[{"exercise_id":20,"sets":4,"reps":"8-10","rest_seconds":120,"notes":"Полная амплитуда"},{"exercise_id":21,"sets":4,"reps":"8-10","rest_seconds":90,"notes":"Обратный хват"},{"exercise_id":22,"sets":3,"reps":"8-10","rest_seconds":90,"notes":"Корпус вперёд"},{"exercise_id":19,"sets":3,"reps":"15","rest_seconds":60,"notes":"На скамейке"}]},
-      {"id":408,"program_id":4,"week":3,"day":2,"title":"Ноги и кор","description":"Выпады и пресс","exercises":[{"exercise_id":13,"sets":4,"reps":"25 шагов","rest_seconds":60,"notes":"Широкий шаг"},{"exercise_id":17,"sets":4,"reps":"10","rest_seconds":60,"notes":"Мягкая посадка"},{"exercise_id":23,"sets":3,"reps":"12","rest_seconds":60,"notes":"Без раскачки"},{"exercise_id":18,"sets":3,"reps":"45 сек","rest_seconds":45,"notes":"Стабильно"}]},
-      {"id":409,"program_id":4,"week":3,"day":3,"title":"Кардио","description":"Бег и интервалы","exercises":[{"exercise_id":14,"sets":1,"reps":"20 мин","rest_seconds":0,"notes":"Средний темп"},{"exercise_id":15,"sets":6,"reps":"1 мин / 1.5 мин","rest_seconds":0,"notes":"Интервалы"},{"exercise_id":16,"sets":3,"reps":"60 сек","rest_seconds":30,"notes":"Быстро"}]},
-      {"id":410,"program_id":4,"week":4,"day":1,"title":"Верх тела","description":"Турник и брусья","exercises":[{"exercise_id":20,"sets":4,"reps":"8-12","rest_seconds":120,"notes":"Финиш"},{"exercise_id":21,"sets":4,"reps":"8-12","rest_seconds":90,"notes":"Обратный хват"},{"exercise_id":22,"sets":4,"reps":"8-10","rest_seconds":90,"notes":"Корпус вперёд"},{"exercise_id":19,"sets":4,"reps":"15","rest_seconds":60,"notes":"На скамейке"}]},
-      {"id":411,"program_id":4,"week":4,"day":2,"title":"Ноги и кор","description":"Выпады и пресс","exercises":[{"exercise_id":13,"sets":4,"reps":"30 шагов","rest_seconds":60,"notes":"Широкий шаг"},{"exercise_id":17,"sets":4,"reps":"12","rest_seconds":60,"notes":"Мягкая посадка"},{"exercise_id":23,"sets":4,"reps":"12","rest_seconds":60,"notes":"Без раскачки"},{"exercise_id":18,"sets":3,"reps":"60 сек","rest_seconds":45,"notes":"Стабильно"}]},
-      {"id":412,"program_id":4,"week":4,"day":3,"title":"Кардио","description":"Бег и интервалы","exercises":[{"exercise_id":14,"sets":1,"reps":"25 мин","rest_seconds":0,"notes":"Хороший темп"},{"exercise_id":15,"sets":6,"reps":"1 мин / 1 мин","rest_seconds":0,"notes":"Интервалы"},{"exercise_id":16,"sets":4,"reps":"60 сек","rest_seconds":30,"notes":"Быстро"}]}
+      {
+        "id": 401,
+        "program_id": 4,
+        "week": 1,
+        "day": 1,
+        "title": "Верх тела",
+        "description": "Турник и брусья",
+        "exercises": [
+          {
+            "exercise_id": 20,
+            "sets": 3,
+            "reps": "5-8",
+            "rest_seconds": 120,
+            "notes": "Полная амплитуда"
+          },
+          {
+            "exercise_id": 21,
+            "sets": 3,
+            "reps": "6-8",
+            "rest_seconds": 90,
+            "notes": "Обратный хват"
+          },
+          {
+            "exercise_id": 22,
+            "sets": 3,
+            "reps": "6-8",
+            "rest_seconds": 90,
+            "notes": "Корпус вперёд"
+          },
+          {
+            "exercise_id": 19,
+            "sets": 3,
+            "reps": "12-15",
+            "rest_seconds": 60,
+            "notes": "На скамейке"
+          }
+        ]
+      },
+      {
+        "id": 402,
+        "program_id": 4,
+        "week": 1,
+        "day": 2,
+        "title": "Ноги и кор",
+        "description": "Выпады и пресс",
+        "exercises": [
+          {
+            "exercise_id": 13,
+            "sets": 3,
+            "reps": "20 шагов",
+            "rest_seconds": 60,
+            "notes": "Широкий шаг"
+          },
+          {
+            "exercise_id": 17,
+            "sets": 3,
+            "reps": "8-10",
+            "rest_seconds": 60,
+            "notes": "Мягкая посадка"
+          },
+          {
+            "exercise_id": 23,
+            "sets": 3,
+            "reps": "8-10",
+            "rest_seconds": 60,
+            "notes": "Без раскачки"
+          },
+          {
+            "exercise_id": 18,
+            "sets": 3,
+            "reps": "30-45 сек",
+            "rest_seconds": 45,
+            "notes": "Стабильно"
+          }
+        ]
+      },
+      {
+        "id": 403,
+        "program_id": 4,
+        "week": 1,
+        "day": 3,
+        "title": "Кардио",
+        "description": "Бег и интервалы",
+        "exercises": [
+          {
+            "exercise_id": 14,
+            "sets": 1,
+            "reps": "15 мин",
+            "rest_seconds": 0,
+            "notes": "Лёгкий темп"
+          },
+          {
+            "exercise_id": 15,
+            "sets": 4,
+            "reps": "1 мин / 2 мин",
+            "rest_seconds": 0,
+            "notes": "Интервалы"
+          },
+          {
+            "exercise_id": 16,
+            "sets": 3,
+            "reps": "30 сек",
+            "rest_seconds": 30,
+            "notes": "Быстро"
+          }
+        ]
+      },
+      {
+        "id": 404,
+        "program_id": 4,
+        "week": 2,
+        "day": 1,
+        "title": "Верх тела",
+        "description": "Турник и брусья",
+        "exercises": [
+          {
+            "exercise_id": 20,
+            "sets": 4,
+            "reps": "6-8",
+            "rest_seconds": 120,
+            "notes": "Полная амплитуда"
+          },
+          {
+            "exercise_id": 21,
+            "sets": 3,
+            "reps": "6-8",
+            "rest_seconds": 90,
+            "notes": "Обратный хват"
+          },
+          {
+            "exercise_id": 22,
+            "sets": 3,
+            "reps": "6-8",
+            "rest_seconds": 90,
+            "notes": "Корпус вперёд"
+          },
+          {
+            "exercise_id": 19,
+            "sets": 3,
+            "reps": "12-15",
+            "rest_seconds": 60,
+            "notes": "На скамейке"
+          }
+        ]
+      },
+      {
+        "id": 405,
+        "program_id": 4,
+        "week": 2,
+        "day": 2,
+        "title": "Ноги и кор",
+        "description": "Выпады и пресс",
+        "exercises": [
+          {
+            "exercise_id": 13,
+            "sets": 4,
+            "reps": "20 шагов",
+            "rest_seconds": 60,
+            "notes": "Широкий шаг"
+          },
+          {
+            "exercise_id": 17,
+            "sets": 3,
+            "reps": "10",
+            "rest_seconds": 60,
+            "notes": "Мягкая посадка"
+          },
+          {
+            "exercise_id": 23,
+            "sets": 3,
+            "reps": "10",
+            "rest_seconds": 60,
+            "notes": "Без раскачки"
+          },
+          {
+            "exercise_id": 18,
+            "sets": 3,
+            "reps": "45 сек",
+            "rest_seconds": 45,
+            "notes": "Стабильно"
+          }
+        ]
+      },
+      {
+        "id": 406,
+        "program_id": 4,
+        "week": 2,
+        "day": 3,
+        "title": "Кардио",
+        "description": "Бег и интервалы",
+        "exercises": [
+          {
+            "exercise_id": 14,
+            "sets": 1,
+            "reps": "20 мин",
+            "rest_seconds": 0,
+            "notes": "Средний темп"
+          },
+          {
+            "exercise_id": 15,
+            "sets": 5,
+            "reps": "1 мин / 2 мин",
+            "rest_seconds": 0,
+            "notes": "Интервалы"
+          },
+          {
+            "exercise_id": 16,
+            "sets": 3,
+            "reps": "45 сек",
+            "rest_seconds": 30,
+            "notes": "Быстро"
+          }
+        ]
+      },
+      {
+        "id": 407,
+        "program_id": 4,
+        "week": 3,
+        "day": 1,
+        "title": "Верх тела",
+        "description": "Турник и брусья",
+        "exercises": [
+          {
+            "exercise_id": 20,
+            "sets": 4,
+            "reps": "8-10",
+            "rest_seconds": 120,
+            "notes": "Полная амплитуда"
+          },
+          {
+            "exercise_id": 21,
+            "sets": 4,
+            "reps": "8-10",
+            "rest_seconds": 90,
+            "notes": "Обратный хват"
+          },
+          {
+            "exercise_id": 22,
+            "sets": 3,
+            "reps": "8-10",
+            "rest_seconds": 90,
+            "notes": "Корпус вперёд"
+          },
+          {
+            "exercise_id": 19,
+            "sets": 3,
+            "reps": "15",
+            "rest_seconds": 60,
+            "notes": "На скамейке"
+          }
+        ]
+      },
+      {
+        "id": 408,
+        "program_id": 4,
+        "week": 3,
+        "day": 2,
+        "title": "Ноги и кор",
+        "description": "Выпады и пресс",
+        "exercises": [
+          {
+            "exercise_id": 13,
+            "sets": 4,
+            "reps": "25 шагов",
+            "rest_seconds": 60,
+            "notes": "Широкий шаг"
+          },
+          {
+            "exercise_id": 17,
+            "sets": 4,
+            "reps": "10",
+            "rest_seconds": 60,
+            "notes": "Мягкая посадка"
+          },
+          {
+            "exercise_id": 23,
+            "sets": 3,
+            "reps": "12",
+            "rest_seconds": 60,
+            "notes": "Без раскачки"
+          },
+          {
+            "exercise_id": 18,
+            "sets": 3,
+            "reps": "45 сек",
+            "rest_seconds": 45,
+            "notes": "Стабильно"
+          }
+        ]
+      },
+      {
+        "id": 409,
+        "program_id": 4,
+        "week": 3,
+        "day": 3,
+        "title": "Кардио",
+        "description": "Бег и интервалы",
+        "exercises": [
+          {
+            "exercise_id": 14,
+            "sets": 1,
+            "reps": "20 мин",
+            "rest_seconds": 0,
+            "notes": "Средний темп"
+          },
+          {
+            "exercise_id": 15,
+            "sets": 6,
+            "reps": "1 мин / 1.5 мин",
+            "rest_seconds": 0,
+            "notes": "Интервалы"
+          },
+          {
+            "exercise_id": 16,
+            "sets": 3,
+            "reps": "60 сек",
+            "rest_seconds": 30,
+            "notes": "Быстро"
+          }
+        ]
+      },
+      {
+        "id": 410,
+        "program_id": 4,
+        "week": 4,
+        "day": 1,
+        "title": "Верх тела",
+        "description": "Турник и брусья",
+        "exercises": [
+          {
+            "exercise_id": 20,
+            "sets": 4,
+            "reps": "8-12",
+            "rest_seconds": 120,
+            "notes": "Финиш"
+          },
+          {
+            "exercise_id": 21,
+            "sets": 4,
+            "reps": "8-12",
+            "rest_seconds": 90,
+            "notes": "Обратный хват"
+          },
+          {
+            "exercise_id": 22,
+            "sets": 4,
+            "reps": "8-10",
+            "rest_seconds": 90,
+            "notes": "Корпус вперёд"
+          },
+          {
+            "exercise_id": 19,
+            "sets": 4,
+            "reps": "15",
+            "rest_seconds": 60,
+            "notes": "На скамейке"
+          }
+        ]
+      },
+      {
+        "id": 411,
+        "program_id": 4,
+        "week": 4,
+        "day": 2,
+        "title": "Ноги и кор",
+        "description": "Выпады и пресс",
+        "exercises": [
+          {
+            "exercise_id": 13,
+            "sets": 4,
+            "reps": "30 шагов",
+            "rest_seconds": 60,
+            "notes": "Широкий шаг"
+          },
+          {
+            "exercise_id": 17,
+            "sets": 4,
+            "reps": "12",
+            "rest_seconds": 60,
+            "notes": "Мягкая посадка"
+          },
+          {
+            "exercise_id": 23,
+            "sets": 4,
+            "reps": "12",
+            "rest_seconds": 60,
+            "notes": "Без раскачки"
+          },
+          {
+            "exercise_id": 18,
+            "sets": 3,
+            "reps": "60 сек",
+            "rest_seconds": 45,
+            "notes": "Стабильно"
+          }
+        ]
+      },
+      {
+        "id": 412,
+        "program_id": 4,
+        "week": 4,
+        "day": 3,
+        "title": "Кардио",
+        "description": "Бег и интервалы",
+        "exercises": [
+          {
+            "exercise_id": 14,
+            "sets": 1,
+            "reps": "25 мин",
+            "rest_seconds": 0,
+            "notes": "Хороший темп"
+          },
+          {
+            "exercise_id": 15,
+            "sets": 6,
+            "reps": "1 мин / 1 мин",
+            "rest_seconds": 0,
+            "notes": "Интервалы"
+          },
+          {
+            "exercise_id": 16,
+            "sets": 4,
+            "reps": "60 сек",
+            "rest_seconds": 30,
+            "notes": "Быстро"
+          }
+        ]
+      }
     ]
   },
   {
-    "id": 5, "name": "Парковый атлет", "location": "outdoor", "type": "strength", "goal": "gain", "duration_weeks": 6, "description": "Программа для набора массы на уличных площадках. Акцент на подтягивания и отжимания.", "difficulty": "intermediate",
+    "id": 5,
+    "name": "Парковый атлет",
+    "location": "outdoor",
+    "type": "strength",
+    "goal": "gain",
+    "duration_weeks": 6,
+    "description": "Программа для набора массы на уличных площадках. Акцент на подтягивания и отжимания.",
+    "difficulty": "intermediate",
     "days": [
-      {"id":501,"program_id":5,"week":1,"day":1,"title":"Грудь и спина","description":"Турник и брусья","exercises":[{"exercise_id":20,"sets":4,"reps":"6-8","rest_seconds":120,"notes":"Полная амплитуда"},{"exercise_id":21,"sets":3,"reps":"6-8","rest_seconds":90,"notes":"Обратный хват"},{"exercise_id":22,"sets":3,"reps":"6-8","rest_seconds":90,"notes":"Корпус вперёд"},{"exercise_id":19,"sets":3,"reps":"12-15","rest_seconds":60,"notes":"На скамейке"}]},
-      {"id":502,"program_id":5,"week":1,"day":2,"title":"Ноги","description":"Силовые ноги","exercises":[{"exercise_id":13,"sets":4,"reps":"20 шагов","rest_seconds":90,"notes":"Широкий шаг"},{"exercise_id":17,"sets":3,"reps":"10","rest_seconds":90,"notes":"Мягкая посадка"},{"exercise_id":4,"sets":3,"reps":"12 на ногу","rest_seconds":60,"notes":"Глубоко"},{"exercise_id":2,"sets":3,"reps":"20","rest_seconds":60,"notes":"Глубоко"}]},
-      {"id":503,"program_id":5,"week":1,"day":3,"title":"Руки и кор","description":"Бицепс, трицепс, пресс","exercises":[{"exercise_id":24,"sets":3,"reps":"10-12","rest_seconds":60,"notes":"На скамейке"},{"exercise_id":33,"sets":3,"reps":"10-12","rest_seconds":60,"notes":"С гантелями"},{"exercise_id":3,"sets":3,"reps":"45 сек","rest_seconds":45,"notes":"Ровно"},{"exercise_id":23,"sets":3,"reps":"8-10","rest_seconds":60,"notes":"Без раскачки"}]},
-      {"id":504,"program_id":5,"week":2,"day":1,"title":"Грудь и спина","description":"Турник и брусья","exercises":[{"exercise_id":20,"sets":4,"reps":"8-10","rest_seconds":120,"notes":"Полная амплитуда"},{"exercise_id":21,"sets":4,"reps":"6-8","rest_seconds":90,"notes":"Обратный хват"},{"exercise_id":22,"sets":3,"reps":"8-10","rest_seconds":90,"notes":"Корпус вперёд"},{"exercise_id":19,"sets":3,"reps":"15","rest_seconds":60,"notes":"На скамейке"}]},
-      {"id":505,"program_id":5,"week":2,"day":2,"title":"Ноги","description":"Силовые ноги","exercises":[{"exercise_id":13,"sets":4,"reps":"25 шагов","rest_seconds":90,"notes":"Широкий шаг"},{"exercise_id":17,"sets":3,"reps":"12","rest_seconds":90,"notes":"Мягкая посадка"},{"exercise_id":4,"sets":3,"reps":"15 на ногу","rest_seconds":60,"notes":"Глубоко"},{"exercise_id":2,"sets":3,"reps":"25","rest_seconds":60,"notes":"Глубоко"}]},
-      {"id":506,"program_id":5,"week":2,"day":3,"title":"Руки и кор","description":"Бицепс, трицепс, пресс","exercises":[{"exercise_id":24,"sets":3,"reps":"12-15","rest_seconds":60,"notes":"На скамейке"},{"exercise_id":33,"sets":3,"reps":"12-15","rest_seconds":60,"notes":"С гантелями"},{"exercise_id":3,"sets":3,"reps":"60 сек","rest_seconds":45,"notes":"Ровно"},{"exercise_id":23,"sets":3,"reps":"10","rest_seconds":60,"notes":"Без раскачки"}]},
-      {"id":507,"program_id":5,"week":3,"day":1,"title":"Грудь и спина","description":"Турник и брусья","exercises":[{"exercise_id":20,"sets":4,"reps":"8-12","rest_seconds":120,"notes":"Полная амплитуда"},{"exercise_id":21,"sets":4,"reps":"8-10","rest_seconds":90,"notes":"Обратный хват"},{"exercise_id":22,"sets":4,"reps":"8-10","rest_seconds":90,"notes":"Корпус вперёд"},{"exercise_id":19,"sets":4,"reps":"15","rest_seconds":60,"notes":"На скамейке"}]},
-      {"id":508,"program_id":5,"week":3,"day":2,"title":"Ноги","description":"Силовые ноги","exercises":[{"exercise_id":13,"sets":4,"reps":"30 шагов","rest_seconds":90,"notes":"Широкий шаг"},{"exercise_id":17,"sets":4,"reps":"12","rest_seconds":90,"notes":"Мягкая посадка"},{"exercise_id":4,"sets":4,"reps":"15 на ногу","rest_seconds":60,"notes":"Глубоко"},{"exercise_id":2,"sets":4,"reps":"25","rest_seconds":60,"notes":"Глубоко"}]},
-      {"id":509,"program_id":5,"week":3,"day":3,"title":"Руки и кор","description":"Бицепс, трицепс, пресс","exercises":[{"exercise_id":24,"sets":4,"reps":"12-15","rest_seconds":60,"notes":"На скамейке"},{"exercise_id":33,"sets":4,"reps":"12-15","rest_seconds":60,"notes":"С гантелями"},{"exercise_id":3,"sets":3,"reps":"60 сек","rest_seconds":45,"notes":"Ровно"},{"exercise_id":23,"sets":4,"reps":"10","rest_seconds":60,"notes":"Без раскачки"}]},
-      {"id":510,"program_id":5,"week":4,"day":1,"title":"Грудь и спина","description":"Турник и брусья","exercises":[{"exercise_id":20,"sets":4,"reps":"10-12","rest_seconds":120,"notes":"Финиш"},{"exercise_id":21,"sets":4,"reps":"8-12","rest_seconds":90,"notes":"Обратный хват"},{"exercise_id":22,"sets":4,"reps":"10-12","rest_seconds":90,"notes":"Корпус вперёд"},{"exercise_id":19,"sets":4,"reps":"15-20","rest_seconds":60,"notes":"На скамейке"}]},
-      {"id":511,"program_id":5,"week":4,"day":2,"title":"Ноги","description":"Силовые ноги","exercises":[{"exercise_id":13,"sets":4,"reps":"30 шагов","rest_seconds":90,"notes":"Широкий шаг"},{"exercise_id":17,"sets":4,"reps":"15","rest_seconds":90,"notes":"Мягкая посадка"},{"exercise_id":4,"sets":4,"reps":"15 на ногу","rest_seconds":60,"notes":"Глубоко"},{"exercise_id":2,"sets":4,"reps":"30","rest_seconds":60,"notes":"Глубоко"}]},
-      {"id":512,"program_id":5,"week":4,"day":3,"title":"Руки и кор","description":"Бицепс, трицепс, пресс","exercises":[{"exercise_id":24,"sets":4,"reps":"15","rest_seconds":60,"notes":"На скамейке"},{"exercise_id":33,"sets":4,"reps":"15","rest_seconds":60,"notes":"С гантелями"},{"exercise_id":3,"sets":3,"reps":"60-90 сек","rest_seconds":45,"notes":"Ровно"},{"exercise_id":23,"sets":4,"reps":"12","rest_seconds":60,"notes":"Без раскачки"}]}
+      {
+        "id": 501,
+        "program_id": 5,
+        "week": 1,
+        "day": 1,
+        "title": "Грудь и спина",
+        "description": "Турник и брусья",
+        "exercises": [
+          {
+            "exercise_id": 20,
+            "sets": 4,
+            "reps": "6-8",
+            "rest_seconds": 120,
+            "notes": "Полная амплитуда"
+          },
+          {
+            "exercise_id": 21,
+            "sets": 3,
+            "reps": "6-8",
+            "rest_seconds": 90,
+            "notes": "Обратный хват"
+          },
+          {
+            "exercise_id": 22,
+            "sets": 3,
+            "reps": "6-8",
+            "rest_seconds": 90,
+            "notes": "Корпус вперёд"
+          },
+          {
+            "exercise_id": 19,
+            "sets": 3,
+            "reps": "12-15",
+            "rest_seconds": 60,
+            "notes": "На скамейке"
+          }
+        ]
+      },
+      {
+        "id": 502,
+        "program_id": 5,
+        "week": 1,
+        "day": 2,
+        "title": "Ноги",
+        "description": "Силовые ноги",
+        "exercises": [
+          {
+            "exercise_id": 13,
+            "sets": 4,
+            "reps": "20 шагов",
+            "rest_seconds": 90,
+            "notes": "Широкий шаг"
+          },
+          {
+            "exercise_id": 17,
+            "sets": 3,
+            "reps": "10",
+            "rest_seconds": 90,
+            "notes": "Мягкая посадка"
+          },
+          {
+            "exercise_id": 4,
+            "sets": 3,
+            "reps": "12 на ногу",
+            "rest_seconds": 60,
+            "notes": "Глубоко"
+          },
+          {
+            "exercise_id": 2,
+            "sets": 3,
+            "reps": "20",
+            "rest_seconds": 60,
+            "notes": "Глубоко"
+          }
+        ]
+      },
+      {
+        "id": 503,
+        "program_id": 5,
+        "week": 1,
+        "day": 3,
+        "title": "Руки и кор",
+        "description": "Бицепс, трицепс, пресс",
+        "exercises": [
+          {
+            "exercise_id": 24,
+            "sets": 3,
+            "reps": "10-12",
+            "rest_seconds": 60,
+            "notes": "На скамейке"
+          },
+          {
+            "exercise_id": 33,
+            "sets": 3,
+            "reps": "10-12",
+            "rest_seconds": 60,
+            "notes": "С гантелями"
+          },
+          {
+            "exercise_id": 3,
+            "sets": 3,
+            "reps": "45 сек",
+            "rest_seconds": 45,
+            "notes": "Ровно"
+          },
+          {
+            "exercise_id": 23,
+            "sets": 3,
+            "reps": "8-10",
+            "rest_seconds": 60,
+            "notes": "Без раскачки"
+          }
+        ]
+      },
+      {
+        "id": 504,
+        "program_id": 5,
+        "week": 2,
+        "day": 1,
+        "title": "Грудь и спина",
+        "description": "Турник и брусья",
+        "exercises": [
+          {
+            "exercise_id": 20,
+            "sets": 4,
+            "reps": "8-10",
+            "rest_seconds": 120,
+            "notes": "Полная амплитуда"
+          },
+          {
+            "exercise_id": 21,
+            "sets": 4,
+            "reps": "6-8",
+            "rest_seconds": 90,
+            "notes": "Обратный хват"
+          },
+          {
+            "exercise_id": 22,
+            "sets": 3,
+            "reps": "8-10",
+            "rest_seconds": 90,
+            "notes": "Корпус вперёд"
+          },
+          {
+            "exercise_id": 19,
+            "sets": 3,
+            "reps": "15",
+            "rest_seconds": 60,
+            "notes": "На скамейке"
+          }
+        ]
+      },
+      {
+        "id": 505,
+        "program_id": 5,
+        "week": 2,
+        "day": 2,
+        "title": "Ноги",
+        "description": "Силовые ноги",
+        "exercises": [
+          {
+            "exercise_id": 13,
+            "sets": 4,
+            "reps": "25 шагов",
+            "rest_seconds": 90,
+            "notes": "Широкий шаг"
+          },
+          {
+            "exercise_id": 17,
+            "sets": 3,
+            "reps": "12",
+            "rest_seconds": 90,
+            "notes": "Мягкая посадка"
+          },
+          {
+            "exercise_id": 4,
+            "sets": 3,
+            "reps": "15 на ногу",
+            "rest_seconds": 60,
+            "notes": "Глубоко"
+          },
+          {
+            "exercise_id": 2,
+            "sets": 3,
+            "reps": "25",
+            "rest_seconds": 60,
+            "notes": "Глубоко"
+          }
+        ]
+      },
+      {
+        "id": 506,
+        "program_id": 5,
+        "week": 2,
+        "day": 3,
+        "title": "Руки и кор",
+        "description": "Бицепс, трицепс, пресс",
+        "exercises": [
+          {
+            "exercise_id": 24,
+            "sets": 3,
+            "reps": "12-15",
+            "rest_seconds": 60,
+            "notes": "На скамейке"
+          },
+          {
+            "exercise_id": 33,
+            "sets": 3,
+            "reps": "12-15",
+            "rest_seconds": 60,
+            "notes": "С гантелями"
+          },
+          {
+            "exercise_id": 3,
+            "sets": 3,
+            "reps": "60 сек",
+            "rest_seconds": 45,
+            "notes": "Ровно"
+          },
+          {
+            "exercise_id": 23,
+            "sets": 3,
+            "reps": "10",
+            "rest_seconds": 60,
+            "notes": "Без раскачки"
+          }
+        ]
+      },
+      {
+        "id": 507,
+        "program_id": 5,
+        "week": 3,
+        "day": 1,
+        "title": "Грудь и спина",
+        "description": "Турник и брусья",
+        "exercises": [
+          {
+            "exercise_id": 20,
+            "sets": 4,
+            "reps": "8-12",
+            "rest_seconds": 120,
+            "notes": "Полная амплитуда"
+          },
+          {
+            "exercise_id": 21,
+            "sets": 4,
+            "reps": "8-10",
+            "rest_seconds": 90,
+            "notes": "Обратный хват"
+          },
+          {
+            "exercise_id": 22,
+            "sets": 4,
+            "reps": "8-10",
+            "rest_seconds": 90,
+            "notes": "Корпус вперёд"
+          },
+          {
+            "exercise_id": 19,
+            "sets": 4,
+            "reps": "15",
+            "rest_seconds": 60,
+            "notes": "На скамейке"
+          }
+        ]
+      },
+      {
+        "id": 508,
+        "program_id": 5,
+        "week": 3,
+        "day": 2,
+        "title": "Ноги",
+        "description": "Силовые ноги",
+        "exercises": [
+          {
+            "exercise_id": 13,
+            "sets": 4,
+            "reps": "30 шагов",
+            "rest_seconds": 90,
+            "notes": "Широкий шаг"
+          },
+          {
+            "exercise_id": 17,
+            "sets": 4,
+            "reps": "12",
+            "rest_seconds": 90,
+            "notes": "Мягкая посадка"
+          },
+          {
+            "exercise_id": 4,
+            "sets": 4,
+            "reps": "15 на ногу",
+            "rest_seconds": 60,
+            "notes": "Глубоко"
+          },
+          {
+            "exercise_id": 2,
+            "sets": 4,
+            "reps": "25",
+            "rest_seconds": 60,
+            "notes": "Глубоко"
+          }
+        ]
+      },
+      {
+        "id": 509,
+        "program_id": 5,
+        "week": 3,
+        "day": 3,
+        "title": "Руки и кор",
+        "description": "Бицепс, трицепс, пресс",
+        "exercises": [
+          {
+            "exercise_id": 24,
+            "sets": 4,
+            "reps": "12-15",
+            "rest_seconds": 60,
+            "notes": "На скамейке"
+          },
+          {
+            "exercise_id": 33,
+            "sets": 4,
+            "reps": "12-15",
+            "rest_seconds": 60,
+            "notes": "С гантелями"
+          },
+          {
+            "exercise_id": 3,
+            "sets": 3,
+            "reps": "60 сек",
+            "rest_seconds": 45,
+            "notes": "Ровно"
+          },
+          {
+            "exercise_id": 23,
+            "sets": 4,
+            "reps": "10",
+            "rest_seconds": 60,
+            "notes": "Без раскачки"
+          }
+        ]
+      },
+      {
+        "id": 510,
+        "program_id": 5,
+        "week": 4,
+        "day": 1,
+        "title": "Грудь и спина",
+        "description": "Турник и брусья",
+        "exercises": [
+          {
+            "exercise_id": 20,
+            "sets": 4,
+            "reps": "10-12",
+            "rest_seconds": 120,
+            "notes": "Финиш"
+          },
+          {
+            "exercise_id": 21,
+            "sets": 4,
+            "reps": "8-12",
+            "rest_seconds": 90,
+            "notes": "Обратный хват"
+          },
+          {
+            "exercise_id": 22,
+            "sets": 4,
+            "reps": "10-12",
+            "rest_seconds": 90,
+            "notes": "Корпус вперёд"
+          },
+          {
+            "exercise_id": 19,
+            "sets": 4,
+            "reps": "15-20",
+            "rest_seconds": 60,
+            "notes": "На скамейке"
+          }
+        ]
+      },
+      {
+        "id": 511,
+        "program_id": 5,
+        "week": 4,
+        "day": 2,
+        "title": "Ноги",
+        "description": "Силовые ноги",
+        "exercises": [
+          {
+            "exercise_id": 13,
+            "sets": 4,
+            "reps": "30 шагов",
+            "rest_seconds": 90,
+            "notes": "Широкий шаг"
+          },
+          {
+            "exercise_id": 17,
+            "sets": 4,
+            "reps": "15",
+            "rest_seconds": 90,
+            "notes": "Мягкая посадка"
+          },
+          {
+            "exercise_id": 4,
+            "sets": 4,
+            "reps": "15 на ногу",
+            "rest_seconds": 60,
+            "notes": "Глубоко"
+          },
+          {
+            "exercise_id": 2,
+            "sets": 4,
+            "reps": "30",
+            "rest_seconds": 60,
+            "notes": "Глубоко"
+          }
+        ]
+      },
+      {
+        "id": 512,
+        "program_id": 5,
+        "week": 4,
+        "day": 3,
+        "title": "Руки и кор",
+        "description": "Бицепс, трицепс, пресс",
+        "exercises": [
+          {
+            "exercise_id": 24,
+            "sets": 4,
+            "reps": "15",
+            "rest_seconds": 60,
+            "notes": "На скамейке"
+          },
+          {
+            "exercise_id": 33,
+            "sets": 4,
+            "reps": "15",
+            "rest_seconds": 60,
+            "notes": "С гантелями"
+          },
+          {
+            "exercise_id": 3,
+            "sets": 3,
+            "reps": "60-90 сек",
+            "rest_seconds": 45,
+            "notes": "Ровно"
+          },
+          {
+            "exercise_id": 23,
+            "sets": 4,
+            "reps": "12",
+            "rest_seconds": 60,
+            "notes": "Без раскачки"
+          }
+        ]
+      }
     ]
   },
   {
-    "id": 6, "name": "Парк-фитнес", "location": "outdoor", "type": "cardio", "goal": "lose", "duration_weeks": 4, "description": "Кардио-программа на свежем воздухе. Бег, скакалка, лестницы.", "difficulty": "beginner",
+    "id": 6,
+    "name": "Парк-фитнес",
+    "location": "outdoor",
+    "type": "cardio",
+    "goal": "lose",
+    "duration_weeks": 4,
+    "description": "Кардио-программа на свежем воздухе. Бег, скакалка, лестницы.",
+    "difficulty": "beginner",
     "days": [
-      {"id":601,"program_id":6,"week":1,"day":1,"title":"Лёгкий бег","description":"Адаптация","exercises":[{"exercise_id":14,"sets":1,"reps":"15 мин","rest_seconds":0,"notes":"Комфортный темп"},{"exercise_id":55,"sets":2,"reps":"1 мин","rest_seconds":30,"notes":"Ритмично"},{"exercise_id":16,"sets":2,"reps":"30 сек","rest_seconds":30,"notes":"Быстро"}]},
-      {"id":602,"program_id":6,"week":1,"day":2,"title":"Интервалы","description":"Чередование темпа","exercises":[{"exercise_id":15,"sets":4,"reps":"1 мин / 2 мин","rest_seconds":0,"notes":"Быстро / ходьба"},{"exercise_id":55,"sets":2,"reps":"1 мин","rest_seconds":30,"notes":"Ритмично"},{"exercise_id":8,"sets":2,"reps":"45 сек","rest_seconds":30,"notes":"Быстро"}]},
-      {"id":603,"program_id":6,"week":1,"day":3,"title":"Силовое кардио","description":"Сила + выносливость","exercises":[{"exercise_id":13,"sets":3,"reps":"20 шагов","rest_seconds":45,"notes":"Быстро"},{"exercise_id":17,"sets":3,"reps":"10","rest_seconds":45,"notes":"Мощно"},{"exercise_id":55,"sets":3,"reps":"1 мин","rest_seconds":30,"notes":"Ритмично"}]},
-      {"id":604,"program_id":6,"week":2,"day":1,"title":"Лёгкий бег","description":"Адаптация","exercises":[{"exercise_id":14,"sets":1,"reps":"20 мин","rest_seconds":0,"notes":"Комфортный темп"},{"exercise_id":55,"sets":2,"reps":"1.5 мин","rest_seconds":30,"notes":"Ритмично"},{"exercise_id":16,"sets":2,"reps":"45 сек","rest_seconds":30,"notes":"Быстро"}]},
-      {"id":605,"program_id":6,"week":2,"day":2,"title":"Интервалы","description":"Чередование темпа","exercises":[{"exercise_id":15,"sets":5,"reps":"1 мин / 2 мин","rest_seconds":0,"notes":"Быстро / ходьба"},{"exercise_id":55,"sets":2,"reps":"1.5 мин","rest_seconds":30,"notes":"Ритмично"},{"exercise_id":8,"sets":2,"reps":"60 сек","rest_seconds":30,"notes":"Быстро"}]},
-      {"id":606,"program_id":6,"week":2,"day":3,"title":"Силовое кардио","description":"Сила + выносливость","exercises":[{"exercise_id":13,"sets":3,"reps":"25 шагов","rest_seconds":45,"notes":"Быстро"},{"exercise_id":17,"sets":3,"reps":"12","rest_seconds":45,"notes":"Мощно"},{"exercise_id":55,"sets":3,"reps":"1.5 мин","rest_seconds":30,"notes":"Ритмично"}]},
-      {"id":607,"program_id":6,"week":3,"day":1,"title":"Лёгкий бег","description":"Адаптация","exercises":[{"exercise_id":14,"sets":1,"reps":"25 мин","rest_seconds":0,"notes":"Комфортный темп"},{"exercise_id":55,"sets":3,"reps":"1.5 мин","rest_seconds":30,"notes":"Ритмично"},{"exercise_id":16,"sets":2,"reps":"60 сек","rest_seconds":30,"notes":"Быстро"}]},
-      {"id":608,"program_id":6,"week":3,"day":2,"title":"Интервалы","description":"Чередование темпа","exercises":[{"exercise_id":15,"sets":5,"reps":"1 мин / 1.5 мин","rest_seconds":0,"notes":"Быстро / ходьба"},{"exercise_id":55,"sets":3,"reps":"1.5 мин","rest_seconds":30,"notes":"Ритмично"},{"exercise_id":8,"sets":3,"reps":"60 сек","rest_seconds":30,"notes":"Быстро"}]},
-      {"id":609,"program_id":6,"week":3,"day":3,"title":"Силовое кардио","description":"Сила + выносливость","exercises":[{"exercise_id":13,"sets":4,"reps":"25 шагов","rest_seconds":45,"notes":"Быстро"},{"exercise_id":17,"sets":4,"reps":"12","rest_seconds":45,"notes":"Мощно"},{"exercise_id":55,"sets":3,"reps":"2 мин","rest_seconds":30,"notes":"Ритмично"}]},
-      {"id":610,"program_id":6,"week":4,"day":1,"title":"Лёгкий бег","description":"Адаптация","exercises":[{"exercise_id":14,"sets":1,"reps":"30 мин","rest_seconds":0,"notes":"Комфортный темп"},{"exercise_id":55,"sets":3,"reps":"2 мин","rest_seconds":30,"notes":"Ритмично"},{"exercise_id":16,"sets":3,"reps":"60 сек","rest_seconds":30,"notes":"Быстро"}]},
-      {"id":611,"program_id":6,"week":4,"day":2,"title":"Интервалы","description":"Чередование темпа","exercises":[{"exercise_id":15,"sets":6,"reps":"1 мин / 1 мин","rest_seconds":0,"notes":"Быстро / ходьба"},{"exercise_id":55,"sets":3,"reps":"2 мин","rest_seconds":30,"notes":"Ритмично"},{"exercise_id":8,"sets":3,"reps":"60 сек","rest_seconds":30,"notes":"Быстро"}]},
-      {"id":612,"program_id":6,"week":4,"day":3,"title":"Силовое кардио","description":"Сила + выносливость","exercises":[{"exercise_id":13,"sets":4,"reps":"30 шагов","rest_seconds":45,"notes":"Быстро"},{"exercise_id":17,"sets":4,"reps":"15","rest_seconds":45,"notes":"Мощно"},{"exercise_id":55,"sets":3,"reps":"2 мин","rest_seconds":30,"notes":"Ритмично"}]}
+      {
+        "id": 601,
+        "program_id": 6,
+        "week": 1,
+        "day": 1,
+        "title": "Лёгкий бег",
+        "description": "Адаптация",
+        "exercises": [
+          {
+            "exercise_id": 14,
+            "sets": 1,
+            "reps": "15 мин",
+            "rest_seconds": 0,
+            "notes": "Комфортный темп"
+          },
+          {
+            "exercise_id": 55,
+            "sets": 2,
+            "reps": "1 мин",
+            "rest_seconds": 30,
+            "notes": "Ритмично"
+          },
+          {
+            "exercise_id": 16,
+            "sets": 2,
+            "reps": "30 сек",
+            "rest_seconds": 30,
+            "notes": "Быстро"
+          }
+        ]
+      },
+      {
+        "id": 602,
+        "program_id": 6,
+        "week": 1,
+        "day": 2,
+        "title": "Интервалы",
+        "description": "Чередование темпа",
+        "exercises": [
+          {
+            "exercise_id": 15,
+            "sets": 4,
+            "reps": "1 мин / 2 мин",
+            "rest_seconds": 0,
+            "notes": "Быстро / ходьба"
+          },
+          {
+            "exercise_id": 55,
+            "sets": 2,
+            "reps": "1 мин",
+            "rest_seconds": 30,
+            "notes": "Ритмично"
+          },
+          {
+            "exercise_id": 8,
+            "sets": 2,
+            "reps": "45 сек",
+            "rest_seconds": 30,
+            "notes": "Быстро"
+          }
+        ]
+      },
+      {
+        "id": 603,
+        "program_id": 6,
+        "week": 1,
+        "day": 3,
+        "title": "Силовое кардио",
+        "description": "Сила + выносливость",
+        "exercises": [
+          {
+            "exercise_id": 13,
+            "sets": 3,
+            "reps": "20 шагов",
+            "rest_seconds": 45,
+            "notes": "Быстро"
+          },
+          {
+            "exercise_id": 17,
+            "sets": 3,
+            "reps": "10",
+            "rest_seconds": 45,
+            "notes": "Мощно"
+          },
+          {
+            "exercise_id": 55,
+            "sets": 3,
+            "reps": "1 мин",
+            "rest_seconds": 30,
+            "notes": "Ритмично"
+          }
+        ]
+      },
+      {
+        "id": 604,
+        "program_id": 6,
+        "week": 2,
+        "day": 1,
+        "title": "Лёгкий бег",
+        "description": "Адаптация",
+        "exercises": [
+          {
+            "exercise_id": 14,
+            "sets": 1,
+            "reps": "20 мин",
+            "rest_seconds": 0,
+            "notes": "Комфортный темп"
+          },
+          {
+            "exercise_id": 55,
+            "sets": 2,
+            "reps": "1.5 мин",
+            "rest_seconds": 30,
+            "notes": "Ритмично"
+          },
+          {
+            "exercise_id": 16,
+            "sets": 2,
+            "reps": "45 сек",
+            "rest_seconds": 30,
+            "notes": "Быстро"
+          }
+        ]
+      },
+      {
+        "id": 605,
+        "program_id": 6,
+        "week": 2,
+        "day": 2,
+        "title": "Интервалы",
+        "description": "Чередование темпа",
+        "exercises": [
+          {
+            "exercise_id": 15,
+            "sets": 5,
+            "reps": "1 мин / 2 мин",
+            "rest_seconds": 0,
+            "notes": "Быстро / ходьба"
+          },
+          {
+            "exercise_id": 55,
+            "sets": 2,
+            "reps": "1.5 мин",
+            "rest_seconds": 30,
+            "notes": "Ритмично"
+          },
+          {
+            "exercise_id": 8,
+            "sets": 2,
+            "reps": "60 сек",
+            "rest_seconds": 30,
+            "notes": "Быстро"
+          }
+        ]
+      },
+      {
+        "id": 606,
+        "program_id": 6,
+        "week": 2,
+        "day": 3,
+        "title": "Силовое кардио",
+        "description": "Сила + выносливость",
+        "exercises": [
+          {
+            "exercise_id": 13,
+            "sets": 3,
+            "reps": "25 шагов",
+            "rest_seconds": 45,
+            "notes": "Быстро"
+          },
+          {
+            "exercise_id": 17,
+            "sets": 3,
+            "reps": "12",
+            "rest_seconds": 45,
+            "notes": "Мощно"
+          },
+          {
+            "exercise_id": 55,
+            "sets": 3,
+            "reps": "1.5 мин",
+            "rest_seconds": 30,
+            "notes": "Ритмично"
+          }
+        ]
+      },
+      {
+        "id": 607,
+        "program_id": 6,
+        "week": 3,
+        "day": 1,
+        "title": "Лёгкий бег",
+        "description": "Адаптация",
+        "exercises": [
+          {
+            "exercise_id": 14,
+            "sets": 1,
+            "reps": "25 мин",
+            "rest_seconds": 0,
+            "notes": "Комфортный темп"
+          },
+          {
+            "exercise_id": 55,
+            "sets": 3,
+            "reps": "1.5 мин",
+            "rest_seconds": 30,
+            "notes": "Ритмично"
+          },
+          {
+            "exercise_id": 16,
+            "sets": 2,
+            "reps": "60 сек",
+            "rest_seconds": 30,
+            "notes": "Быстро"
+          }
+        ]
+      },
+      {
+        "id": 608,
+        "program_id": 6,
+        "week": 3,
+        "day": 2,
+        "title": "Интервалы",
+        "description": "Чередование темпа",
+        "exercises": [
+          {
+            "exercise_id": 15,
+            "sets": 5,
+            "reps": "1 мин / 1.5 мин",
+            "rest_seconds": 0,
+            "notes": "Быстро / ходьба"
+          },
+          {
+            "exercise_id": 55,
+            "sets": 3,
+            "reps": "1.5 мин",
+            "rest_seconds": 30,
+            "notes": "Ритмично"
+          },
+          {
+            "exercise_id": 8,
+            "sets": 3,
+            "reps": "60 сек",
+            "rest_seconds": 30,
+            "notes": "Быстро"
+          }
+        ]
+      },
+      {
+        "id": 609,
+        "program_id": 6,
+        "week": 3,
+        "day": 3,
+        "title": "Силовое кардио",
+        "description": "Сила + выносливость",
+        "exercises": [
+          {
+            "exercise_id": 13,
+            "sets": 4,
+            "reps": "25 шагов",
+            "rest_seconds": 45,
+            "notes": "Быстро"
+          },
+          {
+            "exercise_id": 17,
+            "sets": 4,
+            "reps": "12",
+            "rest_seconds": 45,
+            "notes": "Мощно"
+          },
+          {
+            "exercise_id": 55,
+            "sets": 3,
+            "reps": "2 мин",
+            "rest_seconds": 30,
+            "notes": "Ритмично"
+          }
+        ]
+      },
+      {
+        "id": 610,
+        "program_id": 6,
+        "week": 4,
+        "day": 1,
+        "title": "Лёгкий бег",
+        "description": "Адаптация",
+        "exercises": [
+          {
+            "exercise_id": 14,
+            "sets": 1,
+            "reps": "30 мин",
+            "rest_seconds": 0,
+            "notes": "Комфортный темп"
+          },
+          {
+            "exercise_id": 55,
+            "sets": 3,
+            "reps": "2 мин",
+            "rest_seconds": 30,
+            "notes": "Ритмично"
+          },
+          {
+            "exercise_id": 16,
+            "sets": 3,
+            "reps": "60 сек",
+            "rest_seconds": 30,
+            "notes": "Быстро"
+          }
+        ]
+      },
+      {
+        "id": 611,
+        "program_id": 6,
+        "week": 4,
+        "day": 2,
+        "title": "Интервалы",
+        "description": "Чередование темпа",
+        "exercises": [
+          {
+            "exercise_id": 15,
+            "sets": 6,
+            "reps": "1 мин / 1 мин",
+            "rest_seconds": 0,
+            "notes": "Быстро / ходьба"
+          },
+          {
+            "exercise_id": 55,
+            "sets": 3,
+            "reps": "2 мин",
+            "rest_seconds": 30,
+            "notes": "Ритмично"
+          },
+          {
+            "exercise_id": 8,
+            "sets": 3,
+            "reps": "60 сек",
+            "rest_seconds": 30,
+            "notes": "Быстро"
+          }
+        ]
+      },
+      {
+        "id": 612,
+        "program_id": 6,
+        "week": 4,
+        "day": 3,
+        "title": "Силовое кардио",
+        "description": "Сила + выносливость",
+        "exercises": [
+          {
+            "exercise_id": 13,
+            "sets": 4,
+            "reps": "30 шагов",
+            "rest_seconds": 45,
+            "notes": "Быстро"
+          },
+          {
+            "exercise_id": 17,
+            "sets": 4,
+            "reps": "15",
+            "rest_seconds": 45,
+            "notes": "Мощно"
+          },
+          {
+            "exercise_id": 55,
+            "sets": 3,
+            "reps": "2 мин",
+            "rest_seconds": 30,
+            "notes": "Ритмично"
+          }
+        ]
+      }
     ]
   },
   {
-    "id": 7, "name": "Зал новичка", "location": "gym", "type": "strength", "goal": "lose", "duration_weeks": 4, "description": "Базовая программа в тренажёрном зале для похудения. Все основные группы мышц.", "difficulty": "beginner",
+    "id": 7,
+    "name": "Зал новичка",
+    "location": "gym",
+    "type": "strength",
+    "goal": "lose",
+    "duration_weeks": 4,
+    "description": "Базовая программа в тренажёрном зале для похудения. Все основные группы мышц.",
+    "difficulty": "beginner",
     "days": [
-      {"id":701,"program_id":7,"week":1,"day":1,"title":"Грудь и трицепс","description":"Жим и разведения","exercises":[{"exercise_id":27,"sets":3,"reps":"10-12","rest_seconds":90,"notes":"Контроль"},{"exercise_id":28,"sets":3,"reps":"12-15","rest_seconds":60,"notes":"Лёгкий вес"},{"exercise_id":34,"sets":3,"reps":"10-12","rest_seconds":60,"notes":"Локти вместе"},{"exercise_id":43,"sets":1,"reps":"10 мин","rest_seconds":0,"notes":"Разминка"}]},
-      {"id":702,"program_id":7,"week":1,"day":2,"title":"Спина и бицепс","description":"Тяга и сгибания","exercises":[{"exercise_id":29,"sets":3,"reps":"10-12","rest_seconds":60,"notes":"Лопатки сведи"},{"exercise_id":30,"sets":3,"reps":"10-12","rest_seconds":60,"notes":"Спина прямая"},{"exercise_id":33,"sets":3,"reps":"10-12","rest_seconds":45,"notes":"Контроль"},{"exercise_id":44,"sets":1,"reps":"10 мин","rest_seconds":0,"notes":"Разминка"}]},
-      {"id":703,"program_id":7,"week":1,"day":3,"title":"Ноги и плечи","description":"Приседания и жим","exercises":[{"exercise_id":35,"sets":3,"reps":"10-12","rest_seconds":120,"notes":"Техника"},{"exercise_id":36,"sets":3,"reps":"10 на ногу","rest_seconds":60,"notes":"Широкий шаг"},{"exercise_id":31,"sets":3,"reps":"10-12","rest_seconds":60,"notes":"Не прогибай"},{"exercise_id":45,"sets":1,"reps":"10 мин","rest_seconds":0,"notes":"Разминка"}]},
-      {"id":704,"program_id":7,"week":2,"day":1,"title":"Грудь и трицепс","description":"Жим и разведения","exercises":[{"exercise_id":27,"sets":3,"reps":"12-15","rest_seconds":90,"notes":"Контроль"},{"exercise_id":28,"sets":3,"reps":"12-15","rest_seconds":60,"notes":"Лёгкий вес"},{"exercise_id":34,"sets":3,"reps":"12-15","rest_seconds":60,"notes":"Локти вместе"},{"exercise_id":43,"sets":1,"reps":"12 мин","rest_seconds":0,"notes":"Разминка"}]},
-      {"id":705,"program_id":7,"week":2,"day":2,"title":"Спина и бицепс","description":"Тяга и сгибания","exercises":[{"exercise_id":29,"sets":3,"reps":"12-15","rest_seconds":60,"notes":"Лопатки сведи"},{"exercise_id":30,"sets":3,"reps":"12-15","rest_seconds":60,"notes":"Спина прямая"},{"exercise_id":33,"sets":3,"reps":"12-15","rest_seconds":45,"notes":"Контроль"},{"exercise_id":44,"sets":1,"reps":"12 мин","rest_seconds":0,"notes":"Разминка"}]},
-      {"id":706,"program_id":7,"week":2,"day":3,"title":"Ноги и плечи","description":"Приседания и жим","exercises":[{"exercise_id":35,"sets":3,"reps":"12-15","rest_seconds":120,"notes":"Техника"},{"exercise_id":36,"sets":3,"reps":"12 на ногу","rest_seconds":60,"notes":"Широкий шаг"},{"exercise_id":31,"sets":3,"reps":"12-15","rest_seconds":60,"notes":"Не прогибай"},{"exercise_id":45,"sets":1,"reps":"12 мин","rest_seconds":0,"notes":"Разминка"}]},
-      {"id":707,"program_id":7,"week":3,"day":1,"title":"Грудь и трицепс","description":"Жим и разведения","exercises":[{"exercise_id":27,"sets":4,"reps":"10-12","rest_seconds":90,"notes":"Контроль"},{"exercise_id":28,"sets":3,"reps":"15","rest_seconds":60,"notes":"Лёгкий вес"},{"exercise_id":34,"sets":3,"reps":"12-15","rest_seconds":60,"notes":"Локти вместе"},{"exercise_id":43,"sets":1,"reps":"15 мин","rest_seconds":0,"notes":"Разминка"}]},
-      {"id":708,"program_id":7,"week":3,"day":2,"title":"Спина и бицепс","description":"Тяга и сгибания","exercises":[{"exercise_id":29,"sets":4,"reps":"10-12","rest_seconds":60,"notes":"Лопатки сведи"},{"exercise_id":30,"sets":3,"reps":"12-15","rest_seconds":60,"notes":"Спина прямая"},{"exercise_id":33,"sets":3,"reps":"12-15","rest_seconds":45,"notes":"Контроль"},{"exercise_id":44,"sets":1,"reps":"15 мин","rest_seconds":0,"notes":"Разминка"}]},
-      {"id":709,"program_id":7,"week":3,"day":3,"title":"Ноги и плечи","description":"Приседания и жим","exercises":[{"exercise_id":35,"sets":4,"reps":"10-12","rest_seconds":120,"notes":"Техника"},{"exercise_id":36,"sets":3,"reps":"12 на ногу","rest_seconds":60,"notes":"Широкий шаг"},{"exercise_id":31,"sets":3,"reps":"12-15","rest_seconds":60,"notes":"Не прогибай"},{"exercise_id":45,"sets":1,"reps":"15 мин","rest_seconds":0,"notes":"Разминка"}]},
-      {"id":710,"program_id":7,"week":4,"day":1,"title":"Грудь и трицепс","description":"Жим и разведения","exercises":[{"exercise_id":27,"sets":4,"reps":"12-15","rest_seconds":90,"notes":"Финиш"},{"exercise_id":28,"sets":4,"reps":"15","rest_seconds":60,"notes":"Лёгкий вес"},{"exercise_id":34,"sets":3,"reps":"15","rest_seconds":60,"notes":"Локти вместе"},{"exercise_id":43,"sets":1,"reps":"15 мин","rest_seconds":0,"notes":"Разминка"}]},
-      {"id":711,"program_id":7,"week":4,"day":2,"title":"Спина и бицепс","description":"Тяга и сгибания","exercises":[{"exercise_id":29,"sets":4,"reps":"12-15","rest_seconds":60,"notes":"Лопатки сведи"},{"exercise_id":30,"sets":4,"reps":"12-15","rest_seconds":60,"notes":"Спина прямая"},{"exercise_id":33,"sets":3,"reps":"15","rest_seconds":45,"notes":"Контроль"},{"exercise_id":44,"sets":1,"reps":"15 мин","rest_seconds":0,"notes":"Разминка"}]},
-      {"id":712,"program_id":7,"week":4,"day":3,"title":"Ноги и плечи","description":"Приседания и жим","exercises":[{"exercise_id":35,"sets":4,"reps":"12-15","rest_seconds":120,"notes":"Техника"},{"exercise_id":36,"sets":4,"reps":"12 на ногу","rest_seconds":60,"notes":"Широкий шаг"},{"exercise_id":31,"sets":3,"reps":"15","rest_seconds":60,"notes":"Не прогибай"},{"exercise_id":45,"sets":1,"reps":"15 мин","rest_seconds":0,"notes":"Разминка"}]}
+      {
+        "id": 701,
+        "program_id": 7,
+        "week": 1,
+        "day": 1,
+        "title": "Грудь и трицепс",
+        "description": "Жим и разведения",
+        "exercises": [
+          {
+            "exercise_id": 27,
+            "sets": 3,
+            "reps": "10-12",
+            "rest_seconds": 90,
+            "notes": "Контроль"
+          },
+          {
+            "exercise_id": 28,
+            "sets": 3,
+            "reps": "12-15",
+            "rest_seconds": 60,
+            "notes": "Лёгкий вес"
+          },
+          {
+            "exercise_id": 34,
+            "sets": 3,
+            "reps": "10-12",
+            "rest_seconds": 60,
+            "notes": "Локти вместе"
+          },
+          {
+            "exercise_id": 43,
+            "sets": 1,
+            "reps": "10 мин",
+            "rest_seconds": 0,
+            "notes": "Разминка"
+          }
+        ]
+      },
+      {
+        "id": 702,
+        "program_id": 7,
+        "week": 1,
+        "day": 2,
+        "title": "Спина и бицепс",
+        "description": "Тяга и сгибания",
+        "exercises": [
+          {
+            "exercise_id": 29,
+            "sets": 3,
+            "reps": "10-12",
+            "rest_seconds": 60,
+            "notes": "Лопатки сведи"
+          },
+          {
+            "exercise_id": 30,
+            "sets": 3,
+            "reps": "10-12",
+            "rest_seconds": 60,
+            "notes": "Спина прямая"
+          },
+          {
+            "exercise_id": 33,
+            "sets": 3,
+            "reps": "10-12",
+            "rest_seconds": 45,
+            "notes": "Контроль"
+          },
+          {
+            "exercise_id": 44,
+            "sets": 1,
+            "reps": "10 мин",
+            "rest_seconds": 0,
+            "notes": "Разминка"
+          }
+        ]
+      },
+      {
+        "id": 703,
+        "program_id": 7,
+        "week": 1,
+        "day": 3,
+        "title": "Ноги и плечи",
+        "description": "Приседания и жим",
+        "exercises": [
+          {
+            "exercise_id": 35,
+            "sets": 3,
+            "reps": "10-12",
+            "rest_seconds": 120,
+            "notes": "Техника"
+          },
+          {
+            "exercise_id": 36,
+            "sets": 3,
+            "reps": "10 на ногу",
+            "rest_seconds": 60,
+            "notes": "Широкий шаг"
+          },
+          {
+            "exercise_id": 31,
+            "sets": 3,
+            "reps": "10-12",
+            "rest_seconds": 60,
+            "notes": "Не прогибай"
+          },
+          {
+            "exercise_id": 45,
+            "sets": 1,
+            "reps": "10 мин",
+            "rest_seconds": 0,
+            "notes": "Разминка"
+          }
+        ]
+      },
+      {
+        "id": 704,
+        "program_id": 7,
+        "week": 2,
+        "day": 1,
+        "title": "Грудь и трицепс",
+        "description": "Жим и разведения",
+        "exercises": [
+          {
+            "exercise_id": 27,
+            "sets": 3,
+            "reps": "12-15",
+            "rest_seconds": 90,
+            "notes": "Контроль"
+          },
+          {
+            "exercise_id": 28,
+            "sets": 3,
+            "reps": "12-15",
+            "rest_seconds": 60,
+            "notes": "Лёгкий вес"
+          },
+          {
+            "exercise_id": 34,
+            "sets": 3,
+            "reps": "12-15",
+            "rest_seconds": 60,
+            "notes": "Локти вместе"
+          },
+          {
+            "exercise_id": 43,
+            "sets": 1,
+            "reps": "12 мин",
+            "rest_seconds": 0,
+            "notes": "Разминка"
+          }
+        ]
+      },
+      {
+        "id": 705,
+        "program_id": 7,
+        "week": 2,
+        "day": 2,
+        "title": "Спина и бицепс",
+        "description": "Тяга и сгибания",
+        "exercises": [
+          {
+            "exercise_id": 29,
+            "sets": 3,
+            "reps": "12-15",
+            "rest_seconds": 60,
+            "notes": "Лопатки сведи"
+          },
+          {
+            "exercise_id": 30,
+            "sets": 3,
+            "reps": "12-15",
+            "rest_seconds": 60,
+            "notes": "Спина прямая"
+          },
+          {
+            "exercise_id": 33,
+            "sets": 3,
+            "reps": "12-15",
+            "rest_seconds": 45,
+            "notes": "Контроль"
+          },
+          {
+            "exercise_id": 44,
+            "sets": 1,
+            "reps": "12 мин",
+            "rest_seconds": 0,
+            "notes": "Разминка"
+          }
+        ]
+      },
+      {
+        "id": 706,
+        "program_id": 7,
+        "week": 2,
+        "day": 3,
+        "title": "Ноги и плечи",
+        "description": "Приседания и жим",
+        "exercises": [
+          {
+            "exercise_id": 35,
+            "sets": 3,
+            "reps": "12-15",
+            "rest_seconds": 120,
+            "notes": "Техника"
+          },
+          {
+            "exercise_id": 36,
+            "sets": 3,
+            "reps": "12 на ногу",
+            "rest_seconds": 60,
+            "notes": "Широкий шаг"
+          },
+          {
+            "exercise_id": 31,
+            "sets": 3,
+            "reps": "12-15",
+            "rest_seconds": 60,
+            "notes": "Не прогибай"
+          },
+          {
+            "exercise_id": 45,
+            "sets": 1,
+            "reps": "12 мин",
+            "rest_seconds": 0,
+            "notes": "Разминка"
+          }
+        ]
+      },
+      {
+        "id": 707,
+        "program_id": 7,
+        "week": 3,
+        "day": 1,
+        "title": "Грудь и трицепс",
+        "description": "Жим и разведения",
+        "exercises": [
+          {
+            "exercise_id": 27,
+            "sets": 4,
+            "reps": "10-12",
+            "rest_seconds": 90,
+            "notes": "Контроль"
+          },
+          {
+            "exercise_id": 28,
+            "sets": 3,
+            "reps": "15",
+            "rest_seconds": 60,
+            "notes": "Лёгкий вес"
+          },
+          {
+            "exercise_id": 34,
+            "sets": 3,
+            "reps": "12-15",
+            "rest_seconds": 60,
+            "notes": "Локти вместе"
+          },
+          {
+            "exercise_id": 43,
+            "sets": 1,
+            "reps": "15 мин",
+            "rest_seconds": 0,
+            "notes": "Разминка"
+          }
+        ]
+      },
+      {
+        "id": 708,
+        "program_id": 7,
+        "week": 3,
+        "day": 2,
+        "title": "Спина и бицепс",
+        "description": "Тяга и сгибания",
+        "exercises": [
+          {
+            "exercise_id": 29,
+            "sets": 4,
+            "reps": "10-12",
+            "rest_seconds": 60,
+            "notes": "Лопатки сведи"
+          },
+          {
+            "exercise_id": 30,
+            "sets": 3,
+            "reps": "12-15",
+            "rest_seconds": 60,
+            "notes": "Спина прямая"
+          },
+          {
+            "exercise_id": 33,
+            "sets": 3,
+            "reps": "12-15",
+            "rest_seconds": 45,
+            "notes": "Контроль"
+          },
+          {
+            "exercise_id": 44,
+            "sets": 1,
+            "reps": "15 мин",
+            "rest_seconds": 0,
+            "notes": "Разминка"
+          }
+        ]
+      },
+      {
+        "id": 709,
+        "program_id": 7,
+        "week": 3,
+        "day": 3,
+        "title": "Ноги и плечи",
+        "description": "Приседания и жим",
+        "exercises": [
+          {
+            "exercise_id": 35,
+            "sets": 4,
+            "reps": "10-12",
+            "rest_seconds": 120,
+            "notes": "Техника"
+          },
+          {
+            "exercise_id": 36,
+            "sets": 3,
+            "reps": "12 на ногу",
+            "rest_seconds": 60,
+            "notes": "Широкий шаг"
+          },
+          {
+            "exercise_id": 31,
+            "sets": 3,
+            "reps": "12-15",
+            "rest_seconds": 60,
+            "notes": "Не прогибай"
+          },
+          {
+            "exercise_id": 45,
+            "sets": 1,
+            "reps": "15 мин",
+            "rest_seconds": 0,
+            "notes": "Разминка"
+          }
+        ]
+      },
+      {
+        "id": 710,
+        "program_id": 7,
+        "week": 4,
+        "day": 1,
+        "title": "Грудь и трицепс",
+        "description": "Жим и разведения",
+        "exercises": [
+          {
+            "exercise_id": 27,
+            "sets": 4,
+            "reps": "12-15",
+            "rest_seconds": 90,
+            "notes": "Финиш"
+          },
+          {
+            "exercise_id": 28,
+            "sets": 4,
+            "reps": "15",
+            "rest_seconds": 60,
+            "notes": "Лёгкий вес"
+          },
+          {
+            "exercise_id": 34,
+            "sets": 3,
+            "reps": "15",
+            "rest_seconds": 60,
+            "notes": "Локти вместе"
+          },
+          {
+            "exercise_id": 43,
+            "sets": 1,
+            "reps": "15 мин",
+            "rest_seconds": 0,
+            "notes": "Разминка"
+          }
+        ]
+      },
+      {
+        "id": 711,
+        "program_id": 7,
+        "week": 4,
+        "day": 2,
+        "title": "Спина и бицепс",
+        "description": "Тяга и сгибания",
+        "exercises": [
+          {
+            "exercise_id": 29,
+            "sets": 4,
+            "reps": "12-15",
+            "rest_seconds": 60,
+            "notes": "Лопатки сведи"
+          },
+          {
+            "exercise_id": 30,
+            "sets": 4,
+            "reps": "12-15",
+            "rest_seconds": 60,
+            "notes": "Спина прямая"
+          },
+          {
+            "exercise_id": 33,
+            "sets": 3,
+            "reps": "15",
+            "rest_seconds": 45,
+            "notes": "Контроль"
+          },
+          {
+            "exercise_id": 44,
+            "sets": 1,
+            "reps": "15 мин",
+            "rest_seconds": 0,
+            "notes": "Разминка"
+          }
+        ]
+      },
+      {
+        "id": 712,
+        "program_id": 7,
+        "week": 4,
+        "day": 3,
+        "title": "Ноги и плечи",
+        "description": "Приседания и жим",
+        "exercises": [
+          {
+            "exercise_id": 35,
+            "sets": 4,
+            "reps": "12-15",
+            "rest_seconds": 120,
+            "notes": "Техника"
+          },
+          {
+            "exercise_id": 36,
+            "sets": 4,
+            "reps": "12 на ногу",
+            "rest_seconds": 60,
+            "notes": "Широкий шаг"
+          },
+          {
+            "exercise_id": 31,
+            "sets": 3,
+            "reps": "15",
+            "rest_seconds": 60,
+            "notes": "Не прогибай"
+          },
+          {
+            "exercise_id": 45,
+            "sets": 1,
+            "reps": "15 мин",
+            "rest_seconds": 0,
+            "notes": "Разминка"
+          }
+        ]
+      }
     ]
   },
   {
-    "id": 8, "name": "Массонабор в зале", "location": "gym", "type": "strength", "goal": "gain", "duration_weeks": 6, "description": "Классическая программа сплит-тренировок для набора мышечной массы в зале.", "difficulty": "intermediate",
+    "id": 8,
+    "name": "Массонабор в зале",
+    "location": "gym",
+    "type": "strength",
+    "goal": "gain",
+    "duration_weeks": 6,
+    "description": "Классическая программа сплит-тренировок для набора мышечной массы в зале.",
+    "difficulty": "intermediate",
     "days": [
-      {"id":801,"program_id":8,"week":1,"day":1,"title":"Грудь и трицепс","description":"Жим и изоляция","exercises":[{"exercise_id":27,"sets":4,"reps":"8-10","rest_seconds":120,"notes":"Тяжёлый вес"},{"exercise_id":28,"sets":3,"reps":"12-15","rest_seconds":60,"notes":"Растяжение"},{"exercise_id":34,"sets":3,"reps":"10-12","rest_seconds":60,"notes":"Локти вместе"},{"exercise_id":24,"sets":3,"reps":"12-15","rest_seconds":60,"notes":"На скамье"}]},
-      {"id":802,"program_id":8,"week":1,"day":2,"title":"Спина и бицепс","description":"Тяга и сгибания","exercises":[{"exercise_id":29,"sets":4,"reps":"8-10","rest_seconds":120,"notes":"Тяжёлый вес"},{"exercise_id":30,"sets":3,"reps":"10-12","rest_seconds":60,"notes":"Контроль"},{"exercise_id":59,"sets":3,"reps":"8-10","rest_seconds":90,"notes":"Спина прямая"},{"exercise_id":33,"sets":3,"reps":"10-12","rest_seconds":60,"notes":"Контроль"}]},
-      {"id":803,"program_id":8,"week":1,"day":3,"title":"Ноги","description":"Мощные ноги","exercises":[{"exercise_id":35,"sets":4,"reps":"8-10","rest_seconds":120,"notes":"Тяжёлый вес"},{"exercise_id":37,"sets":3,"reps":"10-12","rest_seconds":90,"notes":"Спина прямая"},{"exercise_id":38,"sets":3,"reps":"12-15","rest_seconds":60,"notes":"Контроль"},{"exercise_id":39,"sets":3,"reps":"12-15","rest_seconds":60,"notes":"Контроль"}]},
-      {"id":804,"program_id":8,"week":1,"day":4,"title":"Плечи и пресс","description":"Объём и кор","exercises":[{"exercise_id":31,"sets":4,"reps":"8-10","rest_seconds":90,"notes":"Тяжёлый вес"},{"exercise_id":32,"sets":3,"reps":"12-15","rest_seconds":60,"notes":"Локти согнуты"},{"exercise_id":41,"sets":3,"reps":"15-20","rest_seconds":45,"notes":"Медленно"},{"exercise_id":42,"sets":3,"reps":"10","rest_seconds":45,"notes":"Стабильно"}]},
-      {"id":805,"program_id":8,"week":2,"day":1,"title":"Грудь и трицепс","description":"Жим и изоляция","exercises":[{"exercise_id":27,"sets":4,"reps":"8-12","rest_seconds":120,"notes":"Тяжёлый вес"},{"exercise_id":28,"sets":3,"reps":"12-15","rest_seconds":60,"notes":"Растяжение"},{"exercise_id":34,"sets":3,"reps":"10-12","rest_seconds":60,"notes":"Локти вместе"},{"exercise_id":24,"sets":3,"reps":"12-15","rest_seconds":60,"notes":"На скамье"}]},
-      {"id":806,"program_id":8,"week":2,"day":2,"title":"Спина и бицепс","description":"Тяга и сгибания","exercises":[{"exercise_id":29,"sets":4,"reps":"8-12","rest_seconds":120,"notes":"Тяжёлый вес"},{"exercise_id":30,"sets":3,"reps":"10-12","rest_seconds":60,"notes":"Контроль"},{"exercise_id":59,"sets":3,"reps":"8-10","rest_seconds":90,"notes":"Спина прямая"},{"exercise_id":33,"sets":3,"reps":"10-12","rest_seconds":60,"notes":"Контроль"}]},
-      {"id":807,"program_id":8,"week":2,"day":3,"title":"Ноги","description":"Мощные ноги","exercises":[{"exercise_id":35,"sets":4,"reps":"8-12","rest_seconds":120,"notes":"Тяжёлый вес"},{"exercise_id":37,"sets":3,"reps":"10-12","rest_seconds":90,"notes":"Спина прямая"},{"exercise_id":38,"sets":3,"reps":"12-15","rest_seconds":60,"notes":"Контроль"},{"exercise_id":39,"sets":3,"reps":"12-15","rest_seconds":60,"notes":"Контроль"}]},
-      {"id":808,"program_id":8,"week":2,"day":4,"title":"Плечи и пресс","description":"Объём и кор","exercises":[{"exercise_id":31,"sets":4,"reps":"8-12","rest_seconds":90,"notes":"Тяжёлый вес"},{"exercise_id":32,"sets":3,"reps":"12-15","rest_seconds":60,"notes":"Локти согнуты"},{"exercise_id":41,"sets":3,"reps":"15-20","rest_seconds":45,"notes":"Медленно"},{"exercise_id":42,"sets":3,"reps":"10","rest_seconds":45,"notes":"Стабильно"}]},
-      {"id":809,"program_id":8,"week":3,"day":1,"title":"Грудь и трицепс","description":"Жим и изоляция","exercises":[{"exercise_id":27,"sets":4,"reps":"10-12","rest_seconds":120,"notes":"Тяжёлый вес"},{"exercise_id":28,"sets":4,"reps":"12-15","rest_seconds":60,"notes":"Растяжение"},{"exercise_id":34,"sets":3,"reps":"12-15","rest_seconds":60,"notes":"Локти вместе"},{"exercise_id":24,"sets":3,"reps":"15","rest_seconds":60,"notes":"На скамье"}]},
-      {"id":810,"program_id":8,"week":3,"day":2,"title":"Спина и бицепс","description":"Тяга и сгибания","exercises":[{"exercise_id":29,"sets":4,"reps":"10-12","rest_seconds":120,"notes":"Тяжёлый вес"},{"exercise_id":30,"sets":4,"reps":"10-12","rest_seconds":60,"notes":"Контроль"},{"exercise_id":59,"sets":3,"reps":"10-12","rest_seconds":90,"notes":"Спина прямая"},{"exercise_id":33,"sets":3,"reps":"12-15","rest_seconds":60,"notes":"Контроль"}]},
-      {"id":811,"program_id":8,"week":3,"day":3,"title":"Ноги","description":"Мощные ноги","exercises":[{"exercise_id":35,"sets":4,"reps":"10-12","rest_seconds":120,"notes":"Тяжёлый вес"},{"exercise_id":37,"sets":4,"reps":"10-12","rest_seconds":90,"notes":"Спина прямая"},{"exercise_id":38,"sets":3,"reps":"12-15","rest_seconds":60,"notes":"Контроль"},{"exercise_id":39,"sets":3,"reps":"12-15","rest_seconds":60,"notes":"Контроль"}]},
-      {"id":812,"program_id":8,"week":3,"day":4,"title":"Плечи и пресс","description":"Объём и кор","exercises":[{"exercise_id":31,"sets":4,"reps":"10-12","rest_seconds":90,"notes":"Тяжёлый вес"},{"exercise_id":32,"sets":4,"reps":"12-15","rest_seconds":60,"notes":"Локти согнуты"},{"exercise_id":41,"sets":3,"reps":"15-20","rest_seconds":45,"notes":"Медленно"},{"exercise_id":42,"sets":3,"reps":"12","rest_seconds":45,"notes":"Стабильно"}]},
-      {"id":813,"program_id":8,"week":4,"day":1,"title":"Грудь и трицепс","description":"Жим и изоляция","exercises":[{"exercise_id":27,"sets":4,"reps":"10-15","rest_seconds":120,"notes":"Финиш"},{"exercise_id":28,"sets":4,"reps":"15","rest_seconds":60,"notes":"Растяжение"},{"exercise_id":34,"sets":4,"reps":"12-15","rest_seconds":60,"notes":"Локти вместе"},{"exercise_id":24,"sets":3,"reps":"15","rest_seconds":60,"notes":"На скамье"}]},
-      {"id":814,"program_id":8,"week":4,"day":2,"title":"Спина и бицепс","description":"Тяга и сгибания","exercises":[{"exercise_id":29,"sets":4,"reps":"10-15","rest_seconds":120,"notes":"Финиш"},{"exercise_id":30,"sets":4,"reps":"12-15","rest_seconds":60,"notes":"Контроль"},{"exercise_id":59,"sets":3,"reps":"10-12","rest_seconds":90,"notes":"Спина прямая"},{"exercise_id":33,"sets":3,"reps":"15","rest_seconds":60,"notes":"Контроль"}]},
-      {"id":815,"program_id":8,"week":4,"day":3,"title":"Ноги","description":"Мощные ноги","exercises":[{"exercise_id":35,"sets":4,"reps":"10-15","rest_seconds":120,"notes":"Финиш"},{"exercise_id":37,"sets":4,"reps":"12-15","rest_seconds":90,"notes":"Спина прямая"},{"exercise_id":38,"sets":3,"reps":"15","rest_seconds":60,"notes":"Контроль"},{"exercise_id":39,"sets":3,"reps":"15","rest_seconds":60,"notes":"Контроль"}]},
-      {"id":816,"program_id":8,"week":4,"day":4,"title":"Плечи и пресс","description":"Объём и кор","exercises":[{"exercise_id":31,"sets":4,"reps":"10-15","rest_seconds":90,"notes":"Финиш"},{"exercise_id":32,"sets":4,"reps":"15","rest_seconds":60,"notes":"Локти согнуты"},{"exercise_id":41,"sets":3,"reps":"20","rest_seconds":45,"notes":"Медленно"},{"exercise_id":42,"sets":3,"reps":"12","rest_seconds":45,"notes":"Стабильно"}]}
+      {
+        "id": 801,
+        "program_id": 8,
+        "week": 1,
+        "day": 1,
+        "title": "Грудь и трицепс",
+        "description": "Жим и изоляция",
+        "exercises": [
+          {
+            "exercise_id": 27,
+            "sets": 4,
+            "reps": "8-10",
+            "rest_seconds": 120,
+            "notes": "Тяжёлый вес"
+          },
+          {
+            "exercise_id": 28,
+            "sets": 3,
+            "reps": "12-15",
+            "rest_seconds": 60,
+            "notes": "Растяжение"
+          },
+          {
+            "exercise_id": 34,
+            "sets": 3,
+            "reps": "10-12",
+            "rest_seconds": 60,
+            "notes": "Локти вместе"
+          },
+          {
+            "exercise_id": 24,
+            "sets": 3,
+            "reps": "12-15",
+            "rest_seconds": 60,
+            "notes": "На скамье"
+          }
+        ]
+      },
+      {
+        "id": 802,
+        "program_id": 8,
+        "week": 1,
+        "day": 2,
+        "title": "Спина и бицепс",
+        "description": "Тяга и сгибания",
+        "exercises": [
+          {
+            "exercise_id": 29,
+            "sets": 4,
+            "reps": "8-10",
+            "rest_seconds": 120,
+            "notes": "Тяжёлый вес"
+          },
+          {
+            "exercise_id": 30,
+            "sets": 3,
+            "reps": "10-12",
+            "rest_seconds": 60,
+            "notes": "Контроль"
+          },
+          {
+            "exercise_id": 59,
+            "sets": 3,
+            "reps": "8-10",
+            "rest_seconds": 90,
+            "notes": "Спина прямая"
+          },
+          {
+            "exercise_id": 33,
+            "sets": 3,
+            "reps": "10-12",
+            "rest_seconds": 60,
+            "notes": "Контроль"
+          }
+        ]
+      },
+      {
+        "id": 803,
+        "program_id": 8,
+        "week": 1,
+        "day": 3,
+        "title": "Ноги",
+        "description": "Мощные ноги",
+        "exercises": [
+          {
+            "exercise_id": 35,
+            "sets": 4,
+            "reps": "8-10",
+            "rest_seconds": 120,
+            "notes": "Тяжёлый вес"
+          },
+          {
+            "exercise_id": 37,
+            "sets": 3,
+            "reps": "10-12",
+            "rest_seconds": 90,
+            "notes": "Спина прямая"
+          },
+          {
+            "exercise_id": 38,
+            "sets": 3,
+            "reps": "12-15",
+            "rest_seconds": 60,
+            "notes": "Контроль"
+          },
+          {
+            "exercise_id": 39,
+            "sets": 3,
+            "reps": "12-15",
+            "rest_seconds": 60,
+            "notes": "Контроль"
+          }
+        ]
+      },
+      {
+        "id": 804,
+        "program_id": 8,
+        "week": 1,
+        "day": 4,
+        "title": "Плечи и пресс",
+        "description": "Объём и кор",
+        "exercises": [
+          {
+            "exercise_id": 31,
+            "sets": 4,
+            "reps": "8-10",
+            "rest_seconds": 90,
+            "notes": "Тяжёлый вес"
+          },
+          {
+            "exercise_id": 32,
+            "sets": 3,
+            "reps": "12-15",
+            "rest_seconds": 60,
+            "notes": "Локти согнуты"
+          },
+          {
+            "exercise_id": 41,
+            "sets": 3,
+            "reps": "15-20",
+            "rest_seconds": 45,
+            "notes": "Медленно"
+          },
+          {
+            "exercise_id": 42,
+            "sets": 3,
+            "reps": "10",
+            "rest_seconds": 45,
+            "notes": "Стабильно"
+          }
+        ]
+      },
+      {
+        "id": 805,
+        "program_id": 8,
+        "week": 2,
+        "day": 1,
+        "title": "Грудь и трицепс",
+        "description": "Жим и изоляция",
+        "exercises": [
+          {
+            "exercise_id": 27,
+            "sets": 4,
+            "reps": "8-12",
+            "rest_seconds": 120,
+            "notes": "Тяжёлый вес"
+          },
+          {
+            "exercise_id": 28,
+            "sets": 3,
+            "reps": "12-15",
+            "rest_seconds": 60,
+            "notes": "Растяжение"
+          },
+          {
+            "exercise_id": 34,
+            "sets": 3,
+            "reps": "10-12",
+            "rest_seconds": 60,
+            "notes": "Локти вместе"
+          },
+          {
+            "exercise_id": 24,
+            "sets": 3,
+            "reps": "12-15",
+            "rest_seconds": 60,
+            "notes": "На скамье"
+          }
+        ]
+      },
+      {
+        "id": 806,
+        "program_id": 8,
+        "week": 2,
+        "day": 2,
+        "title": "Спина и бицепс",
+        "description": "Тяга и сгибания",
+        "exercises": [
+          {
+            "exercise_id": 29,
+            "sets": 4,
+            "reps": "8-12",
+            "rest_seconds": 120,
+            "notes": "Тяжёлый вес"
+          },
+          {
+            "exercise_id": 30,
+            "sets": 3,
+            "reps": "10-12",
+            "rest_seconds": 60,
+            "notes": "Контроль"
+          },
+          {
+            "exercise_id": 59,
+            "sets": 3,
+            "reps": "8-10",
+            "rest_seconds": 90,
+            "notes": "Спина прямая"
+          },
+          {
+            "exercise_id": 33,
+            "sets": 3,
+            "reps": "10-12",
+            "rest_seconds": 60,
+            "notes": "Контроль"
+          }
+        ]
+      },
+      {
+        "id": 807,
+        "program_id": 8,
+        "week": 2,
+        "day": 3,
+        "title": "Ноги",
+        "description": "Мощные ноги",
+        "exercises": [
+          {
+            "exercise_id": 35,
+            "sets": 4,
+            "reps": "8-12",
+            "rest_seconds": 120,
+            "notes": "Тяжёлый вес"
+          },
+          {
+            "exercise_id": 37,
+            "sets": 3,
+            "reps": "10-12",
+            "rest_seconds": 90,
+            "notes": "Спина прямая"
+          },
+          {
+            "exercise_id": 38,
+            "sets": 3,
+            "reps": "12-15",
+            "rest_seconds": 60,
+            "notes": "Контроль"
+          },
+          {
+            "exercise_id": 39,
+            "sets": 3,
+            "reps": "12-15",
+            "rest_seconds": 60,
+            "notes": "Контроль"
+          }
+        ]
+      },
+      {
+        "id": 808,
+        "program_id": 8,
+        "week": 2,
+        "day": 4,
+        "title": "Плечи и пресс",
+        "description": "Объём и кор",
+        "exercises": [
+          {
+            "exercise_id": 31,
+            "sets": 4,
+            "reps": "8-12",
+            "rest_seconds": 90,
+            "notes": "Тяжёлый вес"
+          },
+          {
+            "exercise_id": 32,
+            "sets": 3,
+            "reps": "12-15",
+            "rest_seconds": 60,
+            "notes": "Локти согнуты"
+          },
+          {
+            "exercise_id": 41,
+            "sets": 3,
+            "reps": "15-20",
+            "rest_seconds": 45,
+            "notes": "Медленно"
+          },
+          {
+            "exercise_id": 42,
+            "sets": 3,
+            "reps": "10",
+            "rest_seconds": 45,
+            "notes": "Стабильно"
+          }
+        ]
+      },
+      {
+        "id": 809,
+        "program_id": 8,
+        "week": 3,
+        "day": 1,
+        "title": "Грудь и трицепс",
+        "description": "Жим и изоляция",
+        "exercises": [
+          {
+            "exercise_id": 27,
+            "sets": 4,
+            "reps": "10-12",
+            "rest_seconds": 120,
+            "notes": "Тяжёлый вес"
+          },
+          {
+            "exercise_id": 28,
+            "sets": 4,
+            "reps": "12-15",
+            "rest_seconds": 60,
+            "notes": "Растяжение"
+          },
+          {
+            "exercise_id": 34,
+            "sets": 3,
+            "reps": "12-15",
+            "rest_seconds": 60,
+            "notes": "Локти вместе"
+          },
+          {
+            "exercise_id": 24,
+            "sets": 3,
+            "reps": "15",
+            "rest_seconds": 60,
+            "notes": "На скамье"
+          }
+        ]
+      },
+      {
+        "id": 810,
+        "program_id": 8,
+        "week": 3,
+        "day": 2,
+        "title": "Спина и бицепс",
+        "description": "Тяга и сгибания",
+        "exercises": [
+          {
+            "exercise_id": 29,
+            "sets": 4,
+            "reps": "10-12",
+            "rest_seconds": 120,
+            "notes": "Тяжёлый вес"
+          },
+          {
+            "exercise_id": 30,
+            "sets": 4,
+            "reps": "10-12",
+            "rest_seconds": 60,
+            "notes": "Контроль"
+          },
+          {
+            "exercise_id": 59,
+            "sets": 3,
+            "reps": "10-12",
+            "rest_seconds": 90,
+            "notes": "Спина прямая"
+          },
+          {
+            "exercise_id": 33,
+            "sets": 3,
+            "reps": "12-15",
+            "rest_seconds": 60,
+            "notes": "Контроль"
+          }
+        ]
+      },
+      {
+        "id": 811,
+        "program_id": 8,
+        "week": 3,
+        "day": 3,
+        "title": "Ноги",
+        "description": "Мощные ноги",
+        "exercises": [
+          {
+            "exercise_id": 35,
+            "sets": 4,
+            "reps": "10-12",
+            "rest_seconds": 120,
+            "notes": "Тяжёлый вес"
+          },
+          {
+            "exercise_id": 37,
+            "sets": 4,
+            "reps": "10-12",
+            "rest_seconds": 90,
+            "notes": "Спина прямая"
+          },
+          {
+            "exercise_id": 38,
+            "sets": 3,
+            "reps": "12-15",
+            "rest_seconds": 60,
+            "notes": "Контроль"
+          },
+          {
+            "exercise_id": 39,
+            "sets": 3,
+            "reps": "12-15",
+            "rest_seconds": 60,
+            "notes": "Контроль"
+          }
+        ]
+      },
+      {
+        "id": 812,
+        "program_id": 8,
+        "week": 3,
+        "day": 4,
+        "title": "Плечи и пресс",
+        "description": "Объём и кор",
+        "exercises": [
+          {
+            "exercise_id": 31,
+            "sets": 4,
+            "reps": "10-12",
+            "rest_seconds": 90,
+            "notes": "Тяжёлый вес"
+          },
+          {
+            "exercise_id": 32,
+            "sets": 4,
+            "reps": "12-15",
+            "rest_seconds": 60,
+            "notes": "Локти согнуты"
+          },
+          {
+            "exercise_id": 41,
+            "sets": 3,
+            "reps": "15-20",
+            "rest_seconds": 45,
+            "notes": "Медленно"
+          },
+          {
+            "exercise_id": 42,
+            "sets": 3,
+            "reps": "12",
+            "rest_seconds": 45,
+            "notes": "Стабильно"
+          }
+        ]
+      },
+      {
+        "id": 813,
+        "program_id": 8,
+        "week": 4,
+        "day": 1,
+        "title": "Грудь и трицепс",
+        "description": "Жим и изоляция",
+        "exercises": [
+          {
+            "exercise_id": 27,
+            "sets": 4,
+            "reps": "10-15",
+            "rest_seconds": 120,
+            "notes": "Финиш"
+          },
+          {
+            "exercise_id": 28,
+            "sets": 4,
+            "reps": "15",
+            "rest_seconds": 60,
+            "notes": "Растяжение"
+          },
+          {
+            "exercise_id": 34,
+            "sets": 4,
+            "reps": "12-15",
+            "rest_seconds": 60,
+            "notes": "Локти вместе"
+          },
+          {
+            "exercise_id": 24,
+            "sets": 3,
+            "reps": "15",
+            "rest_seconds": 60,
+            "notes": "На скамье"
+          }
+        ]
+      },
+      {
+        "id": 814,
+        "program_id": 8,
+        "week": 4,
+        "day": 2,
+        "title": "Спина и бицепс",
+        "description": "Тяга и сгибания",
+        "exercises": [
+          {
+            "exercise_id": 29,
+            "sets": 4,
+            "reps": "10-15",
+            "rest_seconds": 120,
+            "notes": "Финиш"
+          },
+          {
+            "exercise_id": 30,
+            "sets": 4,
+            "reps": "12-15",
+            "rest_seconds": 60,
+            "notes": "Контроль"
+          },
+          {
+            "exercise_id": 59,
+            "sets": 3,
+            "reps": "10-12",
+            "rest_seconds": 90,
+            "notes": "Спина прямая"
+          },
+          {
+            "exercise_id": 33,
+            "sets": 3,
+            "reps": "15",
+            "rest_seconds": 60,
+            "notes": "Контроль"
+          }
+        ]
+      },
+      {
+        "id": 815,
+        "program_id": 8,
+        "week": 4,
+        "day": 3,
+        "title": "Ноги",
+        "description": "Мощные ноги",
+        "exercises": [
+          {
+            "exercise_id": 35,
+            "sets": 4,
+            "reps": "10-15",
+            "rest_seconds": 120,
+            "notes": "Финиш"
+          },
+          {
+            "exercise_id": 37,
+            "sets": 4,
+            "reps": "12-15",
+            "rest_seconds": 90,
+            "notes": "Спина прямая"
+          },
+          {
+            "exercise_id": 38,
+            "sets": 3,
+            "reps": "15",
+            "rest_seconds": 60,
+            "notes": "Контроль"
+          },
+          {
+            "exercise_id": 39,
+            "sets": 3,
+            "reps": "15",
+            "rest_seconds": 60,
+            "notes": "Контроль"
+          }
+        ]
+      },
+      {
+        "id": 816,
+        "program_id": 8,
+        "week": 4,
+        "day": 4,
+        "title": "Плечи и пресс",
+        "description": "Объём и кор",
+        "exercises": [
+          {
+            "exercise_id": 31,
+            "sets": 4,
+            "reps": "10-15",
+            "rest_seconds": 90,
+            "notes": "Финиш"
+          },
+          {
+            "exercise_id": 32,
+            "sets": 4,
+            "reps": "15",
+            "rest_seconds": 60,
+            "notes": "Локти согнуты"
+          },
+          {
+            "exercise_id": 41,
+            "sets": 3,
+            "reps": "20",
+            "rest_seconds": 45,
+            "notes": "Медленно"
+          },
+          {
+            "exercise_id": 42,
+            "sets": 3,
+            "reps": "12",
+            "rest_seconds": 45,
+            "notes": "Стабильно"
+          }
+        ]
+      }
     ]
   },
   {
-    "id": 9, "name": "Зал-фитнес", "location": "gym", "type": "cardio", "goal": "lose", "duration_weeks": 4, "description": "Кардио-программа в тренажёрном зале. Эллипсоид, бег, вело, гребля.", "difficulty": "beginner",
+    "id": 9,
+    "name": "Зал-фитнес",
+    "location": "gym",
+    "type": "cardio",
+    "goal": "lose",
+    "duration_weeks": 4,
+    "description": "Кардио-программа в тренажёрном зале. Эллипсоид, бег, вело, гребля.",
+    "difficulty": "beginner",
     "days": [
-      {"id":901,"program_id":9,"week":1,"day":1,"title":"Эллипсоид","description":"Низкая нагрузка","exercises":[{"exercise_id":43,"sets":1,"reps":"20 мин","rest_seconds":0,"notes":"Умеренный темп"},{"exercise_id":41,"sets":2,"reps":"15","rest_seconds":45,"notes":"В конце"},{"exercise_id":48,"sets":1,"reps":"5 мин","rest_seconds":0,"notes":"Растяжка"}]},
-      {"id":902,"program_id":9,"week":1,"day":2,"title":"Беговая дорожка","description":"Интервалы","exercises":[{"exercise_id":44,"sets":1,"reps":"5 мин","rest_seconds":0,"notes":"Разминка"},{"exercise_id":44,"sets":1,"reps":"15 мин","rest_seconds":0,"notes":"Интервалы: 2 мин бег / 1 мин ходьба"},{"exercise_id":48,"sets":1,"reps":"5 мин","rest_seconds":0,"notes":"Растяжка"}]},
-      {"id":903,"program_id":9,"week":1,"day":3,"title":"Вело + гребля","description":"Круговая","exercises":[{"exercise_id":45,"sets":1,"reps":"10 мин","rest_seconds":0,"notes":"Разминка"},{"exercise_id":46,"sets":1,"reps":"10 мин","rest_seconds":0,"notes":"Средний темп"},{"exercise_id":45,"sets":1,"reps":"10 мин","rest_seconds":0,"notes":"Интенсивно"},{"exercise_id":48,"sets":1,"reps":"5 мин","rest_seconds":0,"notes":"Растяжка"}]},
-      {"id":904,"program_id":9,"week":2,"day":1,"title":"Эллипсоид","description":"Низкая нагрузка","exercises":[{"exercise_id":43,"sets":1,"reps":"25 мин","rest_seconds":0,"notes":"Умеренный темп"},{"exercise_id":41,"sets":2,"reps":"20","rest_seconds":45,"notes":"В конце"},{"exercise_id":48,"sets":1,"reps":"5 мин","rest_seconds":0,"notes":"Растяжка"}]},
-      {"id":905,"program_id":9,"week":2,"day":2,"title":"Беговая дорожка","description":"Интервалы","exercises":[{"exercise_id":44,"sets":1,"reps":"5 мин","rest_seconds":0,"notes":"Разминка"},{"exercise_id":44,"sets":1,"reps":"20 мин","rest_seconds":0,"notes":"Интервалы: 2 мин бег / 1 мин ходьба"},{"exercise_id":48,"sets":1,"reps":"5 мин","rest_seconds":0,"notes":"Растяжка"}]},
-      {"id":906,"program_id":9,"week":2,"day":3,"title":"Вело + гребля","description":"Круговая","exercises":[{"exercise_id":45,"sets":1,"reps":"10 мин","rest_seconds":0,"notes":"Разминка"},{"exercise_id":46,"sets":1,"reps":"15 мин","rest_seconds":0,"notes":"Средний темп"},{"exercise_id":45,"sets":1,"reps":"10 мин","rest_seconds":0,"notes":"Интенсивно"},{"exercise_id":48,"sets":1,"reps":"5 мин","rest_seconds":0,"notes":"Растяжка"}]},
-      {"id":907,"program_id":9,"week":3,"day":1,"title":"Эллипсоид","description":"Низкая нагрузка","exercises":[{"exercise_id":43,"sets":1,"reps":"30 мин","rest_seconds":0,"notes":"Умеренный темп"},{"exercise_id":41,"sets":3,"reps":"20","rest_seconds":45,"notes":"В конце"},{"exercise_id":48,"sets":1,"reps":"5 мин","rest_seconds":0,"notes":"Растяжка"}]},
-      {"id":908,"program_id":9,"week":3,"day":2,"title":"Беговая дорожка","description":"Интервалы","exercises":[{"exercise_id":44,"sets":1,"reps":"5 мин","rest_seconds":0,"notes":"Разминка"},{"exercise_id":44,"sets":1,"reps":"25 мин","rest_seconds":0,"notes":"Интервалы: 2 мин бег / 1 мин ходьба"},{"exercise_id":48,"sets":1,"reps":"5 мин","rest_seconds":0,"notes":"Растяжка"}]},
-      {"id":909,"program_id":9,"week":3,"day":3,"title":"Вело + гребля","description":"Круговая","exercises":[{"exercise_id":45,"sets":1,"reps":"10 мин","rest_seconds":0,"notes":"Разминка"},{"exercise_id":46,"sets":1,"reps":"15 мин","rest_seconds":0,"notes":"Средний темп"},{"exercise_id":45,"sets":1,"reps":"15 мин","rest_seconds":0,"notes":"Интенсивно"},{"exercise_id":48,"sets":1,"reps":"5 мин","rest_seconds":0,"notes":"Растяжка"}]},
-      {"id":910,"program_id":9,"week":4,"day":1,"title":"Эллипсоид","description":"Низкая нагрузка","exercises":[{"exercise_id":43,"sets":1,"reps":"30 мин","rest_seconds":0,"notes":"Хороший темп"},{"exercise_id":41,"sets":3,"reps":"25","rest_seconds":45,"notes":"В конце"},{"exercise_id":48,"sets":1,"reps":"5 мин","rest_seconds":0,"notes":"Растяжка"}]},
-      {"id":911,"program_id":9,"week":4,"day":2,"title":"Беговая дорожка","description":"Интервалы","exercises":[{"exercise_id":44,"sets":1,"reps":"5 мин","rest_seconds":0,"notes":"Разминка"},{"exercise_id":44,"sets":1,"reps":"30 мин","rest_seconds":0,"notes":"Интервалы: 2 мин бег / 1 мин ходьба"},{"exercise_id":48,"sets":1,"reps":"5 мин","rest_seconds":0,"notes":"Растяжка"}]},
-      {"id":912,"program_id":9,"week":4,"day":3,"title":"Вело + гребля","description":"Круговая","exercises":[{"exercise_id":45,"sets":1,"reps":"10 мин","rest_seconds":0,"notes":"Разминка"},{"exercise_id":46,"sets":1,"reps":"20 мин","rest_seconds":0,"notes":"Средний темп"},{"exercise_id":45,"sets":1,"reps":"15 мин","rest_seconds":0,"notes":"Интенсивно"},{"exercise_id":48,"sets":1,"reps":"5 мин","rest_seconds":0,"notes":"Растяжка"}]}
+      {
+        "id": 901,
+        "program_id": 9,
+        "week": 1,
+        "day": 1,
+        "title": "Эллипсоид",
+        "description": "Низкая нагрузка",
+        "exercises": [
+          {
+            "exercise_id": 43,
+            "sets": 1,
+            "reps": "20 мин",
+            "rest_seconds": 0,
+            "notes": "Умеренный темп"
+          },
+          {
+            "exercise_id": 41,
+            "sets": 2,
+            "reps": "15",
+            "rest_seconds": 45,
+            "notes": "В конце"
+          },
+          {
+            "exercise_id": 48,
+            "sets": 1,
+            "reps": "5 мин",
+            "rest_seconds": 0,
+            "notes": "Растяжка"
+          }
+        ]
+      },
+      {
+        "id": 902,
+        "program_id": 9,
+        "week": 1,
+        "day": 2,
+        "title": "Беговая дорожка",
+        "description": "Интервалы",
+        "exercises": [
+          {
+            "exercise_id": 44,
+            "sets": 1,
+            "reps": "5 мин",
+            "rest_seconds": 0,
+            "notes": "Разминка"
+          },
+          {
+            "exercise_id": 44,
+            "sets": 1,
+            "reps": "15 мин",
+            "rest_seconds": 0,
+            "notes": "Интервалы: 2 мин бег / 1 мин ходьба"
+          },
+          {
+            "exercise_id": 48,
+            "sets": 1,
+            "reps": "5 мин",
+            "rest_seconds": 0,
+            "notes": "Растяжка"
+          }
+        ]
+      },
+      {
+        "id": 903,
+        "program_id": 9,
+        "week": 1,
+        "day": 3,
+        "title": "Вело + гребля",
+        "description": "Круговая",
+        "exercises": [
+          {
+            "exercise_id": 45,
+            "sets": 1,
+            "reps": "10 мин",
+            "rest_seconds": 0,
+            "notes": "Разминка"
+          },
+          {
+            "exercise_id": 46,
+            "sets": 1,
+            "reps": "10 мин",
+            "rest_seconds": 0,
+            "notes": "Средний темп"
+          },
+          {
+            "exercise_id": 45,
+            "sets": 1,
+            "reps": "10 мин",
+            "rest_seconds": 0,
+            "notes": "Интенсивно"
+          },
+          {
+            "exercise_id": 48,
+            "sets": 1,
+            "reps": "5 мин",
+            "rest_seconds": 0,
+            "notes": "Растяжка"
+          }
+        ]
+      },
+      {
+        "id": 904,
+        "program_id": 9,
+        "week": 2,
+        "day": 1,
+        "title": "Эллипсоид",
+        "description": "Низкая нагрузка",
+        "exercises": [
+          {
+            "exercise_id": 43,
+            "sets": 1,
+            "reps": "25 мин",
+            "rest_seconds": 0,
+            "notes": "Умеренный темп"
+          },
+          {
+            "exercise_id": 41,
+            "sets": 2,
+            "reps": "20",
+            "rest_seconds": 45,
+            "notes": "В конце"
+          },
+          {
+            "exercise_id": 48,
+            "sets": 1,
+            "reps": "5 мин",
+            "rest_seconds": 0,
+            "notes": "Растяжка"
+          }
+        ]
+      },
+      {
+        "id": 905,
+        "program_id": 9,
+        "week": 2,
+        "day": 2,
+        "title": "Беговая дорожка",
+        "description": "Интервалы",
+        "exercises": [
+          {
+            "exercise_id": 44,
+            "sets": 1,
+            "reps": "5 мин",
+            "rest_seconds": 0,
+            "notes": "Разминка"
+          },
+          {
+            "exercise_id": 44,
+            "sets": 1,
+            "reps": "20 мин",
+            "rest_seconds": 0,
+            "notes": "Интервалы: 2 мин бег / 1 мин ходьба"
+          },
+          {
+            "exercise_id": 48,
+            "sets": 1,
+            "reps": "5 мин",
+            "rest_seconds": 0,
+            "notes": "Растяжка"
+          }
+        ]
+      },
+      {
+        "id": 906,
+        "program_id": 9,
+        "week": 2,
+        "day": 3,
+        "title": "Вело + гребля",
+        "description": "Круговая",
+        "exercises": [
+          {
+            "exercise_id": 45,
+            "sets": 1,
+            "reps": "10 мин",
+            "rest_seconds": 0,
+            "notes": "Разминка"
+          },
+          {
+            "exercise_id": 46,
+            "sets": 1,
+            "reps": "15 мин",
+            "rest_seconds": 0,
+            "notes": "Средний темп"
+          },
+          {
+            "exercise_id": 45,
+            "sets": 1,
+            "reps": "10 мин",
+            "rest_seconds": 0,
+            "notes": "Интенсивно"
+          },
+          {
+            "exercise_id": 48,
+            "sets": 1,
+            "reps": "5 мин",
+            "rest_seconds": 0,
+            "notes": "Растяжка"
+          }
+        ]
+      },
+      {
+        "id": 907,
+        "program_id": 9,
+        "week": 3,
+        "day": 1,
+        "title": "Эллипсоид",
+        "description": "Низкая нагрузка",
+        "exercises": [
+          {
+            "exercise_id": 43,
+            "sets": 1,
+            "reps": "30 мин",
+            "rest_seconds": 0,
+            "notes": "Умеренный темп"
+          },
+          {
+            "exercise_id": 41,
+            "sets": 3,
+            "reps": "20",
+            "rest_seconds": 45,
+            "notes": "В конце"
+          },
+          {
+            "exercise_id": 48,
+            "sets": 1,
+            "reps": "5 мин",
+            "rest_seconds": 0,
+            "notes": "Растяжка"
+          }
+        ]
+      },
+      {
+        "id": 908,
+        "program_id": 9,
+        "week": 3,
+        "day": 2,
+        "title": "Беговая дорожка",
+        "description": "Интервалы",
+        "exercises": [
+          {
+            "exercise_id": 44,
+            "sets": 1,
+            "reps": "5 мин",
+            "rest_seconds": 0,
+            "notes": "Разминка"
+          },
+          {
+            "exercise_id": 44,
+            "sets": 1,
+            "reps": "25 мин",
+            "rest_seconds": 0,
+            "notes": "Интервалы: 2 мин бег / 1 мин ходьба"
+          },
+          {
+            "exercise_id": 48,
+            "sets": 1,
+            "reps": "5 мин",
+            "rest_seconds": 0,
+            "notes": "Растяжка"
+          }
+        ]
+      },
+      {
+        "id": 909,
+        "program_id": 9,
+        "week": 3,
+        "day": 3,
+        "title": "Вело + гребля",
+        "description": "Круговая",
+        "exercises": [
+          {
+            "exercise_id": 45,
+            "sets": 1,
+            "reps": "10 мин",
+            "rest_seconds": 0,
+            "notes": "Разминка"
+          },
+          {
+            "exercise_id": 46,
+            "sets": 1,
+            "reps": "15 мин",
+            "rest_seconds": 0,
+            "notes": "Средний темп"
+          },
+          {
+            "exercise_id": 45,
+            "sets": 1,
+            "reps": "15 мин",
+            "rest_seconds": 0,
+            "notes": "Интенсивно"
+          },
+          {
+            "exercise_id": 48,
+            "sets": 1,
+            "reps": "5 мин",
+            "rest_seconds": 0,
+            "notes": "Растяжка"
+          }
+        ]
+      },
+      {
+        "id": 910,
+        "program_id": 9,
+        "week": 4,
+        "day": 1,
+        "title": "Эллипсоид",
+        "description": "Низкая нагрузка",
+        "exercises": [
+          {
+            "exercise_id": 43,
+            "sets": 1,
+            "reps": "30 мин",
+            "rest_seconds": 0,
+            "notes": "Хороший темп"
+          },
+          {
+            "exercise_id": 41,
+            "sets": 3,
+            "reps": "25",
+            "rest_seconds": 45,
+            "notes": "В конце"
+          },
+          {
+            "exercise_id": 48,
+            "sets": 1,
+            "reps": "5 мин",
+            "rest_seconds": 0,
+            "notes": "Растяжка"
+          }
+        ]
+      },
+      {
+        "id": 911,
+        "program_id": 9,
+        "week": 4,
+        "day": 2,
+        "title": "Беговая дорожка",
+        "description": "Интервалы",
+        "exercises": [
+          {
+            "exercise_id": 44,
+            "sets": 1,
+            "reps": "5 мин",
+            "rest_seconds": 0,
+            "notes": "Разминка"
+          },
+          {
+            "exercise_id": 44,
+            "sets": 1,
+            "reps": "30 мин",
+            "rest_seconds": 0,
+            "notes": "Интервалы: 2 мин бег / 1 мин ходьба"
+          },
+          {
+            "exercise_id": 48,
+            "sets": 1,
+            "reps": "5 мин",
+            "rest_seconds": 0,
+            "notes": "Растяжка"
+          }
+        ]
+      },
+      {
+        "id": 912,
+        "program_id": 9,
+        "week": 4,
+        "day": 3,
+        "title": "Вело + гребля",
+        "description": "Круговая",
+        "exercises": [
+          {
+            "exercise_id": 45,
+            "sets": 1,
+            "reps": "10 мин",
+            "rest_seconds": 0,
+            "notes": "Разминка"
+          },
+          {
+            "exercise_id": 46,
+            "sets": 1,
+            "reps": "20 мин",
+            "rest_seconds": 0,
+            "notes": "Средний темп"
+          },
+          {
+            "exercise_id": 45,
+            "sets": 1,
+            "reps": "15 мин",
+            "rest_seconds": 0,
+            "notes": "Интенсивно"
+          },
+          {
+            "exercise_id": 48,
+            "sets": 1,
+            "reps": "5 мин",
+            "rest_seconds": 0,
+            "notes": "Растяжка"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": 99,
+    "name": "HIIT Старт",
+    "location": "any",
+    "type": "hiit",
+    "goal": "lose",
+    "duration_weeks": 4,
+    "description": "Интервальные тренировки для жиросжигания. Без инвентаря.",
+    "difficulty": "beginner",
+    "days": [
+      {
+        "id": 901,
+        "week": 1,
+        "day": 1,
+        "title": "HIIT База",
+        "description": "20 сек работы / 10 сек отдыха, 8 раундов",
+        "exercises": [
+          {
+            "exercise_id": 204,
+            "sets": 4,
+            "reps": "45 сек",
+            "rest_seconds": 15,
+            "notes": ""
+          },
+          {
+            "exercise_id": 202,
+            "sets": 4,
+            "reps": "45 сек",
+            "rest_seconds": 15,
+            "notes": ""
+          }
+        ]
+      },
+      {
+        "id": 902,
+        "week": 1,
+        "day": 2,
+        "title": "Кардио-взрыв",
+        "description": "30 сек работы / 30 сек отдыха",
+        "exercises": [
+          {
+            "exercise_id": 205,
+            "sets": 4,
+            "reps": "30 сек",
+            "rest_seconds": 30,
+            "notes": ""
+          },
+          {
+            "exercise_id": 203,
+            "sets": 4,
+            "reps": "40 сек",
+            "rest_seconds": 20,
+            "notes": ""
+          }
+        ]
+      },
+      {
+        "id": 903,
+        "week": 2,
+        "day": 1,
+        "title": "Мощь",
+        "description": "Берпи и альпинисты",
+        "exercises": [
+          {
+            "exercise_id": 201,
+            "sets": 4,
+            "reps": "30 сек",
+            "rest_seconds": 30,
+            "notes": ""
+          },
+          {
+            "exercise_id": 203,
+            "sets": 4,
+            "reps": "40 сек",
+            "rest_seconds": 20,
+            "notes": ""
+          }
+        ]
+      }
     ]
   }
 ]

@@ -74,7 +74,6 @@ app.post('/api/dashboard', (req, res) => {
 
         const today = new Date().toISOString().split('T')[0];
         
-        // Get food today
         db.all(`SELECT r.* FROM food_logs fl JOIN recipes r ON fl.recipe_id = r.id 
             WHERE fl.tg_id = ? AND date(fl.timestamp) = ?`, [tg_id, today], (err, meals) => {
             
@@ -86,15 +85,12 @@ app.post('/api/dashboard', (req, res) => {
                 consumption.carbs += m.carbs;
             });
 
-            // Get water today
             db.get("SELECT amount_ml FROM water_logs WHERE tg_id = ? AND date = ?", [tg_id, today], (err, water) => {
                 const waterAmount = water ? water.amount_ml : 0;
 
-                // Get workout today
                 db.get("SELECT COUNT(*) as count FROM workout_logs WHERE tg_id = ? AND date = ?", [tg_id, today], (err, workout) => {
                     const hasWorkout = workout && workout.count > 0;
 
-                    // Get active program
                     db.get(`SELECT p.*, up.current_week, up.current_day, up.start_date 
                         FROM user_programs up JOIN programs p ON up.program_id = p.id 
                         WHERE up.tg_id = ? AND up.active = 1`, [tg_id], (err, program) => {
@@ -131,7 +127,19 @@ app.post('/api/meal', (req, res) => {
     db.get("SELECT * FROM recipes WHERE category = ? ORDER BY RANDOM() LIMIT 1", [category], (err, row) => {
         if (err) return res.status(500).json({ error: err.message });
         if (!row) return res.status(404).json({ error: 'Recipe not found' });
+        if (row.ingredients) try { row.ingredients = JSON.parse(row.ingredients); } catch(e){}
+        if (row.recipe_steps) try { row.recipe_steps = JSON.parse(row.recipe_steps); } catch(e){}
         res.json({ recipe: row });
+    });
+});
+
+app.get('/api/recipe/:id', (req, res) => {
+    db.get("SELECT * FROM recipes WHERE id = ?", [req.params.id], (err, row) => {
+        if (err) return res.status(500).json({ error: err.message });
+        if (!row) return res.status(404).json({ error: 'Not found' });
+        if (row.ingredients) try { row.ingredients = JSON.parse(row.ingredients); } catch(e){}
+        if (row.recipe_steps) try { row.recipe_steps = JSON.parse(row.recipe_steps); } catch(e){}
+        res.json(row);
     });
 });
 
@@ -144,11 +152,20 @@ app.post('/api/log-meal', (req, res) => {
     });
 });
 
+app.delete('/api/food-log/:id', (req, res) => {
+    const tg_id = req.query.tg_id;
+    if (!tg_id) return res.status(400).json({ error: 'Missing tg_id' });
+    db.run("DELETE FROM food_logs WHERE id = ? AND tg_id = ?", [req.params.id, tg_id], function(err) {
+        if (err) return res.status(500).json({ error: err.message });
+        res.json({ status: 'ok', deleted: this.changes });
+    });
+});
+
 app.get('/api/food-log/today/:tgId', (req, res) => {
     const tgId = req.params.tgId;
     const today = new Date().toISOString().split('T')[0];
     db.all(`
-        SELECT r.*, fl.timestamp 
+        SELECT fl.id as log_id, r.*, fl.timestamp 
         FROM food_logs fl
         JOIN recipes r ON fl.recipe_id = r.id
         WHERE fl.tg_id = ? AND date(fl.timestamp) = ?

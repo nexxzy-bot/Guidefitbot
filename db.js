@@ -33,7 +33,10 @@ db.serialize(() => {
     fat INTEGER,
     carbs INTEGER,
     description TEXT,
-    benefits TEXT
+    benefits TEXT,
+    ingredients TEXT,
+    recipe_steps TEXT,
+    image_url TEXT
   )`);
 
   db.run(`CREATE TABLE IF NOT EXISTS exercises (
@@ -146,11 +149,12 @@ db.serialize(() => {
   if (fs.existsSync('./recipes.json')) {
     const recipes = JSON.parse(fs.readFileSync('./recipes.json', 'utf8'));
     const stmt = db.prepare(`INSERT OR IGNORE INTO recipes 
-      (id, title, category, calories, protein, fat, carbs, description, benefits) 
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`);
+      (id, title, category, calories, protein, fat, carbs, description, benefits, ingredients, recipe_steps, image_url) 
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`);
     recipes.forEach(r => {
       stmt.run(r.id, r.title, r.category, r.calories, r.protein, 
-        r.fat, r.carbs, r.description || '', r.benefits || '');
+        r.fat, r.carbs, r.description || '', r.benefits || '', 
+        JSON.stringify(r.ingredients || []), JSON.stringify(r.recipe_steps || []), r.image_url || '');
     });
     stmt.finalize();
   }

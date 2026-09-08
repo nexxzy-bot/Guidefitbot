@@ -397,7 +397,7 @@ h3 { font-family:'Space Grotesk',sans-serif; font-size:18px; font-weight:700; }
     <div class="glass">
       <div class="flex items-center gap2 mb2">
         <div style="width:36px; height:36px; border-radius:10px; background: linear-gradient(135deg, #E0F2FE, #F0F9FF); display:flex; align-items:center; justify-content:center; box-shadow: 0 2px 8px var(--primary-glow);">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="2.5"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-15 0c0-1.1.5-2.5 1.5-3.5.5.5 2 2.5 2.5 3.5z"/></svg>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="2.5"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
         </div>
         <span class="subtle" style="font-size: 12px; font-weight: 700;">Калории</span>
       </div>
@@ -440,7 +440,7 @@ h3 { font-family:'Space Grotesk',sans-serif; font-size:18px; font-weight:700; }
       </div>
       <span class="badge badge-green" id="dashNextMealBadge" style="box-shadow: 0 2px 8px rgba(16,185,129,0.15);">Завтрак</span>
     </div>
-    <button class="btn btn-secondary btn-block" onclick="navigate('nutrition')" style="min-height: 48px; font-size: 14px; border-width: 2px;">
+    <button class="btn btn-secondary btn-block" onclick="getMeal()" style="min-height: 48px; font-size: 14px; border-width: 2px;">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
       Получить рецепт
     </button>
@@ -696,7 +696,7 @@ async function getMeal(){
 function loadWorkouts(){
   const c=$('workoutContent');
   if(!selectedLocation){
-    c.innerHTML='<div class="flex items-center gap2 mb4"><button class="btn btn-ghost" onclick="navigate(\'home\')"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg></button><h3>Где тренируемся?</h3></div><div class="grid2">'+
+    c.innerHTML='<h3 class="mb4">Где тренируемся?</h3><div class="grid2">'+
       makeLoc('home','Дома','Без инвентаря','<path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/>')+
       makeLoc('outdoor','На улице','Площадка / парк','<path d="M17 18a5 5 0 0 0-10 0"/><line x1="12" y1="9" x2="12" y2="2"/><line x1="4.22" y1="10.22" x2="5.64" y2="11.64"/><line x1="1" y1="18" x2="3" y2="18"/><line x1="21" y1="18" x2="23" y2="18"/><line x1="18.36" y1="11.64" x2="19.78" y2="10.22"/><line x1="23" y1="22" x2="1" y2="22"/><polyline points="16 5 12 9 8 5"/>')+
       makeLoc('gym','В зале','Тренажёры / гантели','<path d="M6.5 6.5h11"/><path d="M6.5 17.5h11"/><path d="M6 20v-6a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v6"/><path d="M6 10V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v6"/>')+
@@ -705,10 +705,9 @@ function loadWorkouts(){
   }
   if(!selectedType){
     c.innerHTML='<div class="flex items-center gap2 mb4"><button class="btn btn-ghost" onclick="selectedLocation=null;loadWorkouts()"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m15 18-6-6 6-6"/></svg></button><h3>Выбери тип</h3></div><div class="grid2">'+
-      makeType('strength','Силовые','Мышцы и сила','<path d="M6.5 6.5h11"/><path d="M6.5 17.5h11"/><path d="M6 20v-6a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v6"/><path d="M6 10V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v6"/>')+
-      makeType('cardio','Кардио','Выносливость','<path d="M22 12h-4l-3 9L9 3l-3 9H2"/>')+
-      makeType('calisthenics','Калистеника','Свой вес / гибкость','<path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0L12 2.69z"/><path d="M12 22v-8"/>')+
-      makeType('hiit','HIIT','Интервалы / жиросжигание','<path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>')+
+      makeLoc('strength','Силовые','Мышцы и сила','<path d="M6.5 6.5h11"/><path d="M6.5 17.5h11"/><path d="M6 20v-6a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v6"/><path d="M6 10V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v6"/>')+
+      makeLoc('cardio','Кардио','Выносливость','<path d="M22 12h-4l-3 9L9 3l-3 9H2"/>')+
+      makeLoc('calisthenics','Калистеника','Растяжка / гибкость','<path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0L12 2.69z"/><path d="M12 22v-8"/>')+
     '</div>'; return;
   }
   showWorkoutList();
@@ -716,9 +715,6 @@ function loadWorkouts(){
 
 function makeLoc(id,name,desc,path){
   return '<div class="loc-card" onclick="selectLoc(\''+id+'\')"><svg viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">'+path+'</svg><span style="font-weight:800; font-size:15px;">'+name+'</span><span class="subtle" style="font-size:12px;">'+desc+'</span></div>';
-}
-function makeType(id,name,desc,path){
-  return '<div class="loc-card" onclick="selectType(\''+id+'\')"><svg viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">'+path+'</svg><span style="font-weight:800; font-size:15px;">'+name+'</span><span class="subtle" style="font-size:12px;">'+desc+'</span></div>';
 }
 function selectLoc(loc){ selectedLocation=loc; loadWorkouts(); }
 function selectType(type){ selectedType=type; loadWorkouts(); }
@@ -793,27 +789,14 @@ function renderActiveWorkout(){
 function startTimer(){ if(workoutTimer) clearInterval(workoutTimer); workoutTimer=setInterval(()=>{ workoutSeconds++; const m=String(Math.floor(workoutSeconds/60)).padStart(2,'0'), s=String(workoutSeconds%60).padStart(2,'0'); const el=$('workoutTimer'); if(el) el.textContent=m+':'+s; },1000); }
 function toggleTimer(){ const btn=$('timerBtn'); if(workoutTimer){ clearInterval(workoutTimer); workoutTimer=null; btn.innerHTML='<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="5 3 19 12 5 21 5 3"/></svg> Продолжить'; }else{ startTimer(); btn.innerHTML='<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg> Пауза'; } }
 function finishWorkout(){ if(workoutTimer) clearInterval(workoutTimer); workoutTimer=null; showSuccess('Тренировка завершена! 🔥 '+Math.floor(workoutSeconds/60)+' мин'); navigate('workouts'); }
-let currentMealRecipe = null;
-let currentMealCategory = 'breakfast';
-
-function plural(n, one, few, many){
-  if(n%10===1 && n%100!==11) return one;
-  if([2,3,4].includes(n%10) && ![12,13,14].includes(n%100)) return few;
-  return many;
-}
-
 async function loadNutrition(){
   const c=$('nutritionContent'); const tgId=currentUser?.tg_id; if(!tgId) return;
-  c.innerHTML='<div class="grid2 mb4"><div class="glass text-center" onclick="addWater()" style="cursor:pointer; position:relative; overflow:hidden;"><div style="position:absolute; top:-30px; right:-30px; width:100px; height:100px; background:radial-gradient(circle, rgba(56,189,248,0.15), transparent 70%);"></div><div style="width:44px; height:44px; border-radius:12px; background:linear-gradient(135deg,#E0F2FE,#F0F9FF); display:flex; align-items:center; justify-content:center; margin:0 auto 8px; box-shadow:0 2px 8px rgba(56,189,248,0.2);"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--water)" stroke-width="2.5"><path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0L12 2.69z"/></svg></div><div style="font-size:20px; font-weight:800;" id="nutWater">0 мл</div><p class="subtle" style="font-size:11px; font-weight:600;">Вода сегодня</p></div><div class="glass text-center" style="position:relative; overflow:hidden;"><div style="position:absolute; top:-30px; right:-30px; width:100px; height:100px; background:radial-gradient(circle, rgba(16,185,129,0.12), transparent 70%);"></div><div style="width:44px; height:44px; border-radius:12px; background:linear-gradient(135deg,#D1FAE5,#A7F3D0); display:flex; align-items:center; justify-content:center; margin:0 auto 8px; box-shadow:0 2px 8px rgba(16,185,129,0.15);"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--success)" stroke-width="2.5"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-15 0c0-1.1.5-2.5 1.5-3.5.5.5 2 2.5 2.5 3.5z"/></svg></div><div style="font-size:20px; font-weight:800;" id="nutCals">0</div><p class="subtle" style="font-size:11px; font-weight:600;">Калории</p></div></div>'+
-  '<div class="glass mb4" style="position:relative; overflow:hidden;"><div style="position:absolute; top:-40px; right:-40px; width:140px; height:140px; background:radial-gradient(circle, rgba(14,165,233,0.12), transparent 70%);"></div><h3 class="mb3" style="position:relative; z-index:1;">БЖУ сегодня</h3><div class="mb3"><div class="flex between items-center mb1"><span class="subtle" style="font-size:11px; font-weight:700;">Белки</span><span class="subtle" style="font-size:11px; font-weight:700;" id="nutProtein">0 / 150г</span></div><div class="progress-track"><div class="progress-fill fill-primary" id="nutProteinBar" style="width:0%"></div></div></div>'+
+  c.innerHTML='<div class="grid2 mb4"><div class="glass text-center" onclick="addWater()" style="cursor:pointer;"><div style="width:44px; height:44px; border-radius:12px; background:linear-gradient(135deg,#E0F2FE,#F0F9FF); display:flex; align-items:center; justify-content:center; margin:0 auto 8px; box-shadow:0 2px 8px rgba(56,189,248,0.2);"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--water)" stroke-width="2.5"><path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0L12 2.69z"/></svg></div><div style="font-size:20px; font-weight:800;" id="nutWater">0 мл</div><p class="subtle" style="font-size:11px; font-weight:600;">Вода сегодня</p></div><div class="glass text-center"><div style="width:44px; height:44px; border-radius:12px; background:linear-gradient(135deg,#D1FAE5,#A7F3D0); display:flex; align-items:center; justify-content:center; margin:0 auto 8px; box-shadow:0 2px 8px rgba(16,185,129,0.15);"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--success)" stroke-width="2.5"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></div><div style="font-size:20px; font-weight:800;" id="nutCals">0</div><p class="subtle" style="font-size:11px; font-weight:600;">Калории</p></div></div>'+
+  '<div class="glass mb4"><h3 class="mb3">БЖУ сегодня</h3><div class="mb3"><div class="flex between items-center mb1"><span class="subtle" style="font-size:11px; font-weight:700;">Белки</span><span class="subtle" style="font-size:11px; font-weight:700;" id="nutProtein">0 / 150г</span></div><div class="progress-track"><div class="progress-fill fill-primary" id="nutProteinBar" style="width:0%"></div></div></div>'+
   '<div class="mb3"><div class="flex between items-center mb1"><span class="subtle" style="font-size:11px; font-weight:700;">Жиры</span><span class="subtle" style="font-size:11px; font-weight:700;" id="nutFat">0 / 70г</span></div><div class="progress-track"><div class="progress-fill fill-accent" id="nutFatBar" style="width:0%"></div></div></div>'+
   '<div><div class="flex between items-center mb1"><span class="subtle" style="font-size:11px; font-weight:700;">Углеводы</span><span class="subtle" style="font-size:11px; font-weight:700;" id="nutCarbs">0 / 250г</span></div><div class="progress-track"><div class="progress-fill fill-success" id="nutCarbsBar" style="width:0%"></div></div></div></div>'+
-  '<h3 class="mb3">Выбери приём пищи</h3><div class="grid2 mb4">'+
-  '<div class="loc-card" onclick="openMealSelector(\'breakfast\')"><span style="font-size:24px;">🌅</span><span style="font-weight:800; font-size:15px;">Завтрак</span><span class="subtle" style="font-size:12px;">Утренняя энергия</span></div>'+
-  '<div class="loc-card" onclick="openMealSelector(\'lunch\')"><span style="font-size:24px;">🍽️</span><span style="font-weight:800; font-size:15px;">Обед</span><span class="subtle" style="font-size:12px;">Основной приём</span></div>'+
-  '<div class="loc-card" onclick="openMealSelector(\'snack\')"><span style="font-size:24px;">🍎</span><span style="font-weight:800; font-size:15px;">Перекус</span><span class="subtle" style="font-size:12px;">Лёгкий перекус</span></div>'+
-  '<div class="loc-card" onclick="openMealSelector(\'dinner\')"><span style="font-size:24px;">🌙</span><span style="font-weight:800; font-size:15px;">Ужин</span><span class="subtle" style="font-size:12px;">Вечерний приём</span></div>'+
-  '</div><h3 class="mb3">Приёмы пищи сегодня</h3><div id="mealsList"></div>';
+  '<h3 class="mb3">Приёмы пищи</h3><div id="mealsList"></div>'+
+  '<button class="btn btn-primary btn-block mt4" onclick="getMealFull()" style="font-size:15px;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg> Добавить приём пищи</button>';
   try{
     const [dash,meals]=await Promise.all([api('/api/dashboard',{method:'POST',body:{tg_id:tgId}}),api('/api/food-log/today/'+tgId)]);
     $('nutWater').textContent=(dash.water||0)+' мл'; $('nutCals').textContent=dash.consumption?.calories||0;
@@ -825,66 +808,8 @@ async function loadNutrition(){
     $('nutCarbs').textContent=cb+' / '+cn+'г'; $('nutCarbsBar').style.width=Math.min((cb/cn)*100,100)+'%';
     const list=$('mealsList');
     if(!meals.meals?.length) list.innerHTML='<div class="empty"><p>Сегодня ещё ничего не записано</p></div>';
-    else list.innerHTML=meals.meals.map(m=>'<div class="glass mb2" style="position:relative; overflow:hidden;"><div style="position:absolute; top:-20px; right:-20px; width:80px; height:80px; background:radial-gradient(circle, rgba(14,165,233,0.1), transparent 70%);"></div><div class="flex between items-center" style="position:relative; z-index:1;"><h3 style="font-size:14px;">'+m.title+'</h3><span class="badge badge-blue">'+m.calories+' ккал</span></div><p class="muted" style="font-size:11px; margin-top:4px; position:relative; z-index:1;">Б'+m.protein+' Ж'+m.fat+' У'+m.carbs+'</p><button class="btn btn-ghost" style="min-height:32px; padding:4px 10px; font-size:12px; margin-top:6px; color:var(--error);" onclick="deleteMeal('+m.log_id+')">Удалить</button></div>').join('');
+    else list.innerHTML=meals.meals.map(m=>'<div class="glass mb2"><div class="flex between items-center"><h3 style="font-size:14px;">'+m.title+'</h3><span class="badge badge-blue">'+m.calories+' ккал</span></div><p class="muted" style="font-size:11px; margin-top:4px;">Б'+m.protein+' Ж'+m.fat+' У'+m.carbs+'</p></div>').join('');
   }catch(e){}
-}
-
-async function openMealSelector(category){
-  currentMealCategory = category;
-  const c=$('nutritionContent'); const tgId=currentUser?.tg_id;
-  const names={breakfast:'Завтрак',lunch:'Обед',snack:'Перекус',dinner:'Ужин'};
-  c.innerHTML='<div class="flex items-center gap2 mb4"><button class="btn btn-ghost" onclick="loadNutrition()"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m15 18-6-6 6-6"/></svg></button><h3>'+names[category]+'</h3></div><div id="mealCardArea"></div>';
-  await loadNextMeal();
-}
-
-async function loadNextMeal(){
-  const area=$('mealCardArea');
-  area.innerHTML='<div style="height:200px; background:linear-gradient(90deg,#f1f5f9 25%,#e2e8f0 50%,#f1f5f9 75%); background-size:200% 100%; animation:shimmer 1.5s infinite; border-radius:14px;"></div>';
-  try{
-    const d=await api('/api/meal',{method:'POST',body:{category:currentMealCategory}});
-    if(!d.recipe){ area.innerHTML='<div class="empty"><p>Нет рецептов</p></div>'; return; }
-    currentMealRecipe = d.recipe;
-    const r=d.recipe;
-    const ing=Array.isArray(r.ingredients)?r.ingredients:JSON.parse(r.ingredients||'[]');
-    area.innerHTML='<div class="glass mb4" style="position:relative; overflow:hidden;"><div style="position:absolute; top:-40px; right:-40px; width:140px; height:140px; background:radial-gradient(circle, rgba(14,165,233,0.12), transparent 70%);"></div>'+
-    '<div style="width:100%; height:180px; background:linear-gradient(135deg,#E0F2FE,#F0F9FF); border-radius:var(--radius); display:flex; align-items:center; justify-content:center; margin-bottom:16px; position:relative; z-index:1;"><span style="font-size:48px;">🥗</span></div>'+
-    '<h3 style="font-size:20px; margin-bottom:8px; position:relative; z-index:1;">'+r.title+'</h3>'+
-    '<p class="muted" style="font-size:13px; margin-bottom:16px; position:relative; z-index:1;">'+(r.benefits||r.description)+'</p>'+
-    '<div class="grid2 mb3" style="position:relative; z-index:1;"><div class="glass text-center" style="padding:12px;"><div style="font-size:18px; font-weight:800;">'+r.calories+'</div><p class="subtle" style="font-size:10px; font-weight:700;">Ккал</p></div><div class="glass text-center" style="padding:12px;"><div style="font-size:18px; font-weight:800;">'+r.protein+'г</div><p class="subtle" style="font-size:10px; font-weight:700;">Белки</p></div><div class="glass text-center" style="padding:12px;"><div style="font-size:18px; font-weight:800;">'+r.fat+'г</div><p class="subtle" style="font-size:10px; font-weight:700;">Жиры</p></div><div class="glass text-center" style="padding:12px;"><div style="font-size:18px; font-weight:800;">'+r.carbs+'г</div><p class="subtle" style="font-size:10px; font-weight:700;">Углеводы</p></div></div>'+
-    '<div class="mb3" style="position:relative; z-index:1;"><p class="subtle" style="font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.08em; margin-bottom:8px;">Ингредиенты</p><p class="muted" style="font-size:13px; line-height:1.6;">'+ing.join(' • ')+'</p></div>'+
-    '<div class="flex gap2" style="position:relative; z-index:1;"><button class="btn btn-ghost" style="flex:1;" onclick="loadNextMeal()">🔄 Другое блюдо</button><button class="btn btn-primary" style="flex:1;" onclick="showRecipeDetail()">👨‍🍳 Готовить</button></div></div>';
-  }catch(e){ area.innerHTML='<div class="empty"><p>Ошибка загрузки</p></div>'; }
-}
-
-async function showRecipeDetail(){
-  if(!currentMealRecipe) return;
-  const c=$('nutritionContent'); const r=currentMealRecipe;
-  const steps=Array.isArray(r.recipe_steps)?r.recipe_steps:JSON.parse(r.recipe_steps||'[]');
-  const names={breakfast:'Завтрак',lunch:'Обед',snack:'Перекус',dinner:'Ужин'};
-  c.innerHTML='<div class="flex items-center gap2 mb4"><button class="btn btn-ghost" onclick="openMealSelector(currentMealCategory)"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m15 18-6-6 6-6"/></svg></button><h3>Рецепт</h3></div>'+
-  '<div class="glass mb4" style="position:relative; overflow:hidden;"><div style="position:absolute; top:-40px; right:-40px; width:140px; height:140px; background:radial-gradient(circle, rgba(14,165,233,0.12), transparent 70%);"></div>'+
-  '<div style="width:100%; height:180px; background:linear-gradient(135deg,#E0F2FE,#F0F9FF); border-radius:var(--radius); display:flex; align-items:center; justify-content:center; margin-bottom:16px; position:relative; z-index:1;"><span style="font-size:48px;">🥗</span></div>'+
-  '<h3 style="font-size:20px; margin-bottom:8px; position:relative; z-index:1;">'+r.title+'</h3>'+
-  '<div class="mb3" style="position:relative; z-index:1;"><p class="subtle" style="font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.08em; margin-bottom:8px;">Как готовить</p><div class="muted" style="font-size:13px; line-height:1.7;">'+steps.map((s,i)=>'<div style="margin-bottom:8px; padding-left:24px; position:relative;"><span style="position:absolute; left:0; top:0; font-weight:800; color:var(--primary);">'+(i+1)+'.</span>'+s+'</div>').join('')+'</div></div>'+
-  '<div class="flex gap2" style="position:relative; z-index:1;"><button class="btn btn-ghost" style="flex:1;" onclick="openMealSelector(currentMealCategory)">← Назад</button><button class="btn btn-primary" style="flex:1;" onclick="logCurrentMeal()">📝 Записать в дневник</button></div></div>';
-}
-
-async function logCurrentMeal(){
-  if(!currentMealRecipe) return;
-  try{
-    await api('/api/log-meal',{method:'POST',body:{tg_id:currentUser.tg_id,recipe_id:currentMealRecipe.id}});
-    showSuccess(currentMealRecipe.title+' записано! 🍽️');
-    navigate('nutrition');
-  }catch(e){}
-}
-
-async function deleteMeal(logId){
-  if(!confirm('Удалить приём пищи?')) return;
-  try{
-    await api('/api/food-log/'+logId+'?tg_id='+currentUser.tg_id,{method:'DELETE'});
-    showSuccess('Удалено');
-    loadNutrition();
-  }catch(e){ showError('Не удалось удалить'); }
 }
 
 async function getMealFull(){
@@ -894,30 +819,24 @@ async function getMealFull(){
 
 async function loadProfile(){
   const c=$('profileContent'); const tgId=currentUser?.tg_id; if(!tgId) return;
-  c.innerHTML='<div class="glass mb4" style="padding:28px; position:relative; overflow:hidden;"><div style="position:absolute; top:-40px; right:-40px; width:140px; height:140px; background:radial-gradient(circle, rgba(14,165,233,0.12), transparent 70%);"></div><h2 style="font-size:22px; position:relative; z-index:1;" id="profName">—</h2><p class="muted" style="font-size:13px; margin-top:6px; position:relative; z-index:1;" id="profStats">—</p><div class="flex gap2 mt3" style="position:relative; z-index:1; flex-wrap:wrap;" id="profTags"></div></div>'+
-  '<div class="glass mb4" style="position:relative; overflow:hidden;"><div style="position:absolute; top:-40px; right:-40px; width:140px; height:140px; background:radial-gradient(circle, rgba(14,165,233,0.08), transparent 70%);"></div><h3 class="mb3" style="position:relative; z-index:1;">Вес</h3><div class="chart-box" id="weightChart" style="position:relative; z-index:1;"><div class="empty" style="padding:20px;"><p class="muted">Загрузка...</p></div></div><div class="flex gap2 mt3" style="position:relative; z-index:1;"><input type="number" class="input" id="newWeight" placeholder="Текущий вес" style="flex:1;"><button class="btn btn-primary" onclick="saveWeight()" style="min-height:48px;">Сохранить</button></div></div>'+
+  c.innerHTML='<div class="glass mb4 text-center" style="padding:28px;"><div style="width:80px; height:80px; border-radius:50%; background:linear-gradient(135deg,#E0F2FE,#F0F9FF); display:flex; align-items:center; justify-content:center; margin:0 auto 12px; box-shadow:0 4px 16px var(--primary-glow);"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="2"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></div><h2 style="font-size:20px;" id="profName">—</h2><p class="muted" style="font-size:13px; margin-top:6px;" id="profStats">—</p></div>'+
+  '<div class="glass mb4"><h3 class="mb3">Вес</h3><div class="chart-box" id="weightChart"><div class="empty" style="padding:20px;"><p class="muted">Загрузка...</p></div></div><div class="flex gap2 mt3"><input type="number" class="input" id="newWeight" placeholder="Текущий вес" style="flex:1;"><button class="btn btn-primary" onclick="saveWeight()" style="min-height:48px;">Сохранить</button></div></div>'+
   '<h3 class="mb3">Достижения</h3><div id="achList"></div>';
   try{
     const [user,weight,ach]=await Promise.all([api('/api/user/'+tgId),api('/api/weight/'+tgId),api('/api/achievements/'+tgId)]);
     $('profName').textContent=user.name;
     const gt=user.goal==='lose'?'Похудение':user.goal==='gain'?'Набор массы':'Поддержание';
-    const ageStr=user.age+' '+plural(user.age,'год','года','лет');
-    $('profStats').textContent=ageStr+' • '+user.height+' см • '+user.current_weight+' кг → '+user.target_weight+' кг';
-    const tags=$('profTags');
-    const genderLabel = user.gender==='male'?'Мужчина':'Женщина';
-    tags.innerHTML='<span class="badge badge-blue">'+gt+'</span><span class="badge badge-amber">'+genderLabel+'</span><span class="badge badge-green">Норма: '+user.calorie_norm+' ккал</span>';
+    $('profStats').textContent=user.age+' лет • '+user.height+' см • '+gt;
     const chart=$('weightChart');
     if(weight.history?.length>1){
       const vals=weight.history.slice().reverse();
-      const min=Math.min(...vals.map(v=>v.weight))-2, max=Math.max(...vals.map(v=>v.weight))+2, range=max-min||1;
-      const w=400,h=160, pad=20;
-      const pts=vals.map((v,i)=>{const x=pad+(i/(vals.length-1))*(w-pad*2),y=h-pad-((v.weight-min)/range)*(h-pad*2); return x+','+y;}).join(' ');
-      let gridLines='';
-      for(let i=0;i<=4;i++){ const gy=pad+(i/4)*(h-pad*2); gridLines+='<line x1="'+pad+'" y1="'+gy+'" x2="'+(w-pad)+'" y2="'+gy+'" stroke="rgba(148,163,184,0.15)" stroke-width="1"/>'; }
-      chart.innerHTML='<svg viewBox="0 0 '+w+' '+h+'" style="width:100%;height:100%;">'+gridLines+'<polyline points="'+pts+'" fill="none" stroke="var(--primary)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>'+vals.map((v,i)=>{const x=pad+(i/(vals.length-1))*(w-pad*2),y=h-pad-((v.weight-min)/range)*(h-pad*2); return '<circle cx="'+x+'" cy="'+y+'" r="5" fill="#fff" stroke="var(--primary)" stroke-width="2.5"/><text x="'+x+'" y="'+(y-10)+'" text-anchor="middle" font-size="10" fill="var(--text-secondary)" font-weight="700">'+v.weight+'</text>';}).join('')+'</svg><div class="flex between mt2"><span class="subtle" style="font-size:10px; font-weight:700;">'+vals[0].date.slice(5)+'</span><span class="subtle" style="font-size:10px; font-weight:700;">'+vals[vals.length-1].date.slice(5)+'</span></div>';
+      const min=Math.min(...vals.map(v=>v.weight))-1, max=Math.max(...vals.map(v=>v.weight))+1, range=max-min;
+      const w=400,h=160;
+      const pts=vals.map((v,i)=>{const x=(i/(vals.length-1))*w,y=h-((v.weight-min)/range)*h; return x+','+y;}).join(' ');
+      chart.innerHTML='<svg viewBox="0 0 '+w+' '+h+'" style="width:100%;height:100%;"><polyline points="'+pts+'" fill="none" stroke="var(--primary)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>'+vals.map((v,i)=>{const x=(i/(vals.length-1))*w,y=h-((v.weight-min)/range)*h; return '<circle cx="'+x+'" cy="'+y+'" r="4" fill="var(--primary)" stroke="white" stroke-width="2"/>';}).join('')+'</svg><div class="flex between mt2"><span class="subtle" style="font-size:10px; font-weight:700;">'+vals[0].date.slice(5)+'</span><span class="subtle" style="font-size:10px; font-weight:700;">'+vals[vals.length-1].date.slice(5)+'</span></div>';
     }else chart.innerHTML='<div class="empty" style="padding:20px;"><p class="muted">Недостаточно данных для графика</p></div>';
     const alist=$('achList');
-    if(ach.achievements?.length) alist.innerHTML=ach.achievements.map(a=>'<div class="ach '+(a.unlocked?'':'locked')+'" style="position:relative; overflow:hidden;"><div style="position:absolute; top:-20px; right:-20px; width:60px; height:60px; background:radial-gradient(circle, rgba(14,165,233,0.08), transparent 70%);"></div><div class="ach-icon" style="position:relative; z-index:1;">'+a.icon+'</div><div style="flex:1; position:relative; z-index:1;"><h3 style="font-size:14px;">'+a.title+'</h3><p class="muted" style="font-size:11px;">'+a.description+'</p></div>'+(a.unlocked?'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--success)" stroke-width="3"><path d="M20 6 9 17l-5-5"/></svg>':'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--text-tertiary)" stroke-width="2"><path d="M12 2v20M5 12h14"/></svg>')+'</div>').join('');
+    if(ach.achievements?.length) alist.innerHTML=ach.achievements.map(a=>'<div class="ach '+(a.unlocked?'':'locked')+'"><div class="ach-icon">'+a.icon+'</div><div style="flex:1;"><h3 style="font-size:14px;">'+a.title+'</h3><p class="muted" style="font-size:11px;">'+a.description+'</p></div>'+(a.unlocked?'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--success)" stroke-width="3"><path d="M20 6 9 17l-5-5"/></svg>':'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--text-tertiary)" stroke-width="2"><path d="M12 2v20M5 12h14"/></svg>')+'</div>').join('');
   }catch(e){}
 }
 
