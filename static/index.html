@@ -374,6 +374,28 @@ h3 { font-family:'Space Grotesk',sans-serif; font-size:18px; font-weight:700; }
         <input type="hidden" id="regGoal" required>
       </div>
 
+      <div class="input-wrap">
+        <label class="input-label">Активность</label>
+        <div class="selector-row three">
+          <button type="button" class="sel-btn" id="btnSedentary" onclick="setActivity('sedentary')">
+            <span class="sel-icon">🪑</span>
+            <span class="sel-text">Малая</span>
+            <span class="sel-sub">Сидячая работа</span>
+          </button>
+          <button type="button" class="sel-btn" id="btnLight" onclick="setActivity('light')">
+            <span class="sel-icon">🚶</span>
+            <span class="sel-text">Лёгкая</span>
+            <span class="sel-sub">Прогулки 1-3 раза</span>
+          </button>
+          <button type="button" class="sel-btn" id="btnModerate" onclick="setActivity('moderate')">
+            <span class="sel-icon">🏃</span>
+            <span class="sel-text">Средняя</span>
+            <span class="sel-sub">Тренировки 3-5 раз</span>
+          </button>
+        </div>
+        <input type="hidden" id="regActivity" value="moderate">
+      </div>
+
       <button type="submit" class="btn btn-primary btn-block" style="margin-top: 8px; font-size: 16px;">
         Создать профиль
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
@@ -430,20 +452,17 @@ h3 { font-family:'Space Grotesk',sans-serif; font-size:18px; font-weight:700; }
     </div>
   </div>
 
-  <div class="glass mb4">
-    <div class="flex between items-center mb3">
-      <div class="flex items-center gap2">
-        <div style="width:36px; height:36px; border-radius:10px; background: linear-gradient(135deg, #D1FAE5, #A7F3D0); display:flex; align-items:center; justify-content:center; box-shadow: 0 2px 8px rgba(16,185,129,0.15);">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--success)" stroke-width="2.5"><path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2"/><path d="M7 2v20"/><path d="M21 15V2a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7"/></svg>
-        </div>
-        <span class="subtle" style="font-size: 12px; font-weight: 700;">Следующий приём</span>
+  <div class="prog-card glass-interactive mb4" onclick="navigate('nutrition')" style="background: linear-gradient(135deg, rgba(255,255,255,0.9), #ECFDF5); border-color: rgba(16,185,129,0.2);">
+    <div class="flex between items-center" style="position:relative; z-index:1;">
+      <div>
+        <div class="badge badge-green mb2" style="box-shadow: 0 2px 8px rgba(16,185,129,0.15);">Питание</div>
+        <h3 style="font-size: 17px;">Приём пищи</h3>
+        <p class="muted" style="font-size: 13px; margin-top: 6px;">Выбери блюдо и запиши в дневник</p>
       </div>
-      <span class="badge badge-green" id="dashNextMealBadge" style="box-shadow: 0 2px 8px rgba(16,185,129,0.15);">Завтрак</span>
+      <div style="width: 52px; height: 52px; border-radius: 50%; background: linear-gradient(135deg, #D1FAE5, #A7F3D0); display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 12px rgba(16,185,129,0.2);">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#065F46" stroke-width="2.5"><path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0L12 2.69z"/><path d="M12 22v-8"/></svg>
+      </div>
     </div>
-    <button class="btn btn-secondary btn-block" onclick="navigate('nutrition')" style="min-height: 48px; font-size: 14px; border-width: 2px;">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-      Получить рецепт
-    </button>
   </div>
 
   <div class="glass mb4 hidden" id="dashProgramCard">
@@ -577,6 +596,11 @@ function setGoal(g){
   document.querySelectorAll('#btnLose, #btnGain, #btnMaintain').forEach(b=>b.classList.remove('active'));
   $('btn'+ (g==='lose'?'Lose':g==='gain'?'Gain':'Maintain')).classList.add('active');
 }
+function setActivity(a){
+  $('regActivity').value = a;
+  document.querySelectorAll('#btnSedentary, #btnLight, #btnModerate').forEach(b=>b.classList.remove('active'));
+  $('btn'+ (a==='sedentary'?'Sedentary':a==='light'?'Light':'Moderate')).classList.add('active');
+}
 
 async function initApp(){
   const tg = window.Telegram?.WebApp;
@@ -609,7 +633,8 @@ $('registerForm').addEventListener('submit', async(e)=>{
     height: parseInt($('regHeight').value),
     current_weight: parseFloat($('regWeight').value),
     target_weight: parseFloat($('regTarget').value),
-    goal: $('regGoal').value
+    goal: $('regGoal').value,
+    activity_level: $('regActivity').value
   };
   try{
     await api('/api/user/init', {method:'POST', body:data});
@@ -776,7 +801,35 @@ async function startProgram(pid){
     loadDashboard();
   }catch(e){}
 }
-function startProgramDay(dayId){ showSuccess('Загрузка тренировки...'); }
+let currentProgramDay = null;
+let currentProgramId = null;
+
+async function startProgramDay(dayId){
+  try{
+    const d=await api('/api/program/'+currentProgramId);
+    const day=(d.days||[]).find(x=>x.id===dayId);
+    if(!day){ showError('День не найден'); return; }
+    currentProgramDay = dayId;
+    currentExercises = (day.exercises||[]).map(ex=>({
+      id: ex.exercise_id,
+      name: ex.exercise_name,
+      sets: ex.sets||3,
+      reps: ex.reps||'10-12',
+      rest_seconds: ex.rest_seconds||60,
+      notes: ex.notes||''
+    }));
+    renderActiveWorkout(true);
+    navigate('active-workout');
+  }catch(e){ showError('Ошибка загрузки тренировки'); }
+}
+
+function renderActiveWorkout(isProgram=false){
+  const c=$('activeWorkoutContent'); workoutSeconds=0;
+  c.innerHTML='<div class="glass mb4 text-center" style="padding:28px; position:relative; overflow:hidden;"><div style="position:absolute; top:-40px; right:-40px; width:140px; height:140px; background:radial-gradient(circle, rgba(14,165,233,0.12), transparent 70%);"></div><p class="subtle" style="font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:0.08em; margin-bottom:8px; position:relative; z-index:1;">Время тренировки</p><div class="timer" id="workoutTimer" style="position:relative; z-index:1;">00:00</div><button class="btn btn-primary mt4" onclick="toggleTimer()" id="timerBtn" style="min-height:48px; position:relative; z-index:1;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg> Пауза</button></div><h3 class="mb3">Упражнения</h3>'+
+  currentExercises.map((ex,idx)=>'<div class="glass mb3" style="position:relative; overflow:hidden;"><div style="position:absolute; top:-20px; right:-20px; width:80px; height:80px; background:radial-gradient(circle, rgba(14,165,233,0.08), transparent 70%);"></div><h3 style="font-size:16px; margin-bottom:12px; position:relative; z-index:1;">'+ex.name+(ex.notes?'<span class="subtle" style="font-size:11px; display:block; margin-top:2px;">'+ex.notes+'</span>':'')+'</h3>'+Array.from({length:ex.sets||3},(_,i)=>'<div class="set-row"><span style="font-size:12px; font-weight:800; color:var(--text-tertiary); min-width:28px;">'+(i+1)+'</span><input type="number" placeholder="кг" id="w-'+idx+'-'+i+'"><input type="number" placeholder="повт" id="r-'+idx+'-'+i+'"><button class="btn btn-ghost" style="min-height:36px; padding:6px 10px;" onclick="this.style.color=\'var(--success)\'; this.innerHTML=\'<svg width=14 height=14 viewBox=\\\'0 0 24 24\\\' fill=none stroke=currentColor stroke-width=3><path d=\\\'M20 6 9 17l-5-5\\\'/></svg>\'"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6 9 17l-5-5"/></svg></button></div>').join('')+'</div>').join('')+
+  '<button class="btn btn-accent btn-block" onclick="finishWorkout('+isProgram+')" style="font-size:16px;">Завершить тренировку</button>';
+  startTimer();
+}
 
 function startFreeWorkout(exId, exName){
   currentExercises=[{id:exId, name:exName, sets:3, reps:'10-12'}];
@@ -792,7 +845,53 @@ function renderActiveWorkout(){
 }
 function startTimer(){ if(workoutTimer) clearInterval(workoutTimer); workoutTimer=setInterval(()=>{ workoutSeconds++; const m=String(Math.floor(workoutSeconds/60)).padStart(2,'0'), s=String(workoutSeconds%60).padStart(2,'0'); const el=$('workoutTimer'); if(el) el.textContent=m+':'+s; },1000); }
 function toggleTimer(){ const btn=$('timerBtn'); if(workoutTimer){ clearInterval(workoutTimer); workoutTimer=null; btn.innerHTML='<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="5 3 19 12 5 21 5 3"/></svg> Продолжить'; }else{ startTimer(); btn.innerHTML='<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg> Пауза'; } }
-function finishWorkout(){ if(workoutTimer) clearInterval(workoutTimer); workoutTimer=null; showSuccess('Тренировка завершена! 🔥 '+Math.floor(workoutSeconds/60)+' мин'); navigate('workouts'); }
+async function finishWorkout(isProgram=false){
+  if(workoutTimer) clearInterval(workoutTimer); workoutTimer=null;
+  const duration = Math.floor(workoutSeconds/60);
+  let totalVolume = 0;
+  const sets = [];
+  currentExercises.forEach((ex,idx)=>{
+    for(let i=0;i<(ex.sets||3);i++){
+      const wEl=$('w-'+idx+'-'+i), rEl=$('r-'+idx+'-'+i);
+      const w=parseFloat(wEl?.value||0), r=parseInt(rEl?.value||0);
+      if(r>0){
+        totalVolume += w*r;
+        sets.push({exercise_id: ex.id, set_number: i+1, reps: r, weight: w});
+      }
+    }
+  });
+  try{
+    await api('/api/workout/log',{
+      method:'POST',
+      body:{
+        tg_id: currentUser.tg_id,
+        program_id: isProgram ? currentProgramId : null,
+        program_day_id: isProgram ? currentProgramDay : null,
+        duration_minutes: duration,
+        total_volume: totalVolume,
+        notes: '',
+        sets: sets
+      }
+    });
+    showSuccess('Тренировка завершена! 🔥 '+duration+' мин');
+    if(isProgram && currentProgramId){
+      const d=await api('/api/program/'+currentProgramId);
+      const totalDays = d.totalDays||1;
+      const currentDone = (currentProgramDay ? d.days.findIndex(x=>x.id===currentProgramDay) : -1) + 1;
+      const nextDay = d.days[currentDone];
+      if(nextDay){
+        await api('/api/user/program/progress',{
+          method:'POST',
+          body:{tg_id: currentUser.tg_id, week: nextDay.week, day: nextDay.day}
+        });
+      } else {
+        await api('/api/user/program/complete',{method:'POST', body:{tg_id: currentUser.tg_id}});
+        showSuccess('Программа завершена! 🎉');
+      }
+    }
+    navigate('workouts');
+  }catch(e){ showError('Ошибка сохранения тренировки'); }
+}
 let currentMealRecipe = null;
 let currentMealCategory = 'breakfast';
 
@@ -841,7 +940,9 @@ async function loadNextMeal(){
   const area=$('mealCardArea');
   area.innerHTML='<div style="height:200px; background:linear-gradient(90deg,#f1f5f9 25%,#e2e8f0 50%,#f1f5f9 75%); background-size:200% 100%; animation:shimmer 1.5s infinite; border-radius:14px;"></div>';
   try{
-    const d=await api('/api/meal',{method:'POST',body:{category:currentMealCategory}});
+    const user = await api('/api/user/'+currentUser.tg_id);
+    const exclude = currentMealRecipe ? currentMealRecipe.id : null;
+    const d=await api('/api/meal',{method:'POST',body:{category:currentMealCategory, goal: user.goal, exclude_id: exclude}});
     if(!d.recipe){ area.innerHTML='<div class="empty"><p>Нет рецептов</p></div>'; return; }
     currentMealRecipe = d.recipe;
     const r=d.recipe;
