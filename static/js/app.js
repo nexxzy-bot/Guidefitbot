@@ -132,16 +132,9 @@ Vue.component('a-profile', {
 });
 
 const ProfileFields = [
-  ['name', 10],
-  ['birthdate', 20],
-  ['interests', 30],
-  ['city', 40],
-//  ['display_gender', 50],
-  ['pronouns', 60],
-  ['sexuality', 70],
-  ['height', 80],
-  ['weight', 90],
-  ['about', 120]
+  ['birthdate', 100],
+  ['height', 110],
+  ['weight', 120]
 ];
 
 var app = new Vue({
@@ -154,6 +147,10 @@ var app = new Vue({
 
     feed: [],
     notifications: [],
+
+    currentCategory: null,
+    currentRecipe: null,
+    showSteps: false,
 
     editedValue: '',
 
@@ -198,7 +195,10 @@ var app = new Vue({
         Telegram.WebApp.MainButton.text = this.$str.btn_continue;
         Telegram.WebApp.MainButton.hide();
       } else
-      if (newPage == 'lookingfor') {
+      if (newPage == 'lifestyle') {
+        Telegram.WebApp.MainButton.hide();
+      } else
+      if (newPage == 'goal') {
         Telegram.WebApp.MainButton.hide();
       } else
       if (['settings', 'language', 'search', 'profile', 'matches'].includes(newPage)) {
@@ -243,18 +243,27 @@ var app = new Vue({
     async selectGender(gender) {
       if (this.me.onboarding_step < 60) {
         await this.update({ onboarding_step: 60, gender });
-        this.turnPage('lookingfor');
+        this.turnPage('lifestyle');
       } else {
         await this.update({ gender });
         this.popPage();
       }
     },
-    async selectLookingFor(lookingfor) {
-      if (this.me.onboarding_step < 110) {
-        await this.update({ onboarding_step: 110, lookingfor });
-        this.turnPage('photo');
+    async selectLifestyle(lifestyle) {
+      if (this.me.onboarding_step < 90) {
+        await this.update({ onboarding_step: 90, lifestyle });
+        this.turnPage('birthdate');
       } else {
-        await this.update({ lookingfor });
+        await this.update({ lifestyle });
+        this.popPage();
+      }
+    },
+    async selectGoal(goal) {
+      if (this.me.onboarding_step < 130) {
+        await this.update({ onboarding_step: 130, goal });
+        this.turnPage('home');
+      } else {
+        await this.update({ goal });
         this.popPage();
       }
     },
@@ -265,21 +274,28 @@ var app = new Vue({
       if (this.page == 'agreement') {
         this.onboardingPage('gender', 10, true);
       } else
-      if (this.page == 'gender') {
-        this.onboardingPage('lookingfor', 60);
+      if (this.page == 'birthdate') {
+        await this.update({ birthdate: this.editedValue });
+        if (this.me.onboarding_step < 100) {
+          this.onboardingPage('height', 100);
+        } else {
+          this.popPage();
+        }
       } else
-      if (this.page == 'lookingfor') {
-        this.onboardingPage('home', 120);
-      }
-      for (let i = 0; i < ProfileFields.length; i++) {
-        const [name, step] = ProfileFields[i];
-        if (this.page == name) {
-          await this.update({ [name]: this.editedValue });
-          if (this.me.profile_step < 120) {
-            this.profilePage(i < ProfileFields.length - 1 ? ProfileFields[i + 1][0] : 'home', step);
-          } else {
-            this.popPage();
-          }
+      if (this.page == 'height') {
+        await this.update({ height: this.editedValue });
+        if (this.me.onboarding_step < 110) {
+          this.onboardingPage('weight', 110);
+        } else {
+          this.popPage();
+        }
+      } else
+      if (this.page == 'weight') {
+        await this.update({ weight: this.editedValue });
+        if (this.me.onboarding_step < 120) {
+          this.onboardingPage('goal', 120);
+        } else {
+          this.popPage();
         }
       }
     },
@@ -303,38 +319,20 @@ var app = new Vue({
         //this.popPage();
       }
     },
-    async search(isLocal) {
-      this.isLocalSearch = isLocal;
-
-      if (isLocal) {
-        navigator.geolocation.getCurrentPosition(async (pos) => {
-          this.feed = (await this.api('search', { local: true, latitude: pos.coords.latitude, longitude: pos.coords.longitude })).feed;
-          this.turnPage('search');
-        }, (err) => {
-          //
-        });
-      } else {
-        this.feed = (await this.api('search', { local: false })).feed;
-        this.turnPage('search');
-      }
+    async getMeal(category) {
+      this.currentCategory = category;
+      this.showSteps = false;
+      const result = await this.api('meal', { category });
+      this.currentRecipe = result.recipe || null;
+      this.turnPage('meal');
     },
-    async like(user, likeType) {
-      for (let i = 0; i < this.feed.length; i++) {
-        if (this.feed[i].id == user.id) {
-          this.feed.splice(i, 1);
-          break;
-        }
-      }
-      const result = await this.api('like', { id: user.id, type: likeType });
-      if (result.mutual) {
-        this.notifications.push({
-          user: result.mutual,
-        });
-
-        setTimeout(() => {
-          this.notifications = this.notifications.filter(notif => notif.user.id != result.mutual.id);
-        }, 5000);
-      }
+    async anotherMeal() {
+      this.showSteps = false;
+      const result = await this.api('meal', { category: this.currentCategory });
+      this.currentRecipe = result.recipe || null;
+    },
+    cookMeal() {
+      this.showSteps = true;
     },
     activateNotification(notif) {
       Telegram.WebApp.openTelegramLink(`https://t.me/${notif.user.username}`);
@@ -383,11 +381,20 @@ var app = new Vue({
     if (this.me.onboarding_step < 60) {
       this.turnPage('gender', true);
     } else
+    if (this.me.onboarding_step < 90) {
+      this.turnPage('lifestyle', true);
+    } else
+    if (this.me.onboarding_step < 100) {
+      this.turnPage('birthdate', true);
+    } else
     if (this.me.onboarding_step < 110) {
-      this.turnPage('lookingfor', true);
-    } else 
+      this.turnPage('height', true);
+    } else
     if (this.me.onboarding_step < 120) {
-      this.turnPage('photo', true);
+      this.turnPage('weight', true);
+    } else
+    if (this.me.onboarding_step < 130) {
+      this.turnPage('goal', true);
     } else {
       this.turnPage('home', true);
     }

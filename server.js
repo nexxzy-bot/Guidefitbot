@@ -15,6 +15,31 @@ const db = new BotDb();
 const app = express();
 const bot = new TelegramBot(process.env.TELEGRAM_TOKEN, { polling: true });
 
+let recipes = [];
+try {
+  recipes = JSON.parse(fs.readFileSync(path.join(__dirname, 'recipes.json'), 'utf8'));
+} catch (e) {
+  console.error('Could not load recipes.json:', e.message);
+}
+
+const ACTIVITY_MULTIPLIERS = { 1: 1.2, 2: 1.375, 3: 1.55, 4: 1.725 };
+
+function computeCalorieNorm(user) {
+  const { gender, birthdate, height, weight, lifestyle, goal } = user;
+  const age = parseInt(birthdate, 10) || null;
+  if (!gender || !age || !height || !weight || !lifestyle || !goal) {
+    return null;
+  }
+  const w = parseFloat(weight);
+  const h = parseFloat(height);
+  const bmr = 10 * w + 6.25 * h - 5 * age + (gender == 2 ? -161 : 5);
+  const tdee = bmr * (ACTIVITY_MULTIPLIERS[lifestyle] || 1.2);
+  let norm = tdee;
+  if (goal == 'cut') norm = tdee - 500;
+  else if (goal == 'bulk') norm = tdee + 300;
+  return Math.round(norm);
+}
+
 function validateInitData(initData) {
   const data = {};
   const raw = {};
@@ -106,14 +131,19 @@ app.post('/update', async (req, res) => {
 
   const fields = {};
   for (let key in req.body) {
-    if (!['name', 'interests', 'about', 'hide_profile', 'lang', 'gender', 'display_gender', 'pronouns', 'sexuality', 'lookingfor', 'birthdate', 'city', 'geo', 'height', 'weight', 'onboarding_step', 'profile_step'].includes(key)) {
+    if (!['name', 'interests', 'about', 'hide_profile', 'lang', 'gender', 'display_gender', 'pronouns', 'sexuality', 'lookingfor', 'birthdate', 'city', 'geo', 'height', 'weight', 'lifestyle', 'goal', 'onboarding_step', 'profile_step'].includes(key)) {
       continue;
     }
     fields[key] = req.body[key];
   }
 
   await db.updateUserByTgId(initData.user.id, fields);
-  res.json({ ok: true });
+  const updatedMe = await db.userByTgId(initData.user.id);
+  const calorieNorm = computeCalorieNorm(updatedMe);
+  if (calorieNorm && updatedMe.calorie_norm !== calorieNorm) {
+    await db.updateUserByTgId(initData.user.id, { calorie_norm: calorieNorm });
+  }
+  res.json({ ok: true, calorie_norm: calorieNorm });
 });
 
 
@@ -218,6 +248,27 @@ app.post('/like', async (req, res) => {
   }
   await db.likeUser(me.id, req.body.id, likeType);
   res.json({ ok: true });
+});
+
+app.post('/meal', async (req, res) => {
+  const initData = validateInitData(req.body.initData);
+  if (!initData) {
+    res.json({ error: 'Invalid initData' });
+    return;
+  }
+  const me = await db.userByTgId(initData.user.id);
+  const category = req.body.category;
+  let pool = recipes.filter(r => r.category === category);
+  const byGoal = pool.filter(r => !r.goals || r.goals.includes(me.goal));
+  if (byGoal.length) {
+    pool = byGoal;
+  }
+  if (!pool.length) {
+    res.json({ error: 'No recipes found for this category' });
+    return;
+  }
+  const recipe = pool[Math.floor(Math.random() * pool.length)];
+  res.json({ recipe });
 });
 
 app.listen(process.env.MINIAPP_PORT, () => {

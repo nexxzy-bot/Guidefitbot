@@ -15,18 +15,27 @@
       <p v-html="$str.msg_welcome.replaceAll(/\n/g, '<br/>')"></p>
     </section>
     <section v-if="page == 'gender'">
-      <p v-html="$str.msg_gender.replaceAll(/\n/g, '<br/>')"></p>
-      <label><input type="checkbox" v-model="isCouple"/> {{ $str.gender_couple }}</label>
+      <p>Для точного расчёта нормы калорий укажи пол:</p>
       <div class="buttons">
-        <button v-for="genderId in [1, 2, 3, 4, 5]" @click="selectGender(genderId)">{{ $str['gender:' + genderId] }}</button>
-        <div class="link-button" v-if="me.onboarding_step < 120" @click="onboardingPage('lookingfor', 60)">{{ $str.btn_skip }}</div>
+        <button @click="selectGender(1)">Мужчина</button>
+        <button @click="selectGender(2)">Женщина</button>
       </div>
     </section>
-    <section v-if="page == 'lookingfor'">
-      <p v-html="$str.msg_lookingfor.replaceAll(/\n/g, '<br/>')"></p>
+    <section v-if="page == 'lifestyle'">
+      <p>Какой у тебя уровень активности?</p>
       <div class="buttons">
-        <button v-for="lookingForId in [1, 2, 3, 4, 5, 6]" @click="selectLookingFor(lookingForId)">{{ $str['lookingfor:' + lookingForId] }}</button>
-        <div class="link-button" v-if="me.onboarding_step < 120" @click="onboardingPage('photo', 110)">{{ $str.btn_skip }}</div>
+        <button @click="selectLifestyle(1)">Малоподвижный (сидячая работа)</button>
+        <button @click="selectLifestyle(2)">Лёгкая активность (1-3 тренировки/нед)</button>
+        <button @click="selectLifestyle(3)">Средняя активность (3-5 тренировок/нед)</button>
+        <button @click="selectLifestyle(4)">Высокая активность (спорт каждый день)</button>
+      </div>
+    </section>
+    <section v-if="page == 'goal'">
+      <p>Какая у тебя цель?</p>
+      <div class="buttons">
+        <button @click="selectGoal('cut')">Похудеть</button>
+        <button @click="selectGoal('bulk')">Набрать массу</button>
+        <button @click="selectGoal('recomp')">Рекомпозиция (сушка + масса)</button>
       </div>
     </section>
     <section v-if="page == 'photo'">
@@ -44,10 +53,9 @@
       </div>
     </section>
     <section v-if="page == 'birthdate'">
-      <p v-html="$str.msg_profile_birthdate.replaceAll(/\n/g, '<br/>')"></p>
+      <p>Сколько тебе лет? Нужно для расчёта нормы калорий:</p>
       <div class="buttons">
-        <input type="text" v-model="editedValue"/>
-        <div class="link-button" v-if="me.profile_step < 120" @click="profilePage('interests', 20)">{{ $str.btn_skip }}</div>
+        <input type="number" v-model="editedValue" placeholder="30"/>
       </div>
     </section>
     <section v-if="page == 'interests'">
@@ -86,17 +94,15 @@
       </div>
     </section>
     <section v-if="page == 'height'">
-      <p v-html="$str.msg_profile_height.replaceAll(/\n/g, '<br/>')"></p>
+      <p>Введи рост в сантиметрах:</p>
       <div class="buttons">
-        <input type="text" v-model="editedValue"/>
-        <div class="link-button" v-if="me.profile_step < 120" @click="profilePage('weight', 80)">{{ $str.btn_skip }}</div>
+        <input type="text" v-model="editedValue" placeholder="175"/>
       </div>
     </section>
     <section v-if="page == 'weight'">
-      <p v-html="$str.msg_profile_weight.replaceAll(/\n/g, '<br/>')"></p>
+      <p>Введи вес в килограммах:</p>
       <div class="buttons">
-        <input type="text" v-model="editedValue"/>
-        <div class="link-button" v-if="me.profile_step < 120" @click="profilePage('about', 90)">{{ $str.btn_skip }}</div>
+        <input type="text" v-model="editedValue" placeholder="70"/>
       </div>
     </section>
     <section v-if="page == 'about'">
@@ -107,14 +113,28 @@
       </div>
     </section>
     <section v-if="page == 'home'">
-      <p v-html="(me.profile_step < 120 ? $str.msg_onboarding_done : $str.msg_main_short).replaceAll(/\n/g, '<br/>')"></p>
+      <p>Твоя дневная норма: <b>{{ me.calorie_norm || '—' }} ккал</b></p>
       <div class="buttons">
-        <button @click="search(true)">{{ $str.btn_local }}</button>
-        <button @click="search(false)">{{ $str.btn_global }}</button>
-        <button @click="editProfile()">{{ me.profile_step < 120 ? $str.btn_fillprofile : $str.btn_editprofile }}</button>
-        <button @click="showMatches()">{{ $str.btn_matches }}</button>
+        <button @click="getMeal('breakfast')">Завтрак</button>
+        <button @click="getMeal('lunch')">Обед</button>
+        <button @click="getMeal('dinner')">Ужин</button>
+        <button @click="getMeal('snack')">Перекус</button>
         <button @click="turnPage('settings')">{{ $str.btn_settings }}</button>
       </div>
+    </section>
+    <section v-if="page == 'meal'">
+      <div v-if="currentRecipe">
+        <h3>{{ currentRecipe.name }}</h3>
+        <p>{{ currentRecipe.calories }} ккал &middot; Б{{ currentRecipe.protein }} Ж{{ currentRecipe.fat }} У{{ currentRecipe.carbs }}</p>
+        <ol v-if="showSteps">
+          <li v-for="step in currentRecipe.steps">{{ step }}</li>
+        </ol>
+        <div class="buttons" v-if="!showSteps">
+          <button @click="cookMeal()">Готовить</button>
+          <button @click="anotherMeal()">Другое блюдо</button>
+        </div>
+      </div>
+      <div v-else>Рецепты для этой категории пока не загружены.</div>
     </section>
     <section v-if="page == 'search'" class="is-feed">
       <a-profile v-for="(user, index) in feed" :is-last="index == feed.length - 1" :key="user.id" :user="user" @like="like"></a-profile>
@@ -148,8 +168,6 @@
     </section>
     <section v-if="page == 'settings'">
       <div class="buttons">
-        <button @click="turnPage('lookingfor')">{{ $str.btn_filter_genders }}</button>
-        <button @click="toggleHidden()">{{ $str[this.me.hide_profile ? 'btn_hide:1' : 'btn_hide:0'] }}</button>
         <button @click="turnPage('language')">{{ $str.btn_langs }}</button>
         <button @click="deleteAccount()">{{ $str.btn_delete_account }}</button>
       </div>
