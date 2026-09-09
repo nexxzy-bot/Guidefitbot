@@ -4275,5 +4275,86 @@
         ]
       }
     ]
+  },
+  {
+    "id": 99,
+    "name": "HIIT Старт",
+    "location": "any",
+    "type": "hiit",
+    "goal": "lose",
+    "duration_weeks": 4,
+    "description": "Интервальные тренировки для жиросжигания. Без инвентаря.",
+    "difficulty": "beginner",
+    "days": [
+      {
+        "id": 901,
+        "week": 1,
+        "day": 1,
+        "title": "HIIT База",
+        "description": "20 сек работы / 10 сек отдыха, 8 раундов",
+        "exercises": [
+          {
+            "exercise_id": 204,
+            "sets": 4,
+            "reps": "45 сек",
+            "rest_seconds": 15,
+            "notes": ""
+          },
+          {
+            "exercise_id": 202,
+            "sets": 4,
+            "reps": "45 сек",
+            "rest_seconds": 15,
+            "notes": ""
+          }
+        ]
+      },
+      {
+        "id": 902,
+        "week": 1,
+        "day": 2,
+        "title": "Кардио-взрыв",
+        "description": "30 сек работы / 30 сек отдыха",
+        "exercises": [
+          {
+            "exercise_id": 205,
+            "sets": 4,
+            "reps": "30 сек",
+            "rest_seconds": 30,
+            "notes": ""
+          },
+          {
+            "exercise_id": 203,
+            "sets": 4,
+            "reps": "40 сек",
+            "rest_seconds": 20,
+            "notes": ""
+          }
+        ]
+      },
+      {
+        "id": 903,
+        "week": 2,
+        "day": 1,
+        "title": "Мощь",
+        "description": "Берпи и альпинисты",
+        "exercises": [
+          {
+            "exercise_id": 201,
+            "sets": 4,
+            "reps": "30 сек",
+            "rest_seconds": 30,
+            "notes": ""
+          },
+          {
+            "exercise_id": 203,
+            "sets": 4,
+            "reps": "40 сек",
+            "rest_seconds": 20,
+            "notes": ""
+          }
+        ]
+      }
+    ]
   }
 ]

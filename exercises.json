@@ -843,5 +843,70 @@
     "reps_default": "30 сек",
     "rest_seconds": 30,
     "tips": "Колени выше бёдер"
+  },
+  {
+    "id": 201,
+    "name": "Берпи",
+    "location": "any",
+    "type": "hiit",
+    "muscle_group": "Всё тело",
+    "description": "Интенсивное упражнение с отжиманием и прыжком",
+    "difficulty": "intermediate",
+    "sets_default": 4,
+    "reps_default": "30 сек",
+    "rest_seconds": 30,
+    "tips": "Следите за дыханием"
+  },
+  {
+    "id": 202,
+    "name": "Прыжки на скакалке",
+    "location": "any",
+    "type": "hiit",
+    "muscle_group": "Ноги / выносливость",
+    "description": "Быстрые прыжки через скакалку",
+    "difficulty": "beginner",
+    "sets_default": 5,
+    "reps_default": "45 сек",
+    "rest_seconds": 15,
+    "tips": "Работайте на носках"
+  },
+  {
+    "id": 203,
+    "name": "Альпинист",
+    "location": "any",
+    "type": "hiit",
+    "muscle_group": "Корпус / ноги",
+    "description": "Бег в планке",
+    "difficulty": "intermediate",
+    "sets_default": 4,
+    "reps_default": "40 сек",
+    "rest_seconds": 20,
+    "tips": "Не поднимайте таз"
+  },
+  {
+    "id": 204,
+    "name": "Джампинг-джек",
+    "location": "any",
+    "type": "hiit",
+    "muscle_group": "Всё тело",
+    "description": "Прыжки с разведением рук и ног",
+    "difficulty": "beginner",
+    "sets_default": 4,
+    "reps_default": "45 сек",
+    "rest_seconds": 15,
+    "tips": "Мягкое приземление"
+  },
+  {
+    "id": 205,
+    "name": "Спринт на месте",
+    "location": "any",
+    "type": "hiit",
+    "muscle_group": "Ноги",
+    "description": "Бег на месте с высоким подниманием колен",
+    "difficulty": "beginner",
+    "sets_default": 4,
+    "reps_default": "30 сек",
+    "rest_seconds": 30,
+    "tips": "Колени выше бёдер"
   }
 ]
