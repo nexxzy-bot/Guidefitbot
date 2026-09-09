@@ -658,7 +658,10 @@ function setActivity(a){
 
 async function initApp(){
   const tg = window.Telegram?.WebApp;
-  if(tg){ tg.ready(); tg.expand(); }
+  if(tg){ tg.ready(); tg.expand();
+    if(tg.requestWriteAccess) tg.requestWriteAccess();
+    if(tg.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
+  }
   const url = new URLSearchParams(window.location.search);
   let tgId = url.get('tg_id') || (tg?.initDataUnsafe?.user?.id ? String(tg.initDataUnsafe.user.id) : null);
   if(!tgId) tgId = 'demo_user';
@@ -958,12 +961,26 @@ function plural(n, one, few, many){
   return many;
 }
 
+async function loadShoppingList(){
+  const c=$('nutritionContent'); const tgId=currentUser?.tg_id;
+  c.innerHTML='<div class="flex items-center gap2 mb4"><button class="btn btn-ghost" onclick="loadNutrition()"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m15 18-6-6 6-6"/></svg></button><h3>Список покупок</h3></div><div id="shopList"></div>';
+  try{
+    const d=await api('/api/shopping-list/'+tgId);
+    const list=$('shopList');
+    if(!d.items?.length) list.innerHTML='<div class="empty"><p>Нет данных за неделю</p></div>';
+    else list.innerHTML='<div class="glass" style="position:relative; overflow:hidden;"><div style="position:absolute; top:-30px; right:-30px; width:100px; height:100px; background:radial-gradient(circle, rgba(14,165,233,0.1), transparent 70%);"></div><div style="position:relative; z-index:1;">'+
+      d.items.map(i=>'<div style="padding:10px 0; border-bottom:1px solid var(--border); font-size:14px; font-weight:600;">☐ '+i+'</div>').join('')+
+      '</div></div>';
+  }catch(e){ showError('Ошибка загрузки'); }
+}
+
 async function loadNutrition(){
   const c=$('nutritionContent'); const tgId=currentUser?.tg_id; if(!tgId) return;
   c.innerHTML='<div class="grid2 mb4"><div class="glass text-center" onclick="addWater()" style="cursor:pointer; position:relative; overflow:hidden;"><div style="position:absolute; top:-30px; right:-30px; width:100px; height:100px; background:radial-gradient(circle, rgba(56,189,248,0.15), transparent 70%);"></div><div style="width:44px; height:44px; border-radius:12px; background:linear-gradient(135deg,#E0F2FE,#F0F9FF); display:flex; align-items:center; justify-content:center; margin:0 auto 8px; box-shadow:0 2px 8px rgba(56,189,248,0.2);"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--water)" stroke-width="2.5"><path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0L12 2.69z"/></svg></div><div style="font-size:20px; font-weight:800;" id="nutWater">0 мл</div><p class="subtle" style="font-size:11px; font-weight:600;">Вода сегодня</p></div><div class="glass text-center" style="position:relative; overflow:hidden;"><div style="position:absolute; top:-30px; right:-30px; width:100px; height:100px; background:radial-gradient(circle, rgba(16,185,129,0.12), transparent 70%);"></div><div style="width:44px; height:44px; border-radius:12px; background:linear-gradient(135deg,#D1FAE5,#A7F3D0); display:flex; align-items:center; justify-content:center; margin:0 auto 8px; box-shadow:0 2px 8px rgba(16,185,129,0.15);"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--success)" stroke-width="2.5"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-15 0c0-1.1.5-2.5 1.5-3.5.5.5 2 2.5 2.5 3.5z"/></svg></div><div style="font-size:20px; font-weight:800;" id="nutCals">0</div><p class="subtle" style="font-size:11px; font-weight:600;">Калории</p></div></div>'+
   '<div class="glass mb4" style="position:relative; overflow:hidden;"><div style="position:absolute; top:-40px; right:-40px; width:140px; height:140px; background:radial-gradient(circle, rgba(14,165,233,0.12), transparent 70%);"></div><h3 class="mb3" style="position:relative; z-index:1;">БЖУ сегодня</h3><div class="mb3"><div class="flex between items-center mb1"><span class="subtle" style="font-size:11px; font-weight:700;">Белки</span><span class="subtle" style="font-size:11px; font-weight:700;" id="nutProtein">0 / 150г</span></div><div class="progress-track"><div class="progress-fill fill-primary" id="nutProteinBar" style="width:0%"></div></div></div>'+
   '<div class="mb3"><div class="flex between items-center mb1"><span class="subtle" style="font-size:11px; font-weight:700;">Жиры</span><span class="subtle" style="font-size:11px; font-weight:700;" id="nutFat">0 / 70г</span></div><div class="progress-track"><div class="progress-fill fill-accent" id="nutFatBar" style="width:0%"></div></div></div>'+
   '<div><div class="flex between items-center mb1"><span class="subtle" style="font-size:11px; font-weight:700;">Углеводы</span><span class="subtle" style="font-size:11px; font-weight:700;" id="nutCarbs">0 / 250г</span></div><div class="progress-track"><div class="progress-fill fill-success" id="nutCarbsBar" style="width:0%"></div></div></div></div>'+
+  '<button class="btn btn-ghost btn-block mb4" onclick="loadShoppingList()" style="font-size:13px;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 2v2"/><path d="M15 2v2"/><path d="M12 2v8"/><path d="M8 12h8"/><path d="m19 12-2.5 9.5a2 2 0 0 1-2 1.5H9.5a2 2 0 0 1-2-1.5L5 12"/></svg> Список покупок за неделю</button>'+
   '<h3 class="mb3">Выбери приём пищи</h3><div class="grid2 mb4">'+
   '<div class="loc-card" onclick="openMealSelector(\'breakfast\')"><span style="font-size:24px;">🌅</span><span style="font-weight:800; font-size:15px;">Завтрак</span><span class="subtle" style="font-size:12px;">Утренняя энергия</span></div>'+
   '<div class="loc-card" onclick="openMealSelector(\'lunch\')"><span style="font-size:24px;">🍽️</span><span style="font-weight:800; font-size:15px;">Обед</span><span class="subtle" style="font-size:12px;">Основной приём</span></div>'+
@@ -1054,6 +1071,7 @@ async function loadProfile(){
   const c=$('profileContent'); const tgId=currentUser?.tg_id; if(!tgId) return;
   c.innerHTML='<div class="glass mb4" style="padding:28px; position:relative; overflow:hidden;"><div style="position:absolute; top:-40px; right:-40px; width:140px; height:140px; background:radial-gradient(circle, rgba(14,165,233,0.12), transparent 70%);"></div><h2 style="font-size:22px; position:relative; z-index:1;" id="profName">—</h2><p class="muted" style="font-size:13px; margin-top:6px; position:relative; z-index:1;" id="profStats">—</p><div class="flex gap2 mt3" style="position:relative; z-index:1; flex-wrap:wrap;" id="profTags"></div></div>'+
   '<div class="glass mb4" style="position:relative; overflow:hidden;"><div style="position:absolute; top:-40px; right:-40px; width:140px; height:140px; background:radial-gradient(circle, rgba(14,165,233,0.08), transparent 70%);"></div><h3 class="mb3" style="position:relative; z-index:1;">Вес</h3><div class="chart-box" id="weightChart" style="position:relative; z-index:1;"><div class="empty" style="padding:20px;"><p class="muted">Загрузка...</p></div></div><div class="flex gap2 mt3" style="position:relative; z-index:1;"><input type="number" class="input" id="newWeight" placeholder="Текущий вес" style="flex:1;"><button class="btn btn-primary" onclick="saveWeight()" style="min-height:48px;">Сохранить</button></div></div>'+
+  '<div class="glass mb4" style="position:relative; overflow:hidden;"><div style="position:absolute; top:-30px; right:-30px; width:100px; height:100px; background:radial-gradient(circle, rgba(14,165,233,0.08), transparent 70%);"></div><h3 class="mb3" style="position:relative; z-index:1;">Настройки</h3><div style="position:relative; z-index:1;"><p class="subtle" style="font-size:12px; font-weight:700; margin-bottom:8px;">Приёмы пищи в день</p><div class="flex gap2"><button class="chip" id="mc2" onclick="setMealCount(2)">2</button><button class="chip" id="mc3" onclick="setMealCount(3)">3</button><button class="chip active" id="mc4" onclick="setMealCount(4)">4</button><button class="chip" id="mc5" onclick="setMealCount(5)">5</button></div></div></div>'+
   '<h3 class="mb3">Достижения</h3><div id="achList"></div>';
   try{
     const [user,weight,ach]=await Promise.all([api('/api/user/'+tgId),api('/api/weight/'+tgId),api('/api/achievements/'+tgId)]);
@@ -1074,8 +1092,30 @@ async function loadProfile(){
       for(let i=0;i<=4;i++){ const gy=pad+(i/4)*(h-pad*2); gridLines+='<line x1="'+pad+'" y1="'+gy+'" x2="'+(w-pad)+'" y2="'+gy+'" stroke="rgba(148,163,184,0.15)" stroke-width="1"/>'; }
       chart.innerHTML='<svg viewBox="0 0 '+w+' '+h+'" style="width:100%;height:100%;">'+gridLines+'<polyline points="'+pts+'" fill="none" stroke="var(--primary)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>'+vals.map((v,i)=>{const x=pad+(i/(vals.length-1))*(w-pad*2),y=h-pad-((v.weight-min)/range)*(h-pad*2); return '<circle cx="'+x+'" cy="'+y+'" r="5" fill="#fff" stroke="var(--primary)" stroke-width="2.5"/><text x="'+x+'" y="'+(y-10)+'" text-anchor="middle" font-size="10" fill="var(--text-secondary)" font-weight="700">'+v.weight+'</text>';}).join('')+'</svg><div class="flex between mt2"><span class="subtle" style="font-size:10px; font-weight:700;">'+vals[0].date.slice(5)+'</span><span class="subtle" style="font-size:10px; font-weight:700;">'+vals[vals.length-1].date.slice(5)+'</span></div>';
     }else chart.innerHTML='<div class="empty" style="padding:20px;"><p class="muted">Недостаточно данных для графика</p></div>';
+    loadWeeklyReport();
     const alist=$('achList');
     if(ach.achievements?.length) alist.innerHTML=ach.achievements.map(a=>'<div class="ach '+(a.unlocked?'':'locked')+'" style="position:relative; overflow:hidden;"><div style="position:absolute; top:-20px; right:-20px; width:60px; height:60px; background:radial-gradient(circle, rgba(14,165,233,0.08), transparent 70%);"></div><div class="ach-icon" style="position:relative; z-index:1;">'+a.icon+'</div><div style="flex:1; position:relative; z-index:1;"><h3 style="font-size:14px;">'+a.title+'</h3><p class="muted" style="font-size:11px;">'+a.description+'</p></div>'+(a.unlocked?'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--success)" stroke-width="3"><path d="M20 6 9 17l-5-5"/></svg>':'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--text-tertiary)" stroke-width="2"><path d="M12 2v20M5 12h14"/></svg>')+'</div>').join('');
+  }catch(e){}
+}
+
+async function setMealCount(n){
+  if(!currentUser?.tg_id) return;
+  try{
+    await api('/api/user/update',{method:'POST',body:{tg_id:currentUser.tg_id,current_weight:currentUser.current_weight,target_weight:currentUser.target_weight,goal:currentUser.goal,meal_count:n}});
+    showSuccess('Сохранено: '+n+' приёма пищи');
+    document.querySelectorAll('.chip[id^="mc"]').forEach(c=>c.classList.remove('active'));
+    $('mc'+n).classList.add('active');
+  }catch(e){}
+}
+
+async function loadWeeklyReport(){
+  const c=$('profileContent'); const tgId=currentUser?.tg_id;
+  try{
+    const r=await api('/api/weekly-report/'+tgId);
+    const div=document.createElement('div'); div.className='glass mb4'; div.style.cssText='position:relative; overflow:hidden;';
+    div.innerHTML='<div style="position:absolute; top:-40px; right:-40px; width:140px; height:140px; background:radial-gradient(circle, rgba(14,165,233,0.1), transparent 70%);"></div><h3 class="mb3" style="position:relative; z-index:1;">Неделя</h3>'+
+    '<div class="grid2" style="position:relative; z-index:1;"><div class="text-center"><div style="font-size:20px; font-weight:800;">'+r.totalWorkouts+'</div><p class="subtle" style="font-size:11px;">Тренировок</p></div><div class="text-center"><div style="font-size:20px; font-weight:800;">'+r.totalMinutes+'</div><p class="subtle" style="font-size:11px;">Минут</p></div><div class="text-center"><div style="font-size:20px; font-weight:800;">'+r.avgCalories+'</div><p class="subtle" style="font-size:11px;">Ккал/день</p></div><div class="text-center"><div style="font-size:20px; font-weight:800;">'+(r.weightChange>0?'+':'')+r.weightChange+'</div><p class="subtle" style="font-size:11px;">Кг за неделю</p></div></div>';
+    c.insertBefore(div, c.children[2]);
   }catch(e){}
 }
 
