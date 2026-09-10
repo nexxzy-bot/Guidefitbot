@@ -11,35 +11,22 @@ app.use('/api/', (req, res, next) => {
     next();
 });
 
-const ACTIVITY_MULTIPLIERS = {
-    sedentary: 1.2,
-    light: 1.375,
-    moderate: 1.55,
-    active: 1.725,
-    very_active: 1.9
-};
-
-function calcCalories(current_weight, height, age, gender, activity_level, goal) {
-    let bmr = 10 * current_weight + 6.25 * height - 5 * age;
-    bmr += gender === 'male' ? 5 : -161;
-    const mult = ACTIVITY_MULTIPLIERS[activity_level] || 1.375;
-    let norm = Math.round(bmr * mult);
-    if (goal === 'lose') norm -= 500;
-    if (goal === 'gain') norm += 500;
-    return norm;
-}
-
+// ====== USER ======
 app.post('/api/user/init', (req, res) => {
-    const { tg_id, name, goal, gender, age, height, current_weight, target_weight, activity_level } = req.body;
+    const { tg_id, name, goal, gender, age, height, current_weight, target_weight } = req.body;
     if (!tg_id || !name || !goal || !gender || !age || !height || !current_weight) {
         return res.status(400).json({ error: 'Missing fields' });
     }
-    const calorie_norm = calcCalories(current_weight, height, age, gender, activity_level || 'moderate', goal);
+    let bmr = 10 * current_weight + 6.25 * height - 5 * age;
+    bmr += gender === 'male' ? 5 : -161;
+    let calorie_norm = Math.round(bmr * 1.375);
+    if (goal === 'lose') calorie_norm -= 500;
+    if (goal === 'gain') calorie_norm += 500;
     db.run(
         `INSERT OR REPLACE INTO users 
-         (tg_id, name, goal, gender, age, height, current_weight, target_weight, calorie_norm, activity_level) 
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        [tg_id, name, goal, gender, age, height, current_weight, target_weight || current_weight, calorie_norm, activity_level || 'moderate'],
+         (tg_id, name, goal, gender, age, height, current_weight, target_weight, calorie_norm) 
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [tg_id, name, goal, gender, age, height, current_weight, target_weight || current_weight, calorie_norm],
         (err) => {
             if (err) { console.error(err); return res.status(500).json({ error: 'Database error' }); }
             res.json({ status: 'ok', calorie_norm });
@@ -56,15 +43,18 @@ app.get('/api/user/:tgId', (req, res) => {
 });
 
 app.post('/api/user/update', (req, res) => {
-    const { tg_id, current_weight, target_weight, goal, activity_level } = req.body;
+    const { tg_id, current_weight, target_weight, goal } = req.body;
     if (!tg_id) return res.status(400).json({ error: 'Missing tg_id' });
-    db.get("SELECT age, height, gender, activity_level as al FROM users WHERE tg_id = ?", [tg_id], (err, user) => {
+    db.get("SELECT age, height, gender FROM users WHERE tg_id = ?", [tg_id], (err, user) => {
         if (err || !user) return res.status(404).json({ error: 'User not found' });
-        const al = activity_level || user.al || 'moderate';
-        const calorie_norm = calcCalories(current_weight, user.height, user.age, user.gender, al, goal);
+        let bmr = 10 * current_weight + 6.25 * user.height - 5 * user.age;
+        bmr += user.gender === 'male' ? 5 : -161;
+        let calorie_norm = Math.round(bmr * 1.375);
+        if (goal === 'lose') calorie_norm -= 500;
+        if (goal === 'gain') calorie_norm += 500;
         db.run(
-            "UPDATE users SET current_weight = ?, target_weight = ?, goal = ?, calorie_norm = ?, activity_level = ? WHERE tg_id = ?",
-            [current_weight, target_weight, goal, calorie_norm, al, tg_id],
+            "UPDATE users SET current_weight = ?, target_weight = ?, goal = ?, calorie_norm = ? WHERE tg_id = ?",
+            [current_weight, target_weight, goal, calorie_norm, tg_id],
             (err) => {
                 if (err) return res.status(500).json({ error: err.message });
                 res.json({ status: 'ok', calorie_norm });
@@ -73,141 +63,7 @@ app.post('/api/user/update', (req, res) => {
     });
 });
 
-function calcStreak(tg_id, callback) {
-    db.all("SELECT date FROM workout_logs WHERE tg_id = ? ORDER BY date DESC", [tg_id], (err, rows) => {
-        if (err || !rows.length) return callback(0);
-        const dates = [...new Set(rows.map(r => r.date))].sort().reverse();
-        let streak = 1;
-        const today = new Date().toISOString().split('T')[0];
-        const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
-        if (dates[0] !== today && dates[0] !== yesterday) return callback(0);
-        for (let i = 1; i < dates.length; i++) {
-            const prev = new Date(dates[i-1]);
-            const curr = new Date(dates[i]);
-            const diff = (prev - curr) / 86400000;
-            if (diff === 1) streak++;
-            else break;
-        }
-        callback(streak);
-    });
-}
-
-/* ---------- Pexels photo helper ---------- */
-async function fetchPexelsPhoto(query) {
-    const key = process.env.PEXELS_API_KEY;
-    if (!key) return null;
-    try {
-        const res = await fetch(`https://api.pexels.com/v1/search?query=${encodeURIComponent(query)}&per_page=1&orientation=square`, {
-            headers: { 'Authorization': key }
-        });
-        if (!res.ok) return null;
-        const data = await res.json();
-        if (data.photos && data.photos.length > 0) {
-            return data.photos[0].src.medium || data.photos[0].src.small;
-        }
-        return null;
-    } catch (e) {
-        console.error('Pexels error:', e);
-        return null;
-    }
-}
-
-app.get('/api/recipe-image/:id', async (req, res) => {
-    const id = req.params.id;
-    db.get("SELECT title, image_url FROM recipes WHERE id = ?", [id], async (err, row) => {
-        if (err) return res.status(500).json({ error: err.message });
-        if (!row) return res.status(404).json({ error: 'Not found' });
-        if (row.image_url && row.image_url.length > 3) {
-            return res.json({ image_url: row.image_url, cached: true });
-        }
-        const url = await fetchPexelsPhoto(row.title + ' food dish meal');
-        if (url) {
-            db.run("UPDATE recipes SET image_url = ? WHERE id = ?", [url, id], (err) => {
-                if (err) console.error('Failed to cache image_url:', err);
-            });
-            return res.json({ image_url: url, cached: false });
-        }
-        res.json({ image_url: '', cached: false });
-    });
-});
-
-/* ---------- Stats screen endpoint ---------- */
-app.get('/api/stats/:tgId', (req, res) => {
-    const tgId = req.params.tgId;
-    const today = new Date().toISOString().split('T')[0];
-    
-    const curr = new Date();
-    const dayOfWeek = curr.getDay() || 7;
-    const monday = new Date(curr);
-    monday.setDate(curr.getDate() - dayOfWeek + 1);
-    
-    const days = [];
-    for (let i = 0; i < 7; i++) {
-        const d = new Date(monday);
-        d.setDate(monday.getDate() + i);
-        days.push(d.toISOString().split('T')[0]);
-    }
-    
-    db.get("SELECT calorie_norm, current_weight FROM users WHERE tg_id = ?", [tgId], (err, user) => {
-        if (err) return res.status(500).json({ error: err.message });
-        const target = user ? user.calorie_norm : 2000;
-        const currentWeight = user ? user.current_weight : null;
-        
-        const placeholders = days.map(() => '?').join(',');
-        db.all(`
-            SELECT date(fl.timestamp) as dt, SUM(r.calories) as cals
-            FROM food_logs fl
-            JOIN recipes r ON fl.recipe_id = r.id
-            WHERE fl.tg_id = ? AND date(fl.timestamp) IN (${placeholders})
-            GROUP BY date(fl.timestamp)
-        `, [tgId, ...days], (err, calRows) => {
-            if (err) return res.status(500).json({ error: err.message });
-            const calMap = {};
-            (calRows || []).forEach(r => calMap[r.dt] = r.cals);
-            
-            db.all(`SELECT date, duration_minutes FROM workout_logs WHERE tg_id = ? AND date IN (${placeholders})`, [tgId, ...days], (err, workoutRows) => {
-                if (err) return res.status(500).json({ error: err.message });
-                const workoutMap = {};
-                (workoutRows || []).forEach(r => workoutMap[r.date] = (workoutMap[r.date] || 0) + r.duration_minutes);
-                
-                db.get("SELECT amount_ml FROM water_logs WHERE tg_id = ? AND date = ?", [tgId, today], (err, waterRow) => {
-                    const waterToday = waterRow ? waterRow.amount_ml : 0;
-                    
-                    db.get("SELECT weight FROM weight_logs WHERE tg_id = ? ORDER BY date DESC LIMIT 1", [tgId], (err, weightRow) => {
-                        const latestWeight = weightRow ? weightRow.weight : currentWeight;
-                        
-                        const weekData = days.map((d, idx) => {
-                            const cals = calMap[d] || 0;
-                            const percent = target > 0 ? Math.round((cals / target) * 100) : 0;
-                            return {
-                                date: d,
-                                dayShort: ['Пн','Вт','Ср','Чт','Пт','Сб','Вс'][idx],
-                                calories: cals,
-                                percent: percent,
-                                isToday: d === today,
-                                hasWorkout: !!workoutMap[d]
-                            };
-                        });
-                        
-                        const todayData = weekData.find(d => d.isToday) || weekData[weekData.length - 1];
-                        
-                        res.json({
-                            todayCalories: todayData.calories,
-                            targetCalories: target,
-                            week: weekData,
-                            hasWorkoutToday: !!workoutMap[today],
-                            workoutMinutes: workoutMap[today] || 0,
-                            currentWeight: latestWeight,
-                            waterToday: waterToday
-                        });
-                    });
-                });
-            });
-        });
-    });
-});
-
-/* ---------- Dashboard (updated) ---------- */
+// ====== DASHBOARD ======
 app.post('/api/dashboard', (req, res) => {
     const { tg_id } = req.body;
     if (!tg_id) return res.status(400).json({ error: 'Missing tg_id' });
@@ -218,6 +74,7 @@ app.post('/api/dashboard', (req, res) => {
 
         const today = new Date().toISOString().split('T')[0];
         
+        // Get food today
         db.all(`SELECT r.* FROM food_logs fl JOIN recipes r ON fl.recipe_id = r.id 
             WHERE fl.tg_id = ? AND date(fl.timestamp) = ?`, [tg_id, today], (err, meals) => {
             
@@ -229,12 +86,15 @@ app.post('/api/dashboard', (req, res) => {
                 consumption.carbs += m.carbs;
             });
 
+            // Get water today
             db.get("SELECT amount_ml FROM water_logs WHERE tg_id = ? AND date = ?", [tg_id, today], (err, water) => {
                 const waterAmount = water ? water.amount_ml : 0;
 
+                // Get workout today
                 db.get("SELECT COUNT(*) as count FROM workout_logs WHERE tg_id = ? AND date = ?", [tg_id, today], (err, workout) => {
                     const hasWorkout = workout && workout.count > 0;
 
+                    // Get active program
                     db.get(`SELECT p.*, up.current_week, up.current_day, up.start_date 
                         FROM user_programs up JOIN programs p ON up.program_id = p.id 
                         WHERE up.tg_id = ? AND up.active = 1`, [tg_id], (err, program) => {
@@ -246,25 +106,16 @@ app.post('/api/dashboard', (req, res) => {
                         if (hour >= 15) nextMeal = 'snack';
                         if (hour >= 18) nextMeal = 'dinner';
 
-                        calcStreak(tg_id, (streak) => {
-                            res.json({ 
-                                streak, 
-                                consumption, 
-                                norms, 
-                                user,
-                                nextMeal,
-                                mealsToday: meals.length,
-                                water: waterAmount,
-                                hasWorkout: !!hasWorkout,
-                                activeProgram: program || null,
-                                todayMeals: meals.map(m => ({
-                                    id: m.id,
-                                    title: m.title,
-                                    category: m.category,
-                                    calories: m.calories,
-                                    image_url: m.image_url || ''
-                                }))
-                            });
+                        res.json({ 
+                            streak: 1, 
+                            consumption, 
+                            norms, 
+                            user,
+                            nextMeal,
+                            mealsToday: meals.length,
+                            water: waterAmount,
+                            hasWorkout: !!hasWorkout,
+                            activeProgram: program || null
                         });
                     });
                 });
@@ -273,37 +124,14 @@ app.post('/api/dashboard', (req, res) => {
     });
 });
 
+// ====== MEALS ======
 app.post('/api/meal', (req, res) => {
-    const { category, goal, exclude_id } = req.body;
+    const { category } = req.body;
     if (!category) return res.status(400).json({ error: 'Missing category' });
-    let sql = "SELECT * FROM recipes WHERE category = ?";
-    let params = [category];
-    if (goal) {
-        sql += " AND (goals LIKE ? OR goals IS NULL OR goals = '')";
-        params.push('%' + goal + '%');
-    }
-    if (exclude_id) {
-        sql += " AND id != ?";
-        params.push(exclude_id);
-    }
-    sql += " ORDER BY RANDOM() LIMIT 1";
-    db.get(sql, params, (err, row) => {
+    db.get("SELECT * FROM recipes WHERE category = ? ORDER BY RANDOM() LIMIT 1", [category], (err, row) => {
         if (err) return res.status(500).json({ error: err.message });
         if (!row) return res.status(404).json({ error: 'Recipe not found' });
-        if (row.ingredients) try { row.ingredients = JSON.parse(row.ingredients); } catch(e){}
-        if (row.recipe_steps) try { row.recipe_steps = JSON.parse(row.recipe_steps); } catch(e){}
-        if (row.goals) try { row.goals = JSON.parse(row.goals); } catch(e){ row.goals = [row.goals]; }
         res.json({ recipe: row });
-    });
-});
-
-app.get('/api/recipe/:id', (req, res) => {
-    db.get("SELECT * FROM recipes WHERE id = ?", [req.params.id], (err, row) => {
-        if (err) return res.status(500).json({ error: err.message });
-        if (!row) return res.status(404).json({ error: 'Not found' });
-        if (row.ingredients) try { row.ingredients = JSON.parse(row.ingredients); } catch(e){}
-        if (row.recipe_steps) try { row.recipe_steps = JSON.parse(row.recipe_steps); } catch(e){}
-        res.json(row);
     });
 });
 
@@ -316,20 +144,11 @@ app.post('/api/log-meal', (req, res) => {
     });
 });
 
-app.delete('/api/food-log/:id', (req, res) => {
-    const tg_id = req.query.tg_id;
-    if (!tg_id) return res.status(400).json({ error: 'Missing tg_id' });
-    db.run("DELETE FROM food_logs WHERE id = ? AND tg_id = ?", [req.params.id, tg_id], function(err) {
-        if (err) return res.status(500).json({ error: err.message });
-        res.json({ status: 'ok', deleted: this.changes });
-    });
-});
-
 app.get('/api/food-log/today/:tgId', (req, res) => {
     const tgId = req.params.tgId;
     const today = new Date().toISOString().split('T')[0];
     db.all(`
-        SELECT fl.id as log_id, r.*, fl.timestamp 
+        SELECT r.*, fl.timestamp 
         FROM food_logs fl
         JOIN recipes r ON fl.recipe_id = r.id
         WHERE fl.tg_id = ? AND date(fl.timestamp) = ?
@@ -340,58 +159,7 @@ app.get('/api/food-log/today/:tgId', (req, res) => {
     });
 });
 
-app.get('/api/shopping-list/:tgId', (req, res) => {
-    const tgId = req.params.tgId;
-    const weekAgo = new Date(Date.now() - 7*86400000).toISOString().split('T')[0];
-    db.all(`
-        SELECT r.ingredients FROM food_logs fl
-        JOIN recipes r ON fl.recipe_id = r.id
-        WHERE fl.tg_id = ? AND date(fl.timestamp) >= ?
-    `, [tgId, weekAgo], (err, rows) => {
-        if (err) return res.status(500).json({ error: err.message });
-        const items = new Set();
-        rows.forEach(r => {
-            let ings = [];
-            try { ings = JSON.parse(r.ingredients); } catch(e) {}
-            ings.forEach(i => items.add(i));
-        });
-        res.json({ items: Array.from(items) });
-    });
-});
-
-app.get('/api/weekly-report/:tgId', (req, res) => {
-    const tgId = req.params.tgId;
-    const weekAgo = new Date(Date.now() - 7*86400000).toISOString().split('T')[0];
-    
-    db.all("SELECT date, duration_minutes, total_volume FROM workout_logs WHERE tg_id = ? AND date >= ? ORDER BY date", [tgId, weekAgo], (err, workouts) => {
-        if (err) return res.status(500).json({ error: err.message });
-        
-        db.all("SELECT date, weight FROM weight_logs WHERE tg_id = ? AND date >= ? ORDER BY date", [tgId, weekAgo], (err, weights) => {
-            if (err) return res.status(500).json({ error: err.message });
-            
-            db.all(`SELECT r.calories, r.protein, r.fat, r.carbs FROM food_logs fl JOIN recipes r ON fl.recipe_id = r.id WHERE fl.tg_id = ? AND date(fl.timestamp) >= ?`, [tgId, weekAgo], (err, meals) => {
-                if (err) return res.status(500).json({ error: err.message });
-                
-                const totalWorkouts = workouts.length;
-                const totalMinutes = workouts.reduce((s, w) => s + (w.duration_minutes || 0), 0);
-                const totalVolume = workouts.reduce((s, w) => s + (w.total_volume || 0), 0);
-                const avgCals = meals.length ? Math.round(meals.reduce((s, m) => s + m.calories, 0) / 7) : 0;
-                const weightChange = weights.length >= 2 ? (weights[weights.length-1].weight - weights[0].weight).toFixed(1) : 0;
-                
-                res.json({
-                    totalWorkouts,
-                    totalMinutes,
-                    totalVolume,
-                    avgCalories: avgCals,
-                    weightChange,
-                    weightFirst: weights.length ? weights[0].weight : null,
-                    weightLast: weights.length ? weights[weights.length-1].weight : null
-                });
-            });
-        });
-    });
-});
-
+// ====== EXERCISES ======
 app.get('/api/exercises', (req, res) => {
     const { location, type, muscle } = req.query;
     let sql = "SELECT * FROM exercises WHERE 1=1";
@@ -414,6 +182,7 @@ app.get('/api/exercise/:id', (req, res) => {
     });
 });
 
+// ====== PROGRAMS ======
 app.get('/api/programs', (req, res) => {
     const { location, type, goal } = req.query;
     let sql = "SELECT * FROM programs WHERE 1=1";
@@ -435,9 +204,12 @@ app.get('/api/program/:id', (req, res) => {
         db.all("SELECT * FROM program_days WHERE program_id = ? ORDER BY week, day", [req.params.id], (err, days) => {
             if (err) return res.status(500).json({ error: err.message });
             
+            let completed = 0;
+            const totalDays = days.length;
+            
             const fetchExercises = (index) => {
                 if (index >= days.length) {
-                    res.json({ program, days, totalDays: days.length });
+                    res.json({ program, days, totalDays });
                     return;
                 }
                 db.all(`SELECT pe.*, e.name as exercise_name, e.muscle_group, e.description as exercise_desc 
@@ -453,6 +225,7 @@ app.get('/api/program/:id', (req, res) => {
     });
 });
 
+// ====== USER PROGRAM ======
 app.post('/api/user/program/start', (req, res) => {
     const { tg_id, program_id } = req.body;
     if (!tg_id || !program_id) return res.status(400).json({ error: 'Missing fields' });
@@ -503,6 +276,7 @@ app.post('/api/user/program/complete', (req, res) => {
     );
 });
 
+// ====== WORKOUT LOGS ======
 app.post('/api/workout/log', (req, res) => {
     const { tg_id, program_id, program_day_id, duration_minutes, total_volume, notes, sets } = req.body;
     if (!tg_id) return res.status(400).json({ error: 'Missing tg_id' });
@@ -554,6 +328,7 @@ app.get('/api/workout/log/:id', (req, res) => {
     });
 });
 
+// ====== WATER ======
 app.post('/api/water', (req, res) => {
     const { tg_id, amount } = req.body;
     if (!tg_id || !amount) return res.status(400).json({ error: 'Missing fields' });
@@ -589,6 +364,7 @@ app.get('/api/water/:tgId', (req, res) => {
     });
 });
 
+// ====== WEIGHT ======
 app.post('/api/weight', (req, res) => {
     const { tg_id, weight } = req.body;
     if (!tg_id || !weight) return res.status(400).json({ error: 'Missing fields' });
@@ -609,6 +385,7 @@ app.get('/api/weight/:tgId', (req, res) => {
     });
 });
 
+// ====== ACHIEVEMENTS ======
 app.get('/api/achievements/:tgId', (req, res) => {
     db.all("SELECT * FROM achievements", [], (err, allAch) => {
         if (err) return res.status(500).json({ error: err.message });
