@@ -15,7 +15,7 @@ db.serialize(() => {
   )`);
   db.run(`CREATE TABLE IF NOT EXISTS recipes (
     id INTEGER PRIMARY KEY, title TEXT, category TEXT,
-    calories INTEGER, protein INTEGER, fat INTEGER, carbs INTEGER,
+    calories REAL, protein REAL, fat REAL, carbs REAL,
     description TEXT, benefits TEXT, ingredients TEXT,
     recipe_steps TEXT, image_url TEXT, goals TEXT
   )`);
@@ -66,6 +66,18 @@ db.serialize(() => {
     id INTEGER PRIMARY KEY AUTOINCREMENT, tg_id TEXT, achievement_id INTEGER,
     unlocked_at DATETIME DEFAULT CURRENT_TIMESTAMP
   )`);
+  db.run(`CREATE TABLE IF NOT EXISTS notification_log (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    tg_id TEXT NOT NULL, type TEXT NOT NULL, date TEXT NOT NULL,
+    UNIQUE(tg_id, type, date)
+  )`);
+
+  db.run(`CREATE INDEX IF NOT EXISTS idx_food_logs_tg ON food_logs(tg_id)`);
+  db.run(`CREATE INDEX IF NOT EXISTS idx_workout_logs_tg ON workout_logs(tg_id)`);
+  db.run(`CREATE INDEX IF NOT EXISTS idx_water_logs_tg ON water_logs(tg_id)`);
+  db.run(`CREATE INDEX IF NOT EXISTS idx_weight_logs_tg ON weight_logs(tg_id)`);
+  db.run(`CREATE INDEX IF NOT EXISTS idx_user_programs_tg ON user_programs(tg_id)`);
+  db.run(`CREATE INDEX IF NOT EXISTS idx_workout_sets_log ON workout_sets(log_id)`);
 
   if (fs.existsSync('./recipes.json')) {
     const recipes = JSON.parse(fs.readFileSync('./recipes.json', 'utf8'));
@@ -73,9 +85,11 @@ db.serialize(() => {
       (id, title, category, calories, protein, fat, carbs, description, benefits, ingredients, recipe_steps, image_url, goals)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`);
     recipes.forEach(r => {
-      stmt.run(r.id, r.title, r.category, r.calories, r.protein,
-        r.fat, r.carbs, r.description || '', r.benefits || '',
-        JSON.stringify(r.ingredients || []), JSON.stringify(r.recipe_steps || []),
+      const title = r.title || r.name || '';
+      const steps = r.recipe_steps || r.steps || [];
+      stmt.run(r.id, title, r.category, r.calories || 0, r.protein || 0,
+        r.fat || 0, r.carbs || 0, r.description || '', r.benefits || '',
+        JSON.stringify(r.ingredients || []), JSON.stringify(steps),
         r.image_url || '', JSON.stringify(r.goals || ['lose','gain','maintain']));
     });
     stmt.finalize();
