@@ -268,8 +268,20 @@ body{touch-action:manipulation}
       <span id="ringText">0%</span>
     </div>
   </div>
-  <div class="stat-grid" id="homeStatGrid"></div>
-  <span class="hidden" id="homeCals"></span><span class="hidden" id="homeWater"></span><span class="hidden" id="homeStreakVal"></span>
+  <div class="stat-grid">
+    <div class="stat-pill pressable" onclick="navigate('nutrition')">
+      <div class="stat-ic" style="background:var(--amber-dim);color:var(--amber)"><span data-ic="flame" data-sz="20"></span></div>
+      <div><div class="stat-val" id="homeCals">0</div><div class="stat-lbl">Ккал сегодня</div></div>
+    </div>
+    <div class="stat-pill pressable" onclick="addWater()">
+      <div class="stat-ic" style="background:var(--blue-dim);color:var(--blue)"><span data-ic="droplet" data-sz="20"></span></div>
+      <div><div class="stat-val" id="homeWater">0</div><div class="stat-lbl">Вода, мл</div></div>
+    </div>
+    <div class="stat-pill pressable">
+      <div class="stat-ic" style="background:var(--green-dim);color:var(--green)"><span data-ic="flame" data-sz="20"></span></div>
+      <div><div class="stat-val" id="homeStreakVal">0 дней</div><div class="stat-lbl">Серия тренировок</div></div>
+    </div>
+  </div>
   <div class="flex between items-center mb3"><h3>Приёмы пищи</h3><span class="subtle" style="font-size:11px;font-weight:700" id="mealCountLbl"></span></div>
   <div id="homeMealsList"></div>
   <div class="card pressable mb4 mt3" onclick="navigate('workouts')" style="cursor:pointer;display:flex;align-items:center;gap:14px">
@@ -1742,136 +1754,6 @@ try{
   });
   setTheme(getTheme(), true);
 }catch(e){}
-</script>
-<style>
-.hsd-cell{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:14px 8px 12px;display:flex;flex-direction:column;align-items:center;gap:6px;box-shadow:var(--sh-sm);min-height:128px;justify-content:center;cursor:pointer}
-.hsd-ring{position:relative;width:62px;height:62px}
-.hsd-ring svg{width:100%;height:100%;transform:rotate(-90deg)}
-.hsd-bg{fill:none;stroke:var(--solid);stroke-width:6}
-.hsd-fg{fill:none;stroke-width:6;stroke-linecap:round;transition:stroke-dashoffset .7s ease}
-.hsd-num{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-family:'Bebas Neue';font-size:16px;color:var(--text)}
-.hsd-lbl{font-size:10.5px;font-weight:800;color:var(--text3);text-transform:uppercase;letter-spacing:.04em;text-align:center}
-.hsd-sub{font-size:10px;font-weight:700;color:var(--text3);text-align:center;margin-top:-3px}
-</style>
-<script>
-function hsdRing(pct, color){
-  const C = 2 * Math.PI * 26;
-  return '<div class="hsd-ring"><svg viewBox="0 0 62 62"><circle class="hsd-bg" cx="31" cy="31" r="26"/>' +
-    '<circle class="hsd-fg" cx="31" cy="31" r="26" stroke="' + color + '" stroke-dasharray="' + C + '" stroke-dashoffset="' + (C - Math.min(pct,1) * C) + '"/></svg></div>';
-}
-async function renderHomeDonuts(){
-  const grid = document.getElementById('homeStatGrid');
-  if(!grid || !currentUser) return;
-  const eaten = parseInt(document.getElementById('homeCals').textContent) || 0;
-  const waterMl = parseInt(document.getElementById('homeWater').textContent) || 0;
-  const streak = parseInt(document.getElementById('homeStreakVal').textContent) || 0;
-  const norm = currentUser.calorie_norm || 2000;
-  const waterNorm = currentUser.water_norm || 2000;
-  let startW = currentUser.current_weight, curW = currentUser.current_weight, tgtW = currentUser.target_weight;
-  try{
-    const wh = await api('/api/weight/' + currentUser.tg_id);
-    if(wh.history && wh.history.length){ startW = parseFloat(wh.history[wh.history.length - 1].weight) || startW; }
-  }catch(e){}
-  let wPct = 1, wSub = 'цель ' + tgtW + ' кг';
-  if(startW > tgtW + 0.05){
-    wPct = Math.max(0, Math.min(1, (startW - curW) / (startW - tgtW)));
-    wSub = (curW > tgtW ? 'осталось ' + (Math.round((curW - tgtW) * 10) / 10) + ' кг' : 'цель достигнута!');
-  } else if(startW < tgtW - 0.05){
-    wPct = Math.max(0, Math.min(1, (curW - startW) / (tgtW - startW)));
-    wSub = (curW < tgtW ? 'осталось ' + (Math.round((tgtW - curW) * 10) / 10) + ' кг' : 'цель достигнута!');
-  }
-  const cells = [
-    {pct: norm ? eaten / norm : 0, color: '#F59E0B', num: eaten, lbl: 'Ккал', sub: 'из ' + norm, fn: "navigate('nutrition')"},
-    {pct: waterNorm ? waterMl / waterNorm : 0, color: '#06B6D4', num: waterMl, lbl: 'Вода', sub: 'из ' + waterNorm + ' мл', fn: 'addWater()'},
-    {pct: Math.min(streak / 7, 1), color: '#10B981', num: streak, lbl: 'Серия', sub: streak > 0 ? 'дн. подряд' : 'начни сегодня', fn: "navigate('workouts')"},
-    {pct: wPct, color: '#7C6FF0', num: (Math.round(curW * 10) / 10), lbl: 'Вес', sub: wSub, fn: "navigate('profile')"}
-  ];
-  grid.innerHTML = cells.map(c =>
-    '<div class="hsd-cell pressable" onclick="' + c.fn + '">' +
-    '<div class="hsd-num-slot">' + hsdRing(c.pct, c.color).replace('</div>', '<span class="hsd-num">' + c.num + '</span></div>') + '</div>' +
-    '<div class="hsd-lbl">' + c.lbl + '</div><div class="hsd-sub">' + c.sub + '</div></div>').join('');
-}
-try{
-  const _navOrig11 = (typeof navigate === 'function') ? navigate : null;
-  if(_navOrig11){
-    navigate = function(screen){
-      _navOrig11(screen);
-      if(screen === 'home') setTimeout(renderHomeDonuts, 650);
-    };
-  }
-  setTimeout(renderHomeDonuts, 1500);
-}catch(e){}
-</script>
-<style>
-.wtr-track{display:flex;gap:4px}
-.wtr-seg{flex:1;height:26px;border-radius:7px;transition:background .3s ease}
-.wtr-seg.full{background:linear-gradient(180deg,#22C7EE,#06B6D4)}
-.wtr-seg.empty{background:var(--solid)}
-.wtr-done{display:inline-flex;align-items:center;gap:5px;background:var(--green-dim);color:var(--green);padding:4px 10px;border-radius:99px;font-size:11px;font-weight:800}
-</style>
-<script>
-function renderHomeDonuts(){
-  const grid = document.getElementById('homeStatGrid');
-  if(!grid || !currentUser) return;
-  const waterMl = parseInt((document.getElementById('homeWater')||{}).textContent) || 0;
-  const streak = parseInt((document.getElementById('homeStreakVal')||{}).textContent) || 0;
-  const norm = currentUser.water_norm || 2000;
-  const glasses = Math.max(4, Math.round(norm / 250));
-  const filled = Math.min(glasses, Math.round(waterMl / 250));
-  const full = waterMl >= norm;
-  grid.innerHTML =
-    '<div style="grid-column:1/-1;display:flex;align-items:center;gap:10px;background:var(--surface);border:1px solid var(--border);border-radius:18px;padding:11px 14px;box-shadow:var(--sh-sm)">' +
-      '<div style="width:38px;height:38px;border-radius:13px;background:var(--amber-dim);color:var(--amber);display:flex;align-items:center;justify-content:center;flex-shrink:0">' + ic('flame',20) + '</div>' +
-      '<div style="flex:1;min-width:0"><div style="font-weight:800;font-size:13.5px">' + (streak > 0 ? 'Серия: ' + streak + ' ' + plural(streak,'день','дня','дней') : 'Серия: начни сегодня') + '</div>' +
-      '<div class="subtle" style="font-size:11px">Тренируйся каждый день — огонёк растёт</div></div></div>' +
-    '<div class="pressable" style="grid-column:1/-1;background:var(--surface);border:1px solid var(--border);border-radius:18px;padding:14px;box-shadow:var(--sh-sm)" onclick="addWater()">' +
-      '<div class="flex between items-center mb2">' +
-        '<div style="font-weight:800;font-size:13.5px;display:flex;align-items:center;gap:6px;color:var(--blue)">' + ic('droplet',16) + ' Вода</div>' +
-        (full ? '<span class="wtr-done">' + ic('check',13) + ' Норма выпита!</span>' : '<span class="subtle" style="font-size:12px;font-weight:700">' + waterMl + ' / ' + norm + ' мл</span>') +
-      '</div>' +
-      '<div class="wtr-track">' + Array.from({length: glasses}, function(_, i){
-        return '<div class="wtr-seg ' + (i < filled ? 'full' : 'empty') + '"></div>';
-      }).join('') + '</div>' +
-      '<div class="flex between items-center mt2">' +
-        '<span class="subtle" style="font-size:11px">' + filled + ' из ' + glasses + ' стаканов · 1 стакан = 250 мл</span>' +
-        '<span style="font-size:12.5px;font-weight:800;color:var(--blue)">+ стакан</span>' +
-      '</div></div>';
-}
-try{
-  const _addWaterOrig = addWater;
-  addWater = function(){
-    _addWaterOrig();
-    setTimeout(renderHomeDonuts, 700);
-    setTimeout(renderHomeDonuts, 1600);
-  };
-}catch(e){}
-const TOUR2 = [
-  {icn:'flame', t:'Главная', d:'Кольцо вверху — твои калории на день: записывай еду, и оно заполняется. Ниже шкала воды: каждое нажатие — один стакан (250 мл). Когда шкала полностью заполнена — дневная норма воды выпита. Огонёк — твоя серия тренировок.'},
-  {icn:'dumbbell', t:'Тренировки', d:'Программы для жиросжигания, силовые и йога. Выбери программу и нажми «Начать» — приложение само проведёт по шагам: упражнение, подходы, отдых.'},
-  {icn:'bowl', t:'Еда', d:'Рецепты под твою норму калорий: завтраки, обеды, ужины и перекусы с КБЖУ и пошаговым приготовлением. Нажми «Записать в дневник» — калории сами попадут в кольцо.'},
-  {icn:'person', t:'Настройки', d:'Здесь можно поменять имя, вес, цель и тему оформления. Взвешивайся и записывай вес — увидишь график прогресса и достижения.'}
-];
-function tourShow(){
-  const old = document.getElementById('tourOverlay');
-  if(old) old.remove();
-  const s = TOUR2[tourIdx];
-  const ov = document.createElement('div');
-  ov.className = 'tour-overlay'; ov.id = 'tourOverlay';
-  ov.innerHTML = '<div class="tour-card">' +
-    '<div class="tour-ic">' + ic(s.icn,30) + '</div>' +
-    '<h2 class="text-center" style="font-size:24px">' + s.t + '</h2>' +
-    '<p class="muted text-center mt2" style="font-size:13.5px;line-height:1.65">' + s.d + '</p>' +
-    '<div class="tour-dots">' + TOUR2.map(function(_, i){ return '<span class="wz-dot" style="background:' + (i === tourIdx ? 'var(--accent)' : 'var(--border2)') + '"></span>'; }).join('') + '</div>' +
-    '<button class="btn btn-primary btn-block pressable" onclick="tourNext()">' + (tourIdx === TOUR2.length - 1 ? 'Понятно, начнём!' : 'Далее') + '</button>' +
-    '<button class="btn btn-ghost btn-block pressable mt2" onclick="tourSkip()" style="font-size:13px">Пропустить</button>' +
-    '</div>';
-  document.body.appendChild(ov);
-}
-function tourNext(){
-  if(typeof haptic === 'function') haptic();
-  tourIdx++;
-  if(tourIdx >= TOUR2.length) tourSkip(); else tourShow();
-}
 </script>
 </body>
 </html>

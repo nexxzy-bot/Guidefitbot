@@ -254,12 +254,12 @@ async function fetchPexelsPhoto(query) {
 }
 
 app.get('/api/recipe-image/:id', async (req, res) => {
-  db.get("SELECT title, image_url, photo_query FROM recipes WHERE id = ?", [req.params.id], async (err, row) => {
+  db.get("SELECT title, image_url FROM recipes WHERE id = ?", [req.params.id], async (err, row) => {
     if (err) return res.status(500).json({ error: err.message });
     if (!row) return res.status(404).json({ error: 'Not found' });
     const hasReal = row.image_url && row.image_url.length > 3 && row.image_url !== 'empty.jpg';
     if (hasReal) return res.json({ image_url: row.image_url, cached: true });
-    const url = await fetchPexelsPhoto(row.photo_query || (row.title + ' food dish'));
+    const url = await fetchPexelsPhoto(row.title + ' food dish meal');
     if (url) {
       db.run("UPDATE recipes SET image_url = ? WHERE id = ?", [url, req.params.id],
         (err2) => { if (err2) console.error('cache err:', err2.message); });
@@ -783,24 +783,6 @@ app.get('/api/ex-photo', async (req, res) => {
     if(url) photoCache[q] = { url: url };
     res.json({ url: url });
   }catch(e){ res.json({ url: null }); }
-});
-
-// --- Йога ---
-app.get('/api/yoga/flows', (req, res) => {
-  db.all("SELECT id, title, focus, level, minutes, description FROM yoga_flows ORDER BY id", [], (err, rows) => {
-    if (err) return res.status(500).json({ error: err.message });
-    res.json({ flows: rows });
-  });
-});
-app.get('/api/yoga/flow/:id', (req, res) => {
-  db.get("SELECT * FROM yoga_flows WHERE id = ?", [req.params.id], (err, flow) => {
-    if (err) return res.status(500).json({ error: err.message });
-    if (!flow) return res.status(404).json({ error: 'not found' });
-    db.all("SELECT p.name, p.how, p.why, fp.seconds FROM yoga_flow_poses fp JOIN yoga_poses p ON p.id = fp.pose_id WHERE fp.flow_id = ? ORDER BY fp.id", [req.params.id], (e2, poses) => {
-      if (e2) return res.status(500).json({ error: e2.message });
-      res.json({ flow: flow, poses: poses });
-    });
-  });
 });
 
 const PORT = Number(process.env.MINIAPP_PORT) || 3000;

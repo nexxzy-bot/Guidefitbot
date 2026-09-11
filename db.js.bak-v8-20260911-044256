@@ -19,7 +19,6 @@ db.serialize(() => {
     description TEXT, benefits TEXT, ingredients TEXT,
     recipe_steps TEXT, image_url TEXT, goals TEXT
   )`);
-  db.run("ALTER TABLE recipes ADD COLUMN photo_query TEXT", () => {});
   db.run(`CREATE TABLE IF NOT EXISTS exercises (
     id INTEGER PRIMARY KEY, name TEXT, location TEXT, type TEXT,
     muscle_group TEXT, description TEXT, difficulty TEXT,
@@ -77,34 +76,21 @@ db.serialize(() => {
   db.run(`CREATE INDEX IF NOT EXISTS idx_workout_logs_tg ON workout_logs(tg_id)`);
   db.run(`CREATE INDEX IF NOT EXISTS idx_water_logs_tg ON water_logs(tg_id)`);
   db.run(`CREATE INDEX IF NOT EXISTS idx_weight_logs_tg ON weight_logs(tg_id)`);
-  db.run(`CREATE TABLE IF NOT EXISTS yoga_flows (
-    id INTEGER PRIMARY KEY, title TEXT, focus TEXT, level TEXT,
-    minutes INTEGER, description TEXT
-  )`);
-  db.run(`CREATE TABLE IF NOT EXISTS yoga_flow_poses (
-    id INTEGER PRIMARY KEY AUTOINCREMENT, flow_id INTEGER,
-    pose_id INTEGER, seconds INTEGER
-  )`);
-  db.run(`CREATE TABLE IF NOT EXISTS yoga_poses (
-    id INTEGER PRIMARY KEY, name TEXT, how TEXT, why TEXT
-  )`);
   db.run(`CREATE INDEX IF NOT EXISTS idx_user_programs_tg ON user_programs(tg_id)`);
   db.run(`CREATE INDEX IF NOT EXISTS idx_workout_sets_log ON workout_sets(log_id)`);
 
-  // v9: каталог рецептов пересобирается при каждом старте
-  db.run("DELETE FROM recipes");
   if (fs.existsSync('./recipes.json')) {
     const recipes = JSON.parse(fs.readFileSync('./recipes.json', 'utf8'));
     const stmt = db.prepare(`INSERT OR IGNORE INTO recipes
-      (id, title, category, calories, protein, fat, carbs, description, benefits, ingredients, recipe_steps, image_url, goals, photo_query)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`);
+      (id, title, category, calories, protein, fat, carbs, description, benefits, ingredients, recipe_steps, image_url, goals)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`);
     recipes.forEach(r => {
       const title = r.title || r.name || '';
       const steps = r.recipe_steps || r.steps || [];
       stmt.run(r.id, title, r.category, r.calories || 0, r.protein || 0,
         r.fat || 0, r.carbs || 0, r.description || '', r.benefits || '',
         JSON.stringify(r.ingredients || []), JSON.stringify(steps),
-        r.image_url || '', JSON.stringify(r.goals || ['lose','gain','maintain']), r.photo || '');
+        r.image_url || '', JSON.stringify(r.goals || ['lose','gain','maintain']));
     });
     stmt.finalize();
   }
@@ -119,11 +105,6 @@ db.serialize(() => {
     });
     stmt.finalize();
   }
-  // v8: каталог программ пересобирается при каждом старте (история тренировок сохраняется)
-  db.run("DELETE FROM program_exercises");
-  db.run("DELETE FROM program_days");
-  db.run("DELETE FROM programs");
-  db.run("DELETE FROM user_programs");
   if (fs.existsSync('./programs.json')) {
     const programs = JSON.parse(fs.readFileSync('./programs.json', 'utf8'));
     const ps = db.prepare(`INSERT OR IGNORE INTO programs
@@ -143,22 +124,6 @@ db.serialize(() => {
         });
       });
     });
-  }
-
-  if (fs.existsSync('./yoga.json')) {
-    const yg = JSON.parse(fs.readFileSync('./yoga.json', 'utf8'));
-    db.run("DELETE FROM yoga_flow_poses");
-    db.run("DELETE FROM yoga_flows");
-    db.run("DELETE FROM yoga_poses");
-    const yp = db.prepare(`INSERT INTO yoga_poses (id, name, how, why) VALUES (?, ?, ?, ?)`);
-    (yg.poses || []).forEach(p => yp.run(p.id, p.name, p.how, p.why));
-    const yf = db.prepare(`INSERT INTO yoga_flows (id, title, focus, level, minutes, description) VALUES (?, ?, ?, ?, ?, ?)`);
-    const yfp = db.prepare(`INSERT INTO yoga_flow_poses (flow_id, pose_id, seconds) VALUES (?, ?, ?)`);
-    (yg.flows || []).forEach(f => {
-      yf.run(f.id, f.title, f.focus, f.level, f.minutes, f.description);
-      (f.poses || []).forEach(pp => yfp.run(f.id, pp.pose_id, pp.seconds));
-    });
-    console.log('Йога загружена: ' + yg.flows.length + ' практик');
   }
   const achievements = [
     {id:1, title:'Первый шаг', description:'Завершена первая тренировка', icon:'🏃', condition_type:'workouts', condition_value:1},
