@@ -34,8 +34,7 @@ function validateInitData(initData) {
     .map(([k, v]) => k + '=' + v).join('\n');
   const secretKey = crypto.createHmac('sha256', 'WebAppData').update(token).digest();
   const calcHash = crypto.createHmac('sha256', secretKey).update(dataCheckString).digest('hex');
-  const _a = Buffer.from(calcHash, 'hex'), _b = Buffer.from(hash, 'hex');
-  if (_a.length !== _b.length || !crypto.timingSafeEqual(_a, _b)) return { valid: false };
+  if (calcHash !== hash) return { valid: false };
   try {
     const user = JSON.parse(params.get('user') || 'null');
     return user && user.id ? { valid: true, id: String(user.id) } : { valid: false };
@@ -653,21 +652,22 @@ app.post('/api/water', (req, res) => {
   const { amount } = req.body;
   if (!amount) return res.status(400).json({ error: 'Missing fields' });
   const today = localDate();
-  const respondWithTotal = () => {
-    db.get("SELECT amount_ml FROM water_logs WHERE tg_id = ? AND date = ?", [tgId, today], (e, r) => {
-      checkAchievements(tgId);
-      res.json({ status: 'ok', total: r ? r.amount_ml : amount });
-    });
-  };
-  db.run("UPDATE water_logs SET amount_ml = amount_ml + ? WHERE tg_id = ? AND date = ?",
-    [amount, tgId, today], function (err2) {
-      if (err2) return res.status(500).json({ error: err2.message });
-      if (this.changes > 0) return respondWithTotal();
-      db.run("INSERT OR IGNORE INTO water_logs (tg_id, date, amount_ml) VALUES (?, ?, ?)", [tgId, today, amount], (err3) => {
-        if (err3) return res.status(500).json({ error: err3.message });
-        respondWithTotal();
+  db.get("SELECT amount_ml FROM water_logs WHERE tg_id = ? AND date = ?", [tgId, today], (err, row) => {
+    if (row) {
+      db.run("UPDATE water_logs SET amount_ml = amount_ml + ? WHERE tg_id = ? AND date = ?",
+        [amount, tgId, today], (err2) => {
+          if (err2) return res.status(500).json({ error: err2.message });
+          checkAchievements(tgId);
+          res.json({ status: 'ok', total: row.amount_ml + amount });
+        });
+    } else {
+      db.run("INSERT INTO water_logs (tg_id, date, amount_ml) VALUES (?, ?, ?)", [tgId, today, amount], (err2) => {
+        if (err2) return res.status(500).json({ error: err2.message });
+        checkAchievements(tgId);
+        res.json({ status: 'ok', total: amount });
       });
-    });
+    }
+  });
 });
 
 app.get('/api/water/:tgId', (req, res) => {
@@ -722,7 +722,7 @@ function runReminders() {
   const today = localDate();
   const hour = new Date().getHours();
   db.all("SELECT tg_id, name, created_at FROM users", [], (err, users) => {
-    if (err) return;
+    if (err) return !err;
     (users || []).forEach(u => {
       if (u.tg_id === 'demo_user') return;
       // вес: не записывал 3+ дня
@@ -763,23 +763,6 @@ app.use('/api', (req, res) => res.status(404).json({ error: 'Not found' }));
 app.use((err, req, res, next) => {
   console.error('Unhandled error:', err);
   res.status(500).json({ error: 'Internal error' });
-});
-
-// --- Фото упражнений через Pexels (ключ в .env: PEXELS_API_KEY) ---
-const photoCache = {};
-app.get('/api/ex-photo', async (req, res) => {
-  try{
-    const q = String(req.query.q || '').slice(0, 80);
-    if(!q) return res.json({ url: null });
-    if(photoCache[q]) return res.json(photoCache[q]);
-    const key = process.env.PEXELS_API_KEY;
-    if(!key) return res.json({ url: null });
-    const r = await fetch('https://api.pexels.com/v1/search?query=' + encodeURIComponent(q) + '&per_page=1&orientation=landscape', { headers: { Authorization: key } });
-    const d = await r.json();
-    const url = (d.photos && d.photos[0]) ? d.photos[0].src.medium : null;
-    if(url) photoCache[q] = { url: url };
-    res.json({ url: url });
-  }catch(e){ res.json({ url: null }); }
 });
 
 const PORT = Number(process.env.MINIAPP_PORT) || 3000;

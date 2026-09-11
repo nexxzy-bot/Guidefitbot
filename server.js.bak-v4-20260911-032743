@@ -765,23 +765,6 @@ app.use((err, req, res, next) => {
   res.status(500).json({ error: 'Internal error' });
 });
 
-// --- Фото упражнений через Pexels (ключ в .env: PEXELS_API_KEY) ---
-const photoCache = {};
-app.get('/api/ex-photo', async (req, res) => {
-  try{
-    const q = String(req.query.q || '').slice(0, 80);
-    if(!q) return res.json({ url: null });
-    if(photoCache[q]) return res.json(photoCache[q]);
-    const key = process.env.PEXELS_API_KEY;
-    if(!key) return res.json({ url: null });
-    const r = await fetch('https://api.pexels.com/v1/search?query=' + encodeURIComponent(q) + '&per_page=1&orientation=landscape', { headers: { Authorization: key } });
-    const d = await r.json();
-    const url = (d.photos && d.photos[0]) ? d.photos[0].src.medium : null;
-    if(url) photoCache[q] = { url: url };
-    res.json({ url: url });
-  }catch(e){ res.json({ url: null }); }
-});
-
 const PORT = Number(process.env.MINIAPP_PORT) || 3000;
 const server = app.listen(PORT, () => {
   console.log(`GuideFit server started on port ${PORT}`);
