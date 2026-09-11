@@ -185,15 +185,6 @@ input,textarea{caret-color:var(--accent)}
 .toast{bottom:calc(96px + env(safe-area-inset-bottom,0px))}
 body{overscroll-behavior-y:none}
 .pressable{user-select:none;-webkit-user-select:none}
-
-.screen{padding-top:calc(14px + env(safe-area-inset-top,0px))}
-.meal-add{width:44px;height:44px}
-.icon-btn{width:44px;height:44px}
-.chip{min-height:44px;display:inline-flex;align-items:center;box-sizing:border-box}
-.sel-btn,.loc-card{min-height:44px}
-.pressable{transition:transform .12s ease,opacity .12s ease}
-.pressable:active{opacity:.85}
-body{touch-action:manipulation}
 </style>
 </head>
 <body>

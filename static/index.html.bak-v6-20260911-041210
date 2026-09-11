@@ -13,15 +13,15 @@
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html{scroll-behavior:smooth}
 body{font-family:'Manrope',-apple-system,sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
-button{font-family:inherit;cursor:pointer;user-select:none;-webkit-user-select:none;touch-action:manipulation}
+button{font-family:inherit;cursor:pointer}
 input,select{font-family:inherit}
 img{max-width:100%}
 .app{max-width:480px;margin:0 auto;position:relative;min-height:100vh}
 .screen{display:none;padding:14px 16px 112px;animation:fadeUp .25s ease}
 .screen.active{display:block}
 @keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
-h1{font-family:'Bebas Neue';font-size:36px;font-weight:400;line-height:1.02;letter-spacing:.015em}
-h2{font-family:'Bebas Neue';font-size:26px;font-weight:400;letter-spacing:.015em}
+h1{font-family:'Bebas Neue';font-size:40px;font-weight:400;line-height:1.02;letter-spacing:.015em}
+h2{font-family:'Bebas Neue';font-size:30px;font-weight:400;letter-spacing:.015em}
 h3{font-family:'Bebas Neue';font-size:19px;font-weight:400;letter-spacing:.03em}
 .flex{display:flex}.gap{gap:8px}.gap2{gap:10px}.between{justify-content:space-between}.items-center{align-items:center}
 .grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
@@ -183,17 +183,6 @@ input,textarea{caret-color:var(--accent)}
 .screen{padding-bottom:calc(112px + env(safe-area-inset-bottom,0px))}
 .bottom-nav{bottom:calc(14px + env(safe-area-inset-bottom,0px))}
 .toast{bottom:calc(96px + env(safe-area-inset-bottom,0px))}
-body{overscroll-behavior-y:none}
-.pressable{user-select:none;-webkit-user-select:none}
-
-.screen{padding-top:calc(14px + env(safe-area-inset-top,0px))}
-.meal-add{width:44px;height:44px}
-.icon-btn{width:44px;height:44px}
-.chip{min-height:44px;display:inline-flex;align-items:center;box-sizing:border-box}
-.sel-btn,.loc-card{min-height:44px}
-.pressable{transition:transform .12s ease,opacity .12s ease}
-.pressable:active{opacity:.85}
-body{touch-action:manipulation}
 </style>
 </head>
 <body>
