@@ -861,8 +861,6 @@ setTimeout(sendWeeklyReports, 90 * 1000);
 setInterval(runReminders, 30 * 60 * 1000);
 setTimeout(runReminders, 15 * 1000);
 
-/* ================= 404 и ошибки ================= */
-app.use('/api', (req, res) => res.status(404).json({ error: 'Not found' }));
 app.use((err, req, res, next) => {
   console.error('Unhandled error:', err);
   res.status(500).json({ error: 'Internal error' });
@@ -908,6 +906,9 @@ app.get('/api/yoga/flow/:id', (req, res) => {
   try { require('./db').close(); } catch(e){}
   process.exit(0);
 }));
+
+/* ================= 404 и ошибки ================= */
+app.use('/api', (req, res) => res.status(404).json({ error: 'Not found' }));
 
 const PORT = Number(process.env.MINIAPP_PORT) || 3000;
 const server = app.listen(PORT, () => {
