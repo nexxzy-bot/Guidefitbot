@@ -2051,5 +2051,151 @@ async function toggleNotifyUI(){
   }catch(e){ showToast('Не удалось переключить', 'err'); }
 }
 </script>
+<style>
+.pg-bar{height:10px;border-radius:99px;background:var(--solid);overflow:hidden;margin-top:8px}
+.pg-bar-in{height:100%;border-radius:99px;background:linear-gradient(90deg,#0D9BE8,#06B6D4);transition:width .5s ease}
+.lvl-chip{padding:8px 14px;border-radius:99px;background:var(--surface);border:1.5px solid var(--border);font-size:12px;font-weight:800;color:var(--text2);flex-shrink:0}
+.lvl-chip.active{background:var(--accent);border-color:var(--accent);color:#fff}
+</style>
+<script>
+function renderHomeDonuts(){
+  const grid = document.getElementById('homeStatGrid');
+  if(!grid || !currentUser) return;
+  const waterMl = parseInt((document.getElementById('homeWater')||{}).textContent) || 0;
+  const streak = parseInt((document.getElementById('homeStreakVal')||{}).textContent) || 0;
+  const norm = currentUser.water_norm || 2000;
+  const glasses = Math.max(4, Math.round(norm / 250));
+  const filled = Math.min(glasses, Math.round(waterMl / 250));
+  const pct = Math.min(waterMl / norm, 1);
+  const full = waterMl >= norm;
+  grid.innerHTML =
+    '<div style="grid-column:1/-1;display:flex;align-items:center;gap:10px;background:var(--surface);border:1px solid var(--border);border-radius:18px;padding:11px 14px;box-shadow:var(--sh-sm)">' +
+      '<div style="width:38px;height:38px;border-radius:13px;background:var(--amber-dim);color:var(--amber);display:flex;align-items:center;justify-content:center;flex-shrink:0">' + ic('flame',20) + '</div>' +
+      '<div style="flex:1;min-width:0"><div style="font-weight:800;font-size:13.5px">' + (streak > 0 ? 'Серия: ' + streak + ' ' + plural(streak,'день','дня','дней') : 'Серия: начни сегодня') + '</div>' +
+      '<div class="subtle" style="font-size:11px">Тренируйся каждый день — огонёк растёт</div></div></div>' +
+    '<div class="card" style="grid-column:1/-1;padding:16px;margin-bottom:0">' +
+      '<div class="flex between items-center mb2">' +
+        '<div style="font-weight:800;font-size:14px;display:flex;align-items:center;gap:7px;color:var(--blue)">' + ic('droplet',17) + ' Вода' + (full ? ' · норма выпита!' : '') + '</div>' +
+        '<div class="subtle" style="font-size:12.5px;font-weight:700">' + waterMl + ' / ' + norm + ' мл</div></div>' +
+      '<div class="wtr2-bar"><div class="wtr2-fill" style="width:' + Math.round(pct*100) + '%"></div><div class="wtr2-pct">' + Math.round(pct*100) + '%</div></div>' +
+      '<div class="flex between items-center mt3">' +
+        '<div><div style="font-weight:800;font-size:13px">' + filled + ' из ' + glasses + ' стаканов</div>' +
+        '<div class="subtle" style="font-size:11px">1 стакан = 250 мл</div></div>' +
+        '<div class="flex gap">' +
+          '<button class="pressable" style="width:44px;height:44px;border-radius:50%;background:var(--solid);color:var(--text2);border:1.5px solid var(--border);font-size:20px;font-weight:800" onclick="undoWater()">−</button>' +
+          '<button class="wtr2-add pressable" style="width:44px;height:44px" onclick="addWater()">' + ic('plus',22) + '</button>' +
+        '</div></div></div>';
+}
+async function addWater(){
+  if(!currentUser) return;
+  try{
+    await api('/api/water', { method: 'POST', body: { tg_id: currentUser.tg_id, amount: 250 } });
+    if(typeof haptic === 'function') haptic();
+    if(typeof loadDashboard === 'function') loadDashboard();
+    setTimeout(renderHomeDonuts, 600);
+    setTimeout(renderHomeDonuts, 1400);
+  }catch(e){ showToast('Ошибка', 'err'); }
+}
+async function undoWater(){
+  if(!currentUser) return;
+  try{
+    const r = await api('/api/water/undo', { method: 'POST', body: { tg_id: currentUser.tg_id } });
+    if(r && r.removed){ if(typeof haptic === 'function') haptic(); showToast('−250 мл', ''); }
+    else showToast('Отменять нечего', 'err');
+    if(typeof loadDashboard === 'function') loadDashboard();
+    setTimeout(renderHomeDonuts, 600);
+  }catch(e){ showToast('Ошибка', 'err'); }
+}
+try{
+  const _lp16 = loadProfile;
+  loadProfile = function(){
+    const r = _lp16.apply(this, arguments);
+    const attach = function(){
+      const c = document.getElementById('profileContent');
+      if(!c || document.getElementById('supportCard')) return;
+      const card = document.createElement('div');
+      card.className = 'card mb4'; card.id = 'supportCard';
+      card.innerHTML = '<h3 class="mb3">Помощь</h3>' +
+        '<a href="https://t.me/nexxdsgn" target="_blank" rel="noopener" class="btn btn-ghost btn-block pressable" style="text-decoration:none;display:flex;align-items:center;gap:8px">' + ic('person',16) + ' Написать в поддержку · t.me/nexxdsgn</a>' +
+        '<button class="btn btn-ghost btn-block pressable mt2" onclick="toggleNotifyUI()" style="display:flex;align-items:center;gap:8px">' + ic('sparkles',16) + ' <span id="notifyLbl">Уведомления: …</span></button>' +
+        '<p class="subtle mt2" style="font-size:11px">Напоминания о приёмах пищи, взвешивании и недельный отчёт по понедельникам.</p>';
+      c.appendChild(card);
+      const l = document.getElementById('notifyLbl');
+      if(l) l.textContent = 'Уведомления: ' + ((currentUser && currentUser.notify_enabled) ? 'включены' : 'выключены');
+    };
+    if(r && typeof r.then === 'function') r.then(function(){ setTimeout(attach, 100); });
+    else setTimeout(attach, 500);
+    return r;
+  };
+}catch(e){}
+try{
+  const _op16 = openProgram;
+  openProgram = async function(id){
+    await _op16(id);
+    try{
+      const p = await api('/api/user/program/progress', { method: 'POST', body: { tg_id: (typeof currentUser !== 'undefined' && currentUser) ? currentUser.tg_id : null } });
+      const c = document.getElementById('programContent');
+      if(!c || !p) return;
+      const total = p.total_days || 0;
+      const done = p.completed_days || p.current_day - 1 || 0;
+      const pct = total > 0 ? Math.min(done / total, 1) : 0;
+      const card = document.createElement('div');
+      card.className = 'card mb4';
+      card.innerHTML = '<div class="flex between items-center"><h3 style="font-size:16px">Твой прогресс</h3>' +
+        '<span class="badge badge-accent">' + Math.round(pct*100) + '%</span></div>' +
+        '<div class="pg-bar"><div class="pg-bar-in" style="width:' + Math.round(pct*100) + '%"></div></div>' +
+        '<p class="subtle mt2" style="font-size:11.5px">Выполнено ' + done + ' из ' + total + ' тренировок' + (p.current_day ? (' · следующая: день ' + p.current_day) : '') + '</p>';
+      c.insertBefore(card, c.firstChild);
+    }catch(e){}
+  };
+}catch(e){}
+let woLevel = 'all';
+async function loadWorkouts(){
+  const chips = document.getElementById('woChips');
+  if(chips){
+    const goals = [
+      {id:'fat', label:'Жиросжигание'},
+      {id:'strength', label:'Сила и тонус'},
+      {id:'yoga', label:'Йога'},
+      {id:'lib', label:'Все упражнения'}
+    ];
+    try{ if(typeof woGoal === 'undefined' || woGoal === null){ woGoal = (currentUser && currentUser.goal === 'gain') ? 'strength' : 'fat'; } }catch(e){}
+    let html = goals.map(g => '<button class="wo-chip pressable' + (g.id===woGoal?' active':'') + '" onclick="woSetGoal(\'' + g.id + '\')">' + g.label + '</button>').join('');
+    if((woGoal === 'fat' || woGoal === 'strength')){
+      html += '<span style="width:8px"></span>' +
+        ['all','beginner','intermediate'].map(l => '<button class="lvl-chip pressable' + (l===woLevel?' active':'') + '" onclick="woSetLevel(\'' + l + '\')">' + (l==='all'?'Все уровни':l==='beginner'?'Лёгкие':'Средние') + '</button>').join('');
+    }
+    chips.innerHTML = html;
+  }
+  const c = document.getElementById('workoutContent');
+  if(!c) return;
+  c.innerHTML = '<div class="shimmer"></div><div class="shimmer"></div>';
+  if(woGoal === 'yoga'){ woRenderYoga(c); return; }
+  if(woGoal === 'lib'){ woRenderLib(c); return; }
+  try{
+    const d = await api('/api/programs');
+    const types = woGoal === 'fat' ? ['hiit','cardio','mix'] : ['strength'];
+    let list = (d.programms || d.programs || []).filter(p => types.includes(p.type));
+    if(woLevel !== 'all') list = list.filter(p => p.difficulty === woLevel);
+    list.sort(function(a, b){ return (a.difficulty === b.difficulty) ? 0 : (a.difficulty === 'beginner' ? -1 : 1); });
+    let html = '<p class="subtle mb3" style="font-size:12.5px;line-height:1.6">' + (woGoal==='fat'
+      ? 'Главный фокус приложения. Новичкам — начните с «Лёгкого старта» или «Мягкого утра».'
+      : 'Силовые тренировки на тонус. Мышцы — главный расходник калорий в покое.') + '</p>';
+    if(!list.length) html += '<div class="empty">Ничего не найдено</div>';
+    list.forEach(p => {
+      html += '<div class="prog-card pressable" onclick="openProgram(' + p.id + ')">' +
+        '<div class="flex between items-center"><h3 style="font-size:17px">' + esc(p.name) + '</h3>' +
+        '<span class="badge ' + (p.difficulty==='beginner'?'badge-green':'badge-amber') + '">' + (p.difficulty==='beginner'?'Легко':'Средне') + '</span></div>' +
+        '<div class="prog-tags">' +
+        '<span class="badge badge-accent">' + p.duration_weeks + ' нед</span>' +
+        '<span class="badge badge-blue">' + esc(p.location==='home'?'Дома':p.location==='gym'?'В зале':'На улице') + '</span>' +
+        '<span class="badge badge-violet">' + (p.type==='hiit'?'HIIT':p.type==='cardio'?'Кардио':p.type==='strength'?'Силовая':'Микс') + '</span></div>' +
+        '<p class="muted" style="font-size:12.5px;line-height:1.6">' + esc(p.description) + '</p></div>';
+    });
+    c.innerHTML = html;
+  }catch(e){ c.innerHTML = '<div class="empty">Не удалось загрузить</div>'; }
+}
+function woSetLevel(l){ woLevel = l; if(typeof haptic === 'function') haptic(); loadWorkouts(); }
+</script>
 </body>
 </html>

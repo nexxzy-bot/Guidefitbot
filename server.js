@@ -413,21 +413,25 @@ app.post('/api/meal', (req, res) => {
   if (goal) { sql += " AND (goals LIKE ? OR goals IS NULL OR goals = '')"; params.push('%' + goal + '%'); }
   if (exclude_id) { sql += " AND id != ?"; params.push(exclude_id); }
   const maxK = parseFloat(req.body.max_calories);
-  const pick = (withCap) => {
-    let sql2 = sql;
-    const p2 = params.slice();
+  let baseSql = sql;
+  const baseParams = params.slice();
+  if (exclude_id) { baseSql += " AND id != ?"; baseParams.push(exclude_id); }
+  const pick = (withCap, withExclude) => {
+    let sql2 = withExclude ? baseSql : sql;
+    const p2 = (withExclude ? baseParams : params).slice();
     if (withCap && maxK > 0) { sql2 += " AND calories <= ?"; p2.push(Math.round(maxK * 1.15)); }
     sql2 += " ORDER BY RANDOM() LIMIT 1";
     db.get(sql2, p2, (err, row) => {
       if (err) return res.status(500).json({ error: err.message });
-      if (!row && withCap && maxK > 0) return pick(false);
+      if (!row && withCap && maxK > 0) return pick(false, withExclude);
+      if (!row && withExclude) return pick(withCap, false); // v16: «Другое» не падает в 404
       if (!row) return res.status(404).json({ error: 'Recipe not found' });
     if (row.ingredients) try { row.ingredients = JSON.parse(row.ingredients); } catch (e) {}
     if (row.recipe_steps) try { row.recipe_steps = JSON.parse(row.recipe_steps); } catch (e) {}
     res.json({ recipe: row });
     });
   };
-  pick(true);
+  pick(true, true);
 });
 
 app.get('/api/recipe/:id', (req, res) => {

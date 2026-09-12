@@ -6404,5 +6404,2185 @@
     ]
    }
   ]
+ },
+ {
+  "id": 109,
+  "name": "Мягкое утро: 15 минут движения",
+  "location": "home",
+  "type": "mix",
+  "goal": "lose",
+  "duration_weeks": 4,
+  "difficulty": "beginner",
+  "description": "Максимально мягкий старт для тех, кто давно не тренировался. Без прыжков и упора на колени: разминка суставов, спина, лёгкий кор.",
+  "days": [
+   {
+    "id": 109011,
+    "week": 1,
+    "day": 1,
+    "title": "Разминка и спина",
+    "exercises": [
+     {
+      "exercise_id": 11,
+      "exercise_name": "Растяжка кошка-корова",
+      "sets": 3,
+      "reps": "60 сек",
+      "rest_seconds": 30
+     },
+     {
+      "exercise_id": 12,
+      "exercise_name": "Поза ребёнка",
+      "sets": 3,
+      "reps": "45 сек",
+      "rest_seconds": 30
+     },
+     {
+      "exercise_id": 25,
+      "exercise_name": "Растяжка стоя",
+      "sets": 2,
+      "reps": "40 сек",
+      "rest_seconds": 30
+     },
+     {
+      "exercise_id": 5,
+      "exercise_name": "Подъёмы таза",
+      "sets": 2,
+      "reps": "12 раз",
+      "rest_seconds": 40
+     },
+     {
+      "exercise_id": 3,
+      "exercise_name": "Планка",
+      "sets": 2,
+      "reps": "20 сек",
+      "rest_seconds": 40
+     }
+    ]
+   },
+   {
+    "id": 109012,
+    "week": 1,
+    "day": 2,
+    "title": "Лёгкий кор и ноги",
+    "exercises": [
+     {
+      "exercise_id": 10,
+      "exercise_name": "Скручивания",
+      "sets": 2,
+      "reps": "12 раз",
+      "rest_seconds": 30
+     },
+     {
+      "exercise_id": 5,
+      "exercise_name": "Подъёмы таза",
+      "sets": 3,
+      "reps": "12 раз",
+      "rest_seconds": 40
+     },
+     {
+      "exercise_id": 4,
+      "exercise_name": "Выпады",
+      "sets": 2,
+      "reps": "8 на ногу",
+      "rest_seconds": 45
+     },
+     {
+      "exercise_id": 12,
+      "exercise_name": "Поза ребёнка",
+      "sets": 2,
+      "reps": "60 сек",
+      "rest_seconds": 30
+     }
+    ]
+   },
+   {
+    "id": 109013,
+    "week": 1,
+    "day": 3,
+    "title": "Всё тело мягко",
+    "exercises": [
+     {
+      "exercise_id": 11,
+      "exercise_name": "Растяжка кошка-корова",
+      "sets": 2,
+      "reps": "60 сек",
+      "rest_seconds": 30
+     },
+     {
+      "exercise_id": 5,
+      "exercise_name": "Подъёмы таза",
+      "sets": 2,
+      "reps": "12 раз",
+      "rest_seconds": 40
+     },
+     {
+      "exercise_id": 25,
+      "exercise_name": "Растяжка стоя",
+      "sets": 2,
+      "reps": "40 сек",
+      "rest_seconds": 30
+     },
+     {
+      "exercise_id": 3,
+      "exercise_name": "Планка",
+      "sets": 2,
+      "reps": "20 сек",
+      "rest_seconds": 40
+     },
+     {
+      "exercise_id": 12,
+      "exercise_name": "Поза ребёнка",
+      "sets": 2,
+      "reps": "60 сек",
+      "rest_seconds": 30
+     }
+    ]
+   },
+   {
+    "id": 109021,
+    "week": 2,
+    "day": 1,
+    "title": "Разминка и спина",
+    "exercises": [
+     {
+      "exercise_id": 11,
+      "exercise_name": "Растяжка кошка-корова",
+      "sets": 3,
+      "reps": "60 сек",
+      "rest_seconds": 30
+     },
+     {
+      "exercise_id": 12,
+      "exercise_name": "Поза ребёнка",
+      "sets": 3,
+      "reps": "45 сек",
+      "rest_seconds": 30
+     },
+     {
+      "exercise_id": 25,
+      "exercise_name": "Растяжка стоя",
+      "sets": 2,
+      "reps": "40 сек",
+      "rest_seconds": 30
+     },
+     {
+      "exercise_id": 5,
+      "exercise_name": "Подъёмы таза",
+      "sets": 2,
+      "reps": "12 раз",
+      "rest_seconds": 40
+     },
+     {
+      "exercise_id": 3,
+      "exercise_name": "Планка",
+      "sets": 2,
+      "reps": "20 сек",
+      "rest_seconds": 40
+     }
+    ]
+   },
+   {
+    "id": 109022,
+    "week": 2,
+    "day": 2,
+    "title": "Лёгкий кор и ноги",
+    "exercises": [
+     {
+      "exercise_id": 10,
+      "exercise_name": "Скручивания",
+      "sets": 2,
+      "reps": "12 раз",
+      "rest_seconds": 30
+     },
+     {
+      "exercise_id": 5,
+      "exercise_name": "Подъёмы таза",
+      "sets": 3,
+      "reps": "12 раз",
+      "rest_seconds": 40
+     },
+     {
+      "exercise_id": 4,
+      "exercise_name": "Выпады",
+      "sets": 2,
+      "reps": "8 на ногу",
+      "rest_seconds": 45
+     },
+     {
+      "exercise_id": 12,
+      "exercise_name": "Поза ребёнка",
+      "sets": 2,
+      "reps": "60 сек",
+      "rest_seconds": 30
+     }
+    ]
+   },
+   {
+    "id": 109023,
+    "week": 2,
+    "day": 3,
+    "title": "Всё тело мягко",
+    "exercises": [
+     {
+      "exercise_id": 11,
+      "exercise_name": "Растяжка кошка-корова",
+      "sets": 2,
+      "reps": "60 сек",
+      "rest_seconds": 30
+     },
+     {
+      "exercise_id": 5,
+      "exercise_name": "Подъёмы таза",
+      "sets": 2,
+      "reps": "12 раз",
+      "rest_seconds": 40
+     },
+     {
+      "exercise_id": 25,
+      "exercise_name": "Растяжка стоя",
+      "sets": 2,
+      "reps": "40 сек",
+      "rest_seconds": 30
+     },
+     {
+      "exercise_id": 3,
+      "exercise_name": "Планка",
+      "sets": 2,
+      "reps": "20 сек",
+      "rest_seconds": 40
+     },
+     {
+      "exercise_id": 12,
+      "exercise_name": "Поза ребёнка",
+      "sets": 2,
+      "reps": "60 сек",
+      "rest_seconds": 30
+     }
+    ]
+   },
+   {
+    "id": 109031,
+    "week": 3,
+    "day": 1,
+    "title": "Разминка и спина",
+    "exercises": [
+     {
+      "exercise_id": 11,
+      "exercise_name": "Растяжка кошка-корова",
+      "sets": 3,
+      "reps": "60 сек",
+      "rest_seconds": 30
+     },
+     {
+      "exercise_id": 12,
+      "exercise_name": "Поза ребёнка",
+      "sets": 3,
+      "reps": "45 сек",
+      "rest_seconds": 30
+     },
+     {
+      "exercise_id": 25,
+      "exercise_name": "Растяжка стоя",
+      "sets": 2,
+      "reps": "40 сек",
+      "rest_seconds": 30
+     },
+     {
+      "exercise_id": 5,
+      "exercise_name": "Подъёмы таза",
+      "sets": 2,
+      "reps": "12 раз",
+      "rest_seconds": 40
+     },
+     {
+      "exercise_id": 3,
+      "exercise_name": "Планка",
+      "sets": 2,
+      "reps": "20 сек",
+      "rest_seconds": 40
+     }
+    ]
+   },
+   {
+    "id": 109032,
+    "week": 3,
+    "day": 2,
+    "title": "Лёгкий кор и ноги",
+    "exercises": [
+     {
+      "exercise_id": 10,
+      "exercise_name": "Скручивания",
+      "sets": 2,
+      "reps": "12 раз",
+      "rest_seconds": 30
+     },
+     {
+      "exercise_id": 5,
+      "exercise_name": "Подъёмы таза",
+      "sets": 3,
+      "reps": "12 раз",
+      "rest_seconds": 40
+     },
+     {
+      "exercise_id": 4,
+      "exercise_name": "Выпады",
+      "sets": 2,
+      "reps": "8 на ногу",
+      "rest_seconds": 45
+     },
+     {
+      "exercise_id": 12,
+      "exercise_name": "Поза ребёнка",
+      "sets": 2,
+      "reps": "60 сек",
+      "rest_seconds": 30
+     }
+    ]
+   },
+   {
+    "id": 109033,
+    "week": 3,
+    "day": 3,
+    "title": "Всё тело мягко",
+    "exercises": [
+     {
+      "exercise_id": 11,
+      "exercise_name": "Растяжка кошка-корова",
+      "sets": 2,
+      "reps": "60 сек",
+      "rest_seconds": 30
+     },
+     {
+      "exercise_id": 5,
+      "exercise_name": "Подъёмы таза",
+      "sets": 2,
+      "reps": "12 раз",
+      "rest_seconds": 40
+     },
+     {
+      "exercise_id": 25,
+      "exercise_name": "Растяжка стоя",
+      "sets": 2,
+      "reps": "40 сек",
+      "rest_seconds": 30
+     },
+     {
+      "exercise_id": 3,
+      "exercise_name": "Планка",
+      "sets": 2,
+      "reps": "20 сек",
+      "rest_seconds": 40
+     },
+     {
+      "exercise_id": 12,
+      "exercise_name": "Поза ребёнка",
+      "sets": 2,
+      "reps": "60 сек",
+      "rest_seconds": 30
+     }
+    ]
+   },
+   {
+    "id": 109041,
+    "week": 4,
+    "day": 1,
+    "title": "Разминка и спина",
+    "exercises": [
+     {
+      "exercise_id": 11,
+      "exercise_name": "Растяжка кошка-корова",
+      "sets": 3,
+      "reps": "60 сек",
+      "rest_seconds": 30
+     },
+     {
+      "exercise_id": 12,
+      "exercise_name": "Поза ребёнка",
+      "sets": 3,
+      "reps": "45 сек",
+      "rest_seconds": 30
+     },
+     {
+      "exercise_id": 25,
+      "exercise_name": "Растяжка стоя",
+      "sets": 2,
+      "reps": "40 сек",
+      "rest_seconds": 30
+     },
+     {
+      "exercise_id": 5,
+      "exercise_name": "Подъёмы таза",
+      "sets": 2,
+      "reps": "12 раз",
+      "rest_seconds": 40
+     },
+     {
+      "exercise_id": 3,
+      "exercise_name": "Планка",
+      "sets": 2,
+      "reps": "20 сек",
+      "rest_seconds": 40
+     }
+    ]
+   },
+   {
+    "id": 109042,
+    "week": 4,
+    "day": 2,
+    "title": "Лёгкий кор и ноги",
+    "exercises": [
+     {
+      "exercise_id": 10,
+      "exercise_name": "Скручивания",
+      "sets": 2,
+      "reps": "12 раз",
+      "rest_seconds": 30
+     },
+     {
+      "exercise_id": 5,
+      "exercise_name": "Подъёмы таза",
+      "sets": 3,
+      "reps": "12 раз",
+      "rest_seconds": 40
+     },
+     {
+      "exercise_id": 4,
+      "exercise_name": "Выпады",
+      "sets": 2,
+      "reps": "8 на ногу",
+      "rest_seconds": 45
+     },
+     {
+      "exercise_id": 12,
+      "exercise_name": "Поза ребёнка",
+      "sets": 2,
+      "reps": "60 сек",
+      "rest_seconds": 30
+     }
+    ]
+   },
+   {
+    "id": 109043,
+    "week": 4,
+    "day": 3,
+    "title": "Всё тело мягко",
+    "exercises": [
+     {
+      "exercise_id": 11,
+      "exercise_name": "Растяжка кошка-корова",
+      "sets": 2,
+      "reps": "60 сек",
+      "rest_seconds": 30
+     },
+     {
+      "exercise_id": 5,
+      "exercise_name": "Подъёмы таза",
+      "sets": 2,
+      "reps": "12 раз",
+      "rest_seconds": 40
+     },
+     {
+      "exercise_id": 25,
+      "exercise_name": "Растяжка стоя",
+      "sets": 2,
+      "reps": "40 сек",
+      "rest_seconds": 30
+     },
+     {
+      "exercise_id": 3,
+      "exercise_name": "Планка",
+      "sets": 2,
+      "reps": "20 сек",
+      "rest_seconds": 40
+     },
+     {
+      "exercise_id": 12,
+      "exercise_name": "Поза ребёнка",
+      "sets": 2,
+      "reps": "60 сек",
+      "rest_seconds": 30
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "id": 110,
+  "name": "Ходьба для жиросжигания",
+  "location": "outdoor",
+  "type": "cardio",
+  "goal": "lose",
+  "duration_weeks": 6,
+  "difficulty": "beginner",
+  "description": "Без бега и прыжков: быстрая ходьба с короткими ускорениями. Самый безопасный способ начать худеть после долгого перерыва.",
+  "days": [
+   {
+    "id": 110011,
+    "week": 1,
+    "day": 1,
+    "title": "Ходьба + лёгкие силовые",
+    "exercises": [
+     {
+      "exercise_id": 14,
+      "exercise_name": "Бег трусцой",
+      "sets": 1,
+      "reps": "10 мин лёгко",
+      "rest_seconds": 0
+     },
+     {
+      "exercise_id": 13,
+      "exercise_name": "Выпады с ходьбой",
+      "sets": 2,
+      "reps": "10 шагов",
+      "rest_seconds": 45
+     },
+     {
+      "exercise_id": 2,
+      "exercise_name": "Приседания",
+      "sets": 2,
+      "reps": "10 раз",
+      "rest_seconds": 45
+     },
+     {
+      "exercise_id": 25,
+      "exercise_name": "Растяжка стоя",
+      "sets": 2,
+      "reps": "40 сек",
+      "rest_seconds": 30
+     }
+    ]
+   },
+   {
+    "id": 110012,
+    "week": 1,
+    "day": 2,
+    "title": "Длинная ходьба",
+    "exercises": [
+     {
+      "exercise_id": 14,
+      "exercise_name": "Бег трусцой",
+      "sets": 1,
+      "reps": "20 мин ровно",
+      "rest_seconds": 0
+     },
+     {
+      "exercise_id": 5,
+      "exercise_name": "Подъёмы таза",
+      "sets": 2,
+      "reps": "12 раз",
+      "rest_seconds": 40
+     },
+     {
+      "exercise_id": 11,
+      "exercise_name": "Растяжка кошка-корова",
+      "sets": 2,
+      "reps": "60 сек",
+      "rest_seconds": 30
+     }
+    ]
+   },
+   {
+    "id": 110013,
+    "week": 1,
+    "day": 3,
+    "title": "Ходьба с ускорениями",
+    "exercises": [
+     {
+      "exercise_id": 14,
+      "exercise_name": "Бег трусцой",
+      "sets": 1,
+      "reps": "15 мин: 1 мин быстрее / 2 мин обычно",
+      "rest_seconds": 0
+     },
+     {
+      "exercise_id": 10,
+      "exercise_name": "Скручивания",
+      "sets": 2,
+      "reps": "12 раз",
+      "rest_seconds": 30
+     },
+     {
+      "exercise_id": 12,
+      "exercise_name": "Поза ребёнка",
+      "sets": 2,
+      "reps": "60 сек",
+      "rest_seconds": 30
+     }
+    ]
+   },
+   {
+    "id": 110021,
+    "week": 2,
+    "day": 1,
+    "title": "Ходьба + лёгкие силовые",
+    "exercises": [
+     {
+      "exercise_id": 14,
+      "exercise_name": "Бег трусцой",
+      "sets": 1,
+      "reps": "10 мин лёгко",
+      "rest_seconds": 0
+     },
+     {
+      "exercise_id": 13,
+      "exercise_name": "Выпады с ходьбой",
+      "sets": 2,
+      "reps": "10 шагов",
+      "rest_seconds": 45
+     },
+     {
+      "exercise_id": 2,
+      "exercise_name": "Приседания",
+      "sets": 2,
+      "reps": "10 раз",
+      "rest_seconds": 45
+     },
+     {
+      "exercise_id": 25,
+      "exercise_name": "Растяжка стоя",
+      "sets": 2,
+      "reps": "40 сек",
+      "rest_seconds": 30
+     }
+    ]
+   },
+   {
+    "id": 110022,
+    "week": 2,
+    "day": 2,
+    "title": "Длинная ходьба",
+    "exercises": [
+     {
+      "exercise_id": 14,
+      "exercise_name": "Бег трусцой",
+      "sets": 1,
+      "reps": "20 мин ровно",
+      "rest_seconds": 0
+     },
+     {
+      "exercise_id": 5,
+      "exercise_name": "Подъёмы таза",
+      "sets": 2,
+      "reps": "12 раз",
+      "rest_seconds": 40
+     },
+     {
+      "exercise_id": 11,
+      "exercise_name": "Растяжка кошка-корова",
+      "sets": 2,
+      "reps": "60 сек",
+      "rest_seconds": 30
+     }
+    ]
+   },
+   {
+    "id": 110023,
+    "week": 2,
+    "day": 3,
+    "title": "Ходьба с ускорениями",
+    "exercises": [
+     {
+      "exercise_id": 14,
+      "exercise_name": "Бег трусцой",
+      "sets": 1,
+      "reps": "15 мин: 1 мин быстрее / 2 мин обычно",
+      "rest_seconds": 0
+     },
+     {
+      "exercise_id": 10,
+      "exercise_name": "Скручивания",
+      "sets": 2,
+      "reps": "12 раз",
+      "rest_seconds": 30
+     },
+     {
+      "exercise_id": 12,
+      "exercise_name": "Поза ребёнка",
+      "sets": 2,
+      "reps": "60 сек",
+      "rest_seconds": 30
+     }
+    ]
+   },
+   {
+    "id": 110031,
+    "week": 3,
+    "day": 1,
+    "title": "Ходьба + лёгкие силовые",
+    "exercises": [
+     {
+      "exercise_id": 14,
+      "exercise_name": "Бег трусцой",
+      "sets": 1,
+      "reps": "10 мин лёгко",
+      "rest_seconds": 0
+     },
+     {
+      "exercise_id": 13,
+      "exercise_name": "Выпады с ходьбой",
+      "sets": 2,
+      "reps": "10 шагов",
+      "rest_seconds": 45
+     },
+     {
+      "exercise_id": 2,
+      "exercise_name": "Приседания",
+      "sets": 2,
+      "reps": "10 раз",
+      "rest_seconds": 45
+     },
+     {
+      "exercise_id": 25,
+      "exercise_name": "Растяжка стоя",
+      "sets": 2,
+      "reps": "40 сек",
+      "rest_seconds": 30
+     }
+    ]
+   },
+   {
+    "id": 110032,
+    "week": 3,
+    "day": 2,
+    "title": "Длинная ходьба",
+    "exercises": [
+     {
+      "exercise_id": 14,
+      "exercise_name": "Бег трусцой",
+      "sets": 1,
+      "reps": "20 мин ровно",
+      "rest_seconds": 0
+     },
+     {
+      "exercise_id": 5,
+      "exercise_name": "Подъёмы таза",
+      "sets": 2,
+      "reps": "12 раз",
+      "rest_seconds": 40
+     },
+     {
+      "exercise_id": 11,
+      "exercise_name": "Растяжка кошка-корова",
+      "sets": 2,
+      "reps": "60 сек",
+      "rest_seconds": 30
+     }
+    ]
+   },
+   {
+    "id": 110033,
+    "week": 3,
+    "day": 3,
+    "title": "Ходьба с ускорениями",
+    "exercises": [
+     {
+      "exercise_id": 14,
+      "exercise_name": "Бег трусцой",
+      "sets": 1,
+      "reps": "15 мин: 1 мин быстрее / 2 мин обычно",
+      "rest_seconds": 0
+     },
+     {
+      "exercise_id": 10,
+      "exercise_name": "Скручивания",
+      "sets": 2,
+      "reps": "12 раз",
+      "rest_seconds": 30
+     },
+     {
+      "exercise_id": 12,
+      "exercise_name": "Поза ребёнка",
+      "sets": 2,
+      "reps": "60 сек",
+      "rest_seconds": 30
+     }
+    ]
+   },
+   {
+    "id": 110041,
+    "week": 4,
+    "day": 1,
+    "title": "Ходьба + лёгкие силовые",
+    "exercises": [
+     {
+      "exercise_id": 14,
+      "exercise_name": "Бег трусцой",
+      "sets": 1,
+      "reps": "10 мин лёгко",
+      "rest_seconds": 0
+     },
+     {
+      "exercise_id": 13,
+      "exercise_name": "Выпады с ходьбой",
+      "sets": 2,
+      "reps": "10 шагов",
+      "rest_seconds": 45
+     },
+     {
+      "exercise_id": 2,
+      "exercise_name": "Приседания",
+      "sets": 2,
+      "reps": "10 раз",
+      "rest_seconds": 45
+     },
+     {
+      "exercise_id": 25,
+      "exercise_name": "Растяжка стоя",
+      "sets": 2,
+      "reps": "40 сек",
+      "rest_seconds": 30
+     }
+    ]
+   },
+   {
+    "id": 110042,
+    "week": 4,
+    "day": 2,
+    "title": "Длинная ходьба",
+    "exercises": [
+     {
+      "exercise_id": 14,
+      "exercise_name": "Бег трусцой",
+      "sets": 1,
+      "reps": "20 мин ровно",
+      "rest_seconds": 0
+     },
+     {
+      "exercise_id": 5,
+      "exercise_name": "Подъёмы таза",
+      "sets": 2,
+      "reps": "12 раз",
+      "rest_seconds": 40
+     },
+     {
+      "exercise_id": 11,
+      "exercise_name": "Растяжка кошка-корова",
+      "sets": 2,
+      "reps": "60 сек",
+      "rest_seconds": 30
+     }
+    ]
+   },
+   {
+    "id": 110043,
+    "week": 4,
+    "day": 3,
+    "title": "Ходьба с ускорениями",
+    "exercises": [
+     {
+      "exercise_id": 14,
+      "exercise_name": "Бег трусцой",
+      "sets": 1,
+      "reps": "15 мин: 1 мин быстрее / 2 мин обычно",
+      "rest_seconds": 0
+     },
+     {
+      "exercise_id": 10,
+      "exercise_name": "Скручивания",
+      "sets": 2,
+      "reps": "12 раз",
+      "rest_seconds": 30
+     },
+     {
+      "exercise_id": 12,
+      "exercise_name": "Поза ребёнка",
+      "sets": 2,
+      "reps": "60 сек",
+      "rest_seconds": 30
+     }
+    ]
+   },
+   {
+    "id": 110051,
+    "week": 5,
+    "day": 1,
+    "title": "Ходьба + лёгкие силовые",
+    "exercises": [
+     {
+      "exercise_id": 14,
+      "exercise_name": "Бег трусцой",
+      "sets": 1,
+      "reps": "10 мин лёгко",
+      "rest_seconds": 0
+     },
+     {
+      "exercise_id": 13,
+      "exercise_name": "Выпады с ходьбой",
+      "sets": 2,
+      "reps": "10 шагов",
+      "rest_seconds": 45
+     },
+     {
+      "exercise_id": 2,
+      "exercise_name": "Приседания",
+      "sets": 2,
+      "reps": "10 раз",
+      "rest_seconds": 45
+     },
+     {
+      "exercise_id": 25,
+      "exercise_name": "Растяжка стоя",
+      "sets": 2,
+      "reps": "40 сек",
+      "rest_seconds": 30
+     }
+    ]
+   },
+   {
+    "id": 110052,
+    "week": 5,
+    "day": 2,
+    "title": "Длинная ходьба",
+    "exercises": [
+     {
+      "exercise_id": 14,
+      "exercise_name": "Бег трусцой",
+      "sets": 1,
+      "reps": "20 мин ровно",
+      "rest_seconds": 0
+     },
+     {
+      "exercise_id": 5,
+      "exercise_name": "Подъёмы таза",
+      "sets": 2,
+      "reps": "12 раз",
+      "rest_seconds": 40
+     },
+     {
+      "exercise_id": 11,
+      "exercise_name": "Растяжка кошка-корова",
+      "sets": 2,
+      "reps": "60 сек",
+      "rest_seconds": 30
+     }
+    ]
+   },
+   {
+    "id": 110053,
+    "week": 5,
+    "day": 3,
+    "title": "Ходьба с ускорениями",
+    "exercises": [
+     {
+      "exercise_id": 14,
+      "exercise_name": "Бег трусцой",
+      "sets": 1,
+      "reps": "15 мин: 1 мин быстрее / 2 мин обычно",
+      "rest_seconds": 0
+     },
+     {
+      "exercise_id": 10,
+      "exercise_name": "Скручивания",
+      "sets": 2,
+      "reps": "12 раз",
+      "rest_seconds": 30
+     },
+     {
+      "exercise_id": 12,
+      "exercise_name": "Поза ребёнка",
+      "sets": 2,
+      "reps": "60 сек",
+      "rest_seconds": 30
+     }
+    ]
+   },
+   {
+    "id": 110061,
+    "week": 6,
+    "day": 1,
+    "title": "Ходьба + лёгкие силовые",
+    "exercises": [
+     {
+      "exercise_id": 14,
+      "exercise_name": "Бег трусцой",
+      "sets": 1,
+      "reps": "10 мин лёгко",
+      "rest_seconds": 0
+     },
+     {
+      "exercise_id": 13,
+      "exercise_name": "Выпады с ходьбой",
+      "sets": 2,
+      "reps": "10 шагов",
+      "rest_seconds": 45
+     },
+     {
+      "exercise_id": 2,
+      "exercise_name": "Приседания",
+      "sets": 2,
+      "reps": "10 раз",
+      "rest_seconds": 45
+     },
+     {
+      "exercise_id": 25,
+      "exercise_name": "Растяжка стоя",
+      "sets": 2,
+      "reps": "40 сек",
+      "rest_seconds": 30
+     }
+    ]
+   },
+   {
+    "id": 110062,
+    "week": 6,
+    "day": 2,
+    "title": "Длинная ходьба",
+    "exercises": [
+     {
+      "exercise_id": 14,
+      "exercise_name": "Бег трусцой",
+      "sets": 1,
+      "reps": "20 мин ровно",
+      "rest_seconds": 0
+     },
+     {
+      "exercise_id": 5,
+      "exercise_name": "Подъёмы таза",
+      "sets": 2,
+      "reps": "12 раз",
+      "rest_seconds": 40
+     },
+     {
+      "exercise_id": 11,
+      "exercise_name": "Растяжка кошка-корова",
+      "sets": 2,
+      "reps": "60 сек",
+      "rest_seconds": 30
+     }
+    ]
+   },
+   {
+    "id": 110063,
+    "week": 6,
+    "day": 3,
+    "title": "Ходьба с ускорениями",
+    "exercises": [
+     {
+      "exercise_id": 14,
+      "exercise_name": "Бег трусцой",
+      "sets": 1,
+      "reps": "15 мин: 1 мин быстрее / 2 мин обычно",
+      "rest_seconds": 0
+     },
+     {
+      "exercise_id": 10,
+      "exercise_name": "Скручивания",
+      "sets": 2,
+      "reps": "12 раз",
+      "rest_seconds": 30
+     },
+     {
+      "exercise_id": 12,
+      "exercise_name": "Поза ребёнка",
+      "sets": 2,
+      "reps": "60 сек",
+      "rest_seconds": 30
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "id": 111,
+  "name": "Спина и суставы без нагрузки",
+  "location": "home",
+  "type": "mix",
+  "goal": "lose",
+  "duration_weeks": 4,
+  "difficulty": "beginner",
+  "description": "Для тех, кто хочет двигаться, но боится нагрузки на спину и колени. Только разминки, мягкие скрутки и статика.",
+  "days": [
+   {
+    "id": 111011,
+    "week": 1,
+    "day": 1,
+    "title": "Спина",
+    "exercises": [
+     {
+      "exercise_id": 11,
+      "exercise_name": "Растяжка кошка-корова",
+      "sets": 3,
+      "reps": "60 сек",
+      "rest_seconds": 30
+     },
+     {
+      "exercise_id": 12,
+      "exercise_name": "Поза ребёнка",
+      "sets": 3,
+      "reps": "60 сек",
+      "rest_seconds": 30
+     },
+     {
+      "exercise_id": 50,
+      "exercise_name": "Растяжка спины",
+      "sets": 2,
+      "reps": "60 сек",
+      "rest_seconds": 30
+     },
+     {
+      "exercise_id": 5,
+      "exercise_name": "Подъёмы таза",
+      "sets": 2,
+      "reps": "10 раз",
+      "rest_seconds": 40
+     }
+    ]
+   },
+   {
+    "id": 111012,
+    "week": 1,
+    "day": 2,
+    "title": "Суставы и кор",
+    "exercises": [
+     {
+      "exercise_id": 25,
+      "exercise_name": "Растяжка стоя",
+      "sets": 2,
+      "reps": "40 сек",
+      "rest_seconds": 30
+     },
+     {
+      "exercise_id": 10,
+      "exercise_name": "Скручивания",
+      "sets": 2,
+      "reps": "10 раз",
+      "rest_seconds": 30
+     },
+     {
+      "exercise_id": 54,
+      "exercise_name": "Боковая планка",
+      "sets": 2,
+      "reps": "15 сек на сторону",
+      "rest_seconds": 30
+     },
+     {
+      "exercise_id": 12,
+      "exercise_name": "Поза ребёнка",
+      "sets": 2,
+      "reps": "60 сек",
+      "rest_seconds": 30
+     }
+    ]
+   },
+   {
+    "id": 111013,
+    "week": 1,
+    "day": 3,
+    "title": "Мягко всё тело",
+    "exercises": [
+     {
+      "exercise_id": 11,
+      "exercise_name": "Растяжка кошка-корова",
+      "sets": 2,
+      "reps": "60 сек",
+      "rest_seconds": 30
+     },
+     {
+      "exercise_id": 5,
+      "exercise_name": "Подъёмы таза",
+      "sets": 2,
+      "reps": "10 раз",
+      "rest_seconds": 40
+     },
+     {
+      "exercise_id": 26,
+      "exercise_name": "Растяжка плеч",
+      "sets": 2,
+      "reps": "30 сек",
+      "rest_seconds": 30
+     },
+     {
+      "exercise_id": 12,
+      "exercise_name": "Поза ребёнка",
+      "sets": 3,
+      "reps": "60 сек",
+      "rest_seconds": 30
+     }
+    ]
+   },
+   {
+    "id": 111021,
+    "week": 2,
+    "day": 1,
+    "title": "Спина",
+    "exercises": [
+     {
+      "exercise_id": 11,
+      "exercise_name": "Растяжка кошка-корова",
+      "sets": 3,
+      "reps": "60 сек",
+      "rest_seconds": 30
+     },
+     {
+      "exercise_id": 12,
+      "exercise_name": "Поза ребёнка",
+      "sets": 3,
+      "reps": "60 сек",
+      "rest_seconds": 30
+     },
+     {
+      "exercise_id": 50,
+      "exercise_name": "Растяжка спины",
+      "sets": 2,
+      "reps": "60 сек",
+      "rest_seconds": 30
+     },
+     {
+      "exercise_id": 5,
+      "exercise_name": "Подъёмы таза",
+      "sets": 2,
+      "reps": "10 раз",
+      "rest_seconds": 40
+     }
+    ]
+   },
+   {
+    "id": 111022,
+    "week": 2,
+    "day": 2,
+    "title": "Суставы и кор",
+    "exercises": [
+     {
+      "exercise_id": 25,
+      "exercise_name": "Растяжка стоя",
+      "sets": 2,
+      "reps": "40 сек",
+      "rest_seconds": 30
+     },
+     {
+      "exercise_id": 10,
+      "exercise_name": "Скручивания",
+      "sets": 2,
+      "reps": "10 раз",
+      "rest_seconds": 30
+     },
+     {
+      "exercise_id": 54,
+      "exercise_name": "Боковая планка",
+      "sets": 2,
+      "reps": "15 сек на сторону",
+      "rest_seconds": 30
+     },
+     {
+      "exercise_id": 12,
+      "exercise_name": "Поза ребёнка",
+      "sets": 2,
+      "reps": "60 сек",
+      "rest_seconds": 30
+     }
+    ]
+   },
+   {
+    "id": 111023,
+    "week": 2,
+    "day": 3,
+    "title": "Мягко всё тело",
+    "exercises": [
+     {
+      "exercise_id": 11,
+      "exercise_name": "Растяжка кошка-корова",
+      "sets": 2,
+      "reps": "60 сек",
+      "rest_seconds": 30
+     },
+     {
+      "exercise_id": 5,
+      "exercise_name": "Подъёмы таза",
+      "sets": 2,
+      "reps": "10 раз",
+      "rest_seconds": 40
+     },
+     {
+      "exercise_id": 26,
+      "exercise_name": "Растяжка плеч",
+      "sets": 2,
+      "reps": "30 сек",
+      "rest_seconds": 30
+     },
+     {
+      "exercise_id": 12,
+      "exercise_name": "Поза ребёнка",
+      "sets": 3,
+      "reps": "60 сек",
+      "rest_seconds": 30
+     }
+    ]
+   },
+   {
+    "id": 111031,
+    "week": 3,
+    "day": 1,
+    "title": "Спина",
+    "exercises": [
+     {
+      "exercise_id": 11,
+      "exercise_name": "Растяжка кошка-корова",
+      "sets": 3,
+      "reps": "60 сек",
+      "rest_seconds": 30
+     },
+     {
+      "exercise_id": 12,
+      "exercise_name": "Поза ребёнка",
+      "sets": 3,
+      "reps": "60 сек",
+      "rest_seconds": 30
+     },
+     {
+      "exercise_id": 50,
+      "exercise_name": "Растяжка спины",
+      "sets": 2,
+      "reps": "60 сек",
+      "rest_seconds": 30
+     },
+     {
+      "exercise_id": 5,
+      "exercise_name": "Подъёмы таза",
+      "sets": 2,
+      "reps": "10 раз",
+      "rest_seconds": 40
+     }
+    ]
+   },
+   {
+    "id": 111032,
+    "week": 3,
+    "day": 2,
+    "title": "Суставы и кор",
+    "exercises": [
+     {
+      "exercise_id": 25,
+      "exercise_name": "Растяжка стоя",
+      "sets": 2,
+      "reps": "40 сек",
+      "rest_seconds": 30
+     },
+     {
+      "exercise_id": 10,
+      "exercise_name": "Скручивания",
+      "sets": 2,
+      "reps": "10 раз",
+      "rest_seconds": 30
+     },
+     {
+      "exercise_id": 54,
+      "exercise_name": "Боковая планка",
+      "sets": 2,
+      "reps": "15 сек на сторону",
+      "rest_seconds": 30
+     },
+     {
+      "exercise_id": 12,
+      "exercise_name": "Поза ребёнка",
+      "sets": 2,
+      "reps": "60 сек",
+      "rest_seconds": 30
+     }
+    ]
+   },
+   {
+    "id": 111033,
+    "week": 3,
+    "day": 3,
+    "title": "Мягко всё тело",
+    "exercises": [
+     {
+      "exercise_id": 11,
+      "exercise_name": "Растяжка кошка-корова",
+      "sets": 2,
+      "reps": "60 сек",
+      "rest_seconds": 30
+     },
+     {
+      "exercise_id": 5,
+      "exercise_name": "Подъёмы таза",
+      "sets": 2,
+      "reps": "10 раз",
+      "rest_seconds": 40
+     },
+     {
+      "exercise_id": 26,
+      "exercise_name": "Растяжка плеч",
+      "sets": 2,
+      "reps": "30 сек",
+      "rest_seconds": 30
+     },
+     {
+      "exercise_id": 12,
+      "exercise_name": "Поза ребёнка",
+      "sets": 3,
+      "reps": "60 сек",
+      "rest_seconds": 30
+     }
+    ]
+   },
+   {
+    "id": 111041,
+    "week": 4,
+    "day": 1,
+    "title": "Спина",
+    "exercises": [
+     {
+      "exercise_id": 11,
+      "exercise_name": "Растяжка кошка-корова",
+      "sets": 3,
+      "reps": "60 сек",
+      "rest_seconds": 30
+     },
+     {
+      "exercise_id": 12,
+      "exercise_name": "Поза ребёнка",
+      "sets": 3,
+      "reps": "60 сек",
+      "rest_seconds": 30
+     },
+     {
+      "exercise_id": 50,
+      "exercise_name": "Растяжка спины",
+      "sets": 2,
+      "reps": "60 сек",
+      "rest_seconds": 30
+     },
+     {
+      "exercise_id": 5,
+      "exercise_name": "Подъёмы таза",
+      "sets": 2,
+      "reps": "10 раз",
+      "rest_seconds": 40
+     }
+    ]
+   },
+   {
+    "id": 111042,
+    "week": 4,
+    "day": 2,
+    "title": "Суставы и кор",
+    "exercises": [
+     {
+      "exercise_id": 25,
+      "exercise_name": "Растяжка стоя",
+      "sets": 2,
+      "reps": "40 сек",
+      "rest_seconds": 30
+     },
+     {
+      "exercise_id": 10,
+      "exercise_name": "Скручивания",
+      "sets": 2,
+      "reps": "10 раз",
+      "rest_seconds": 30
+     },
+     {
+      "exercise_id": 54,
+      "exercise_name": "Боковая планка",
+      "sets": 2,
+      "reps": "15 сек на сторону",
+      "rest_seconds": 30
+     },
+     {
+      "exercise_id": 12,
+      "exercise_name": "Поза ребёнка",
+      "sets": 2,
+      "reps": "60 сек",
+      "rest_seconds": 30
+     }
+    ]
+   },
+   {
+    "id": 111043,
+    "week": 4,
+    "day": 3,
+    "title": "Мягко всё тело",
+    "exercises": [
+     {
+      "exercise_id": 11,
+      "exercise_name": "Растяжка кошка-корова",
+      "sets": 2,
+      "reps": "60 сек",
+      "rest_seconds": 30
+     },
+     {
+      "exercise_id": 5,
+      "exercise_name": "Подъёмы таза",
+      "sets": 2,
+      "reps": "10 раз",
+      "rest_seconds": 40
+     },
+     {
+      "exercise_id": 26,
+      "exercise_name": "Растяжка плеч",
+      "sets": 2,
+      "reps": "30 сек",
+      "rest_seconds": 30
+     },
+     {
+      "exercise_id": 12,
+      "exercise_name": "Поза ребёнка",
+      "sets": 3,
+      "reps": "60 сек",
+      "rest_seconds": 30
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "id": 112,
+  "name": "Стройные ноги без прыжков",
+  "location": "home",
+  "type": "mix",
+  "goal": "lose",
+  "duration_weeks": 6,
+  "difficulty": "beginner",
+  "description": "Ноги и ягодицы без ударной нагрузки: приседания, выпады и ягодичный мост в спокойном темпе. Даже мягкая работа на ногах разгоняет жиросжигание.",
+  "days": [
+   {
+    "id": 112011,
+    "week": 1,
+    "day": 1,
+    "title": "Ноги: база",
+    "exercises": [
+     {
+      "exercise_id": 2,
+      "exercise_name": "Приседания",
+      "sets": 3,
+      "reps": "12 раз",
+      "rest_seconds": 50
+     },
+     {
+      "exercise_id": 5,
+      "exercise_name": "Подъёмы таза",
+      "sets": 3,
+      "reps": "14 раз",
+      "rest_seconds": 45
+     },
+     {
+      "exercise_id": 4,
+      "exercise_name": "Выпады",
+      "sets": 2,
+      "reps": "8 на ногу",
+      "rest_seconds": 50
+     },
+     {
+      "exercise_id": 25,
+      "exercise_name": "Растяжка стоя",
+      "sets": 2,
+      "reps": "40 сек",
+      "rest_seconds": 30
+     }
+    ]
+   },
+   {
+    "id": 112012,
+    "week": 1,
+    "day": 2,
+    "title": "Ноги и кор",
+    "exercises": [
+     {
+      "exercise_id": 5,
+      "exercise_name": "Подъёмы таза",
+      "sets": 3,
+      "reps": "15 раз",
+      "rest_seconds": 45
+     },
+     {
+      "exercise_id": 2,
+      "exercise_name": "Приседания",
+      "sets": 3,
+      "reps": "12 раз",
+      "rest_seconds": 50
+     },
+     {
+      "exercise_id": 10,
+      "exercise_name": "Скручивания",
+      "sets": 2,
+      "reps": "12 раз",
+      "rest_seconds": 35
+     },
+     {
+      "exercise_id": 12,
+      "exercise_name": "Поза ребёнка",
+      "sets": 2,
+      "reps": "60 сек",
+      "rest_seconds": 30
+     }
+    ]
+   },
+   {
+    "id": 112013,
+    "week": 1,
+    "day": 3,
+    "title": "Ноги: тонус",
+    "exercises": [
+     {
+      "exercise_id": 4,
+      "exercise_name": "Выпады",
+      "sets": 3,
+      "reps": "10 на ногу",
+      "rest_seconds": 50
+     },
+     {
+      "exercise_id": 2,
+      "exercise_name": "Приседания",
+      "sets": 3,
+      "reps": "15 раз",
+      "rest_seconds": 45
+     },
+     {
+      "exercise_id": 5,
+      "exercise_name": "Подъёмы таза",
+      "sets": 3,
+      "reps": "15 раз",
+      "rest_seconds": 40
+     },
+     {
+      "exercise_id": 54,
+      "exercise_name": "Боковая планка",
+      "sets": 2,
+      "reps": "20 сек на сторону",
+      "rest_seconds": 35
+     }
+    ]
+   },
+   {
+    "id": 112021,
+    "week": 2,
+    "day": 1,
+    "title": "Ноги: база",
+    "exercises": [
+     {
+      "exercise_id": 2,
+      "exercise_name": "Приседания",
+      "sets": 3,
+      "reps": "12 раз",
+      "rest_seconds": 50
+     },
+     {
+      "exercise_id": 5,
+      "exercise_name": "Подъёмы таза",
+      "sets": 3,
+      "reps": "14 раз",
+      "rest_seconds": 45
+     },
+     {
+      "exercise_id": 4,
+      "exercise_name": "Выпады",
+      "sets": 2,
+      "reps": "8 на ногу",
+      "rest_seconds": 50
+     },
+     {
+      "exercise_id": 25,
+      "exercise_name": "Растяжка стоя",
+      "sets": 2,
+      "reps": "40 сек",
+      "rest_seconds": 30
+     }
+    ]
+   },
+   {
+    "id": 112022,
+    "week": 2,
+    "day": 2,
+    "title": "Ноги и кор",
+    "exercises": [
+     {
+      "exercise_id": 5,
+      "exercise_name": "Подъёмы таза",
+      "sets": 3,
+      "reps": "15 раз",
+      "rest_seconds": 45
+     },
+     {
+      "exercise_id": 2,
+      "exercise_name": "Приседания",
+      "sets": 3,
+      "reps": "12 раз",
+      "rest_seconds": 50
+     },
+     {
+      "exercise_id": 10,
+      "exercise_name": "Скручивания",
+      "sets": 2,
+      "reps": "12 раз",
+      "rest_seconds": 35
+     },
+     {
+      "exercise_id": 12,
+      "exercise_name": "Поза ребёнка",
+      "sets": 2,
+      "reps": "60 сек",
+      "rest_seconds": 30
+     }
+    ]
+   },
+   {
+    "id": 112023,
+    "week": 2,
+    "day": 3,
+    "title": "Ноги: тонус",
+    "exercises": [
+     {
+      "exercise_id": 4,
+      "exercise_name": "Выпады",
+      "sets": 3,
+      "reps": "10 на ногу",
+      "rest_seconds": 50
+     },
+     {
+      "exercise_id": 2,
+      "exercise_name": "Приседания",
+      "sets": 3,
+      "reps": "15 раз",
+      "rest_seconds": 45
+     },
+     {
+      "exercise_id": 5,
+      "exercise_name": "Подъёмы таза",
+      "sets": 3,
+      "reps": "15 раз",
+      "rest_seconds": 40
+     },
+     {
+      "exercise_id": 54,
+      "exercise_name": "Боковая планка",
+      "sets": 2,
+      "reps": "20 сек на сторону",
+      "rest_seconds": 35
+     }
+    ]
+   },
+   {
+    "id": 112031,
+    "week": 3,
+    "day": 1,
+    "title": "Ноги: база",
+    "exercises": [
+     {
+      "exercise_id": 2,
+      "exercise_name": "Приседания",
+      "sets": 3,
+      "reps": "12 раз",
+      "rest_seconds": 50
+     },
+     {
+      "exercise_id": 5,
+      "exercise_name": "Подъёмы таза",
+      "sets": 3,
+      "reps": "14 раз",
+      "rest_seconds": 45
+     },
+     {
+      "exercise_id": 4,
+      "exercise_name": "Выпады",
+      "sets": 2,
+      "reps": "8 на ногу",
+      "rest_seconds": 50
+     },
+     {
+      "exercise_id": 25,
+      "exercise_name": "Растяжка стоя",
+      "sets": 2,
+      "reps": "40 сек",
+      "rest_seconds": 30
+     }
+    ]
+   },
+   {
+    "id": 112032,
+    "week": 3,
+    "day": 2,
+    "title": "Ноги и кор",
+    "exercises": [
+     {
+      "exercise_id": 5,
+      "exercise_name": "Подъёмы таза",
+      "sets": 3,
+      "reps": "15 раз",
+      "rest_seconds": 45
+     },
+     {
+      "exercise_id": 2,
+      "exercise_name": "Приседания",
+      "sets": 3,
+      "reps": "12 раз",
+      "rest_seconds": 50
+     },
+     {
+      "exercise_id": 10,
+      "exercise_name": "Скручивания",
+      "sets": 2,
+      "reps": "12 раз",
+      "rest_seconds": 35
+     },
+     {
+      "exercise_id": 12,
+      "exercise_name": "Поза ребёнка",
+      "sets": 2,
+      "reps": "60 сек",
+      "rest_seconds": 30
+     }
+    ]
+   },
+   {
+    "id": 112033,
+    "week": 3,
+    "day": 3,
+    "title": "Ноги: тонус",
+    "exercises": [
+     {
+      "exercise_id": 4,
+      "exercise_name": "Выпады",
+      "sets": 3,
+      "reps": "10 на ногу",
+      "rest_seconds": 50
+     },
+     {
+      "exercise_id": 2,
+      "exercise_name": "Приседания",
+      "sets": 3,
+      "reps": "15 раз",
+      "rest_seconds": 45
+     },
+     {
+      "exercise_id": 5,
+      "exercise_name": "Подъёмы таза",
+      "sets": 3,
+      "reps": "15 раз",
+      "rest_seconds": 40
+     },
+     {
+      "exercise_id": 54,
+      "exercise_name": "Боковая планка",
+      "sets": 2,
+      "reps": "20 сек на сторону",
+      "rest_seconds": 35
+     }
+    ]
+   },
+   {
+    "id": 112041,
+    "week": 4,
+    "day": 1,
+    "title": "Ноги: база",
+    "exercises": [
+     {
+      "exercise_id": 2,
+      "exercise_name": "Приседания",
+      "sets": 3,
+      "reps": "12 раз",
+      "rest_seconds": 50
+     },
+     {
+      "exercise_id": 5,
+      "exercise_name": "Подъёмы таза",
+      "sets": 3,
+      "reps": "14 раз",
+      "rest_seconds": 45
+     },
+     {
+      "exercise_id": 4,
+      "exercise_name": "Выпады",
+      "sets": 2,
+      "reps": "8 на ногу",
+      "rest_seconds": 50
+     },
+     {
+      "exercise_id": 25,
+      "exercise_name": "Растяжка стоя",
+      "sets": 2,
+      "reps": "40 сек",
+      "rest_seconds": 30
+     }
+    ]
+   },
+   {
+    "id": 112042,
+    "week": 4,
+    "day": 2,
+    "title": "Ноги и кор",
+    "exercises": [
+     {
+      "exercise_id": 5,
+      "exercise_name": "Подъёмы таза",
+      "sets": 3,
+      "reps": "15 раз",
+      "rest_seconds": 45
+     },
+     {
+      "exercise_id": 2,
+      "exercise_name": "Приседания",
+      "sets": 3,
+      "reps": "12 раз",
+      "rest_seconds": 50
+     },
+     {
+      "exercise_id": 10,
+      "exercise_name": "Скручивания",
+      "sets": 2,
+      "reps": "12 раз",
+      "rest_seconds": 35
+     },
+     {
+      "exercise_id": 12,
+      "exercise_name": "Поза ребёнка",
+      "sets": 2,
+      "reps": "60 сек",
+      "rest_seconds": 30
+     }
+    ]
+   },
+   {
+    "id": 112043,
+    "week": 4,
+    "day": 3,
+    "title": "Ноги: тонус",
+    "exercises": [
+     {
+      "exercise_id": 4,
+      "exercise_name": "Выпады",
+      "sets": 3,
+      "reps": "10 на ногу",
+      "rest_seconds": 50
+     },
+     {
+      "exercise_id": 2,
+      "exercise_name": "Приседания",
+      "sets": 3,
+      "reps": "15 раз",
+      "rest_seconds": 45
+     },
+     {
+      "exercise_id": 5,
+      "exercise_name": "Подъёмы таза",
+      "sets": 3,
+      "reps": "15 раз",
+      "rest_seconds": 40
+     },
+     {
+      "exercise_id": 54,
+      "exercise_name": "Боковая планка",
+      "sets": 2,
+      "reps": "20 сек на сторону",
+      "rest_seconds": 35
+     }
+    ]
+   },
+   {
+    "id": 112051,
+    "week": 5,
+    "day": 1,
+    "title": "Ноги: база",
+    "exercises": [
+     {
+      "exercise_id": 2,
+      "exercise_name": "Приседания",
+      "sets": 3,
+      "reps": "12 раз",
+      "rest_seconds": 50
+     },
+     {
+      "exercise_id": 5,
+      "exercise_name": "Подъёмы таза",
+      "sets": 3,
+      "reps": "14 раз",
+      "rest_seconds": 45
+     },
+     {
+      "exercise_id": 4,
+      "exercise_name": "Выпады",
+      "sets": 2,
+      "reps": "8 на ногу",
+      "rest_seconds": 50
+     },
+     {
+      "exercise_id": 25,
+      "exercise_name": "Растяжка стоя",
+      "sets": 2,
+      "reps": "40 сек",
+      "rest_seconds": 30
+     }
+    ]
+   },
+   {
+    "id": 112052,
+    "week": 5,
+    "day": 2,
+    "title": "Ноги и кор",
+    "exercises": [
+     {
+      "exercise_id": 5,
+      "exercise_name": "Подъёмы таза",
+      "sets": 3,
+      "reps": "15 раз",
+      "rest_seconds": 45
+     },
+     {
+      "exercise_id": 2,
+      "exercise_name": "Приседания",
+      "sets": 3,
+      "reps": "12 раз",
+      "rest_seconds": 50
+     },
+     {
+      "exercise_id": 10,
+      "exercise_name": "Скручивания",
+      "sets": 2,
+      "reps": "12 раз",
+      "rest_seconds": 35
+     },
+     {
+      "exercise_id": 12,
+      "exercise_name": "Поза ребёнка",
+      "sets": 2,
+      "reps": "60 сек",
+      "rest_seconds": 30
+     }
+    ]
+   },
+   {
+    "id": 112053,
+    "week": 5,
+    "day": 3,
+    "title": "Ноги: тонус",
+    "exercises": [
+     {
+      "exercise_id": 4,
+      "exercise_name": "Выпады",
+      "sets": 3,
+      "reps": "10 на ногу",
+      "rest_seconds": 50
+     },
+     {
+      "exercise_id": 2,
+      "exercise_name": "Приседания",
+      "sets": 3,
+      "reps": "15 раз",
+      "rest_seconds": 45
+     },
+     {
+      "exercise_id": 5,
+      "exercise_name": "Подъёмы таза",
+      "sets": 3,
+      "reps": "15 раз",
+      "rest_seconds": 40
+     },
+     {
+      "exercise_id": 54,
+      "exercise_name": "Боковая планка",
+      "sets": 2,
+      "reps": "20 сек на сторону",
+      "rest_seconds": 35
+     }
+    ]
+   },
+   {
+    "id": 112061,
+    "week": 6,
+    "day": 1,
+    "title": "Ноги: база",
+    "exercises": [
+     {
+      "exercise_id": 2,
+      "exercise_name": "Приседания",
+      "sets": 3,
+      "reps": "12 раз",
+      "rest_seconds": 50
+     },
+     {
+      "exercise_id": 5,
+      "exercise_name": "Подъёмы таза",
+      "sets": 3,
+      "reps": "14 раз",
+      "rest_seconds": 45
+     },
+     {
+      "exercise_id": 4,
+      "exercise_name": "Выпады",
+      "sets": 2,
+      "reps": "8 на ногу",
+      "rest_seconds": 50
+     },
+     {
+      "exercise_id": 25,
+      "exercise_name": "Растяжка стоя",
+      "sets": 2,
+      "reps": "40 сек",
+      "rest_seconds": 30
+     }
+    ]
+   },
+   {
+    "id": 112062,
+    "week": 6,
+    "day": 2,
+    "title": "Ноги и кор",
+    "exercises": [
+     {
+      "exercise_id": 5,
+      "exercise_name": "Подъёмы таза",
+      "sets": 3,
+      "reps": "15 раз",
+      "rest_seconds": 45
+     },
+     {
+      "exercise_id": 2,
+      "exercise_name": "Приседания",
+      "sets": 3,
+      "reps": "12 раз",
+      "rest_seconds": 50
+     },
+     {
+      "exercise_id": 10,
+      "exercise_name": "Скручивания",
+      "sets": 2,
+      "reps": "12 раз",
+      "rest_seconds": 35
+     },
+     {
+      "exercise_id": 12,
+      "exercise_name": "Поза ребёнка",
+      "sets": 2,
+      "reps": "60 сек",
+      "rest_seconds": 30
+     }
+    ]
+   },
+   {
+    "id": 112063,
+    "week": 6,
+    "day": 3,
+    "title": "Ноги: тонус",
+    "exercises": [
+     {
+      "exercise_id": 4,
+      "exercise_name": "Выпады",
+      "sets": 3,
+      "reps": "10 на ногу",
+      "rest_seconds": 50
+     },
+     {
+      "exercise_id": 2,
+      "exercise_name": "Приседания",
+      "sets": 3,
+      "reps": "15 раз",
+      "rest_seconds": 45
+     },
+     {
+      "exercise_id": 5,
+      "exercise_name": "Подъёмы таза",
+      "sets": 3,
+      "reps": "15 раз",
+      "rest_seconds": 40
+     },
+     {
+      "exercise_id": 54,
+      "exercise_name": "Боковая планка",
+      "sets": 2,
+      "reps": "20 сек на сторону",
+      "rest_seconds": 35
+     }
+    ]
+   }
+  ]
  }
 ]
