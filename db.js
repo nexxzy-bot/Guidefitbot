@@ -19,7 +19,9 @@ db.serialize(() => {
     description TEXT, benefits TEXT, ingredients TEXT,
     recipe_steps TEXT, image_url TEXT, goals TEXT
   )`);
-  db.run("ALTER TABLE recipes ADD COLUMN photo_query TEXT", () => {});
+  db.all("PRAGMA table_info(recipes)", [], (e, cols) => {
+    if (!e && cols && !cols.some(c => c.name === 'photo_query')) db.run("ALTER TABLE recipes ADD COLUMN photo_query TEXT");
+  });
   db.run(`CREATE TABLE IF NOT EXISTS exercises (
     id INTEGER PRIMARY KEY, name TEXT, location TEXT, type TEXT,
     muscle_group TEXT, description TEXT, difficulty TEXT,
@@ -92,6 +94,8 @@ db.serialize(() => {
   db.run(`CREATE INDEX IF NOT EXISTS idx_workout_sets_log ON workout_sets(log_id)`);
 
   // v9: каталог рецептов пересобирается при каждом старте
+  db.run("CREATE TABLE IF NOT EXISTS image_store (recipe_id INTEGER PRIMARY KEY, url TEXT)");
+  db.run("INSERT OR REPLACE INTO image_store (recipe_id, url) SELECT id, image_url FROM recipes WHERE image_url IS NOT NULL AND image_url != ''");
   db.run("DELETE FROM recipes");
   if (fs.existsSync('./recipes.json')) {
     const recipes = JSON.parse(fs.readFileSync('./recipes.json', 'utf8'));
@@ -123,7 +127,7 @@ db.serialize(() => {
   db.run("DELETE FROM program_exercises");
   db.run("DELETE FROM program_days");
   db.run("DELETE FROM programs");
-  db.run("DELETE FROM user_programs");
+  // v14: прогресс пользователей сохраняем при рестарте (аудит)
   if (fs.existsSync('./programs.json')) {
     const programs = JSON.parse(fs.readFileSync('./programs.json', 'utf8'));
     const ps = db.prepare(`INSERT OR IGNORE INTO programs

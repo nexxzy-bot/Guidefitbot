@@ -53,7 +53,7 @@ function resolveTgId(req) {
   const requested = String(req.body?.tg_id ?? req.query?.tg_id ?? req.params?.tgId ?? '');
   if (req.tgUserId) return req.tgUserId;          // подписанные данные Telegram имеют приоритет
   if (!process.env.TELEGRAM_TOKEN) return requested; // dev-режим без токена
-  if (requested === 'demo_user') return 'demo_user'; // браузерный демо-режим
+  // v14: demo_user закрыт (аудит) — без TELEGRAM_TOKEN всё равно пускает любого
   return null;                                     // иначе — попытка подмены, отказ
 }
 
@@ -105,8 +105,9 @@ async function sendTelegram(tg_id, text) {
     await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ chat_id: tg_id, text })
-    });
+      body: JSON.stringify({ chat_id: tg_id, text }),
+      signal: AbortSignal.timeout(5000)
+    }).catch(e => console.error('TG send:', e.message));
   } catch (e) { console.error('TG send error:', e.message); }
 }
 
@@ -170,12 +171,39 @@ function checkAchievements(tg_id) {
 }
 
 /* ================= пользователь ================= */
+// --- v14: безопасность без новых зависимостей ---
+app.disable('x-powered-by');
+app.use((req, res, next) => {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'DENY');
+  res.setHeader('Referrer-Policy', 'same-origin');
+  next();
+});
+const rlHits = new Map();
+app.use('/api', (req, res, next) => {
+  const key = req.ip + ':' + req.path;
+  const now = Date.now();
+  const h = rlHits.get(key) || { n: 0, t: now };
+  if (now - h.t > 60000) { h.n = 0; h.t = now; }
+  h.n++;
+  if (rlHits.size > 20000) rlHits.clear();
+  rlHits.set(key, h);
+  if (h.n > 120) return res.status(429).json({ error: 'Too many requests' });
+  next();
+});
+app.get('/api/health', (req, res) => res.json({ status: 'ok' }));
+
 app.post('/api/user/init', (req, res) => {
   const tgId = resolveTgId(req);
   if (!tgId) return res.status(401).json({ error: 'Unauthorized' });
   const { name, goal, gender, age, height, current_weight, target_weight, activity_level } = req.body;
   if (!name || !goal || !gender || !age || !height || !current_weight) {
     return res.status(400).json({ error: 'Missing fields' });
+  }
+  if (!(age >= 10 && age <= 100) || !(height >= 120 && height <= 230) ||
+      !(current_weight >= 20 && current_weight <= 400) ||
+      (target_weight && !(target_weight >= 20 && target_weight <= 400))) {
+    return res.status(400).json({ error: 'Invalid values' });
   }
   const al = activity_level || 'moderate';
   const calorie_norm = calcCalories(current_weight, height, age, gender, al, goal);
@@ -384,10 +412,16 @@ app.post('/api/meal', (req, res) => {
   const params = [category];
   if (goal) { sql += " AND (goals LIKE ? OR goals IS NULL OR goals = '')"; params.push('%' + goal + '%'); }
   if (exclude_id) { sql += " AND id != ?"; params.push(exclude_id); }
-  sql += " ORDER BY RANDOM() LIMIT 1";
-  db.get(sql, params, (err, row) => {
-    if (err) return res.status(500).json({ error: err.message });
-    if (!row) return res.status(404).json({ error: 'Recipe not found' });
+  const maxK = parseFloat(req.body.max_calories);
+  const pick = (withCap) => {
+    let sql2 = sql;
+    const p2 = params.slice();
+    if (withCap && maxK > 0) { sql2 += " AND calories <= ?"; p2.push(Math.round(maxK * 1.15)); }
+    sql2 += " ORDER BY RANDOM() LIMIT 1";
+    db.get(sql2, p2, (err, row) => {
+      if (err) return res.status(500).json({ error: err.message });
+      if (!row && withCap && maxK > 0) return pick(false);
+      if (!row) return res.status(404).json({ error: 'Recipe not found' });
     if (row.ingredients) try { row.ingredients = JSON.parse(row.ingredients); } catch (e) {}
     if (row.recipe_steps) try { row.recipe_steps = JSON.parse(row.recipe_steps); } catch (e) {}
     res.json({ recipe: row });
@@ -606,22 +640,34 @@ app.post('/api/user/program/complete', (req, res) => {
 app.post('/api/workout/log', (req, res) => {
   const tgId = resolveTgId(req);
   if (!tgId) return res.status(401).json({ error: 'Unauthorized' });
-  const { program_id, program_day_id, duration_minutes, total_volume, notes, sets } = req.body;
+  // v14: total_volume от клиента игнорируем — считаем сами из подходов (аудит)
+  const { program_id, program_day_id, duration_minutes, notes, sets } = req.body;
+  let _cleanSets = [];
+  if (Array.isArray(sets)) {
+    if (sets.length > 60) return res.status(400).json({ error: 'Too many sets' });
+    for (const s2 of sets) {
+      const reps = Math.round(Number(s2.reps));
+      const wgt = Number(s2.weight) || 0;
+      if (!(reps >= 0 && reps <= 500) || !(wgt >= 0 && wgt <= 1000)) return res.status(400).json({ error: 'Invalid set' });
+      _cleanSets.push({ exercise_id: s2.exercise_id || null, set_number: s2.set_number || 0, reps, weight: wgt });
+    }
+  }
+  const _totalVolume = _cleanSets.reduce((sum, x) => sum + x.reps * x.weight, 0);
   db.run(`INSERT INTO workout_logs (tg_id, program_id, program_day_id, date, duration_minutes, total_volume, notes)
       VALUES (?, ?, ?, ?, ?, ?, ?)`,
     [tgId, program_id || null, program_day_id || null, localDate(),
-     duration_minutes || 0, total_volume || 0, notes || ''],
+     Math.min(Number(duration_minutes) || 0, 600), _totalVolume, String(notes || '').slice(0, 300)],
     function (err) {
       if (err) return res.status(500).json({ error: err.message });
       const logId = this.lastID;
-      if (Array.isArray(sets) && sets.length > 0) {
+      if (_cleanSets.length > 0) {
         const stmt = db.prepare(`INSERT INTO workout_sets (log_id, exercise_id, set_number, reps, weight)
             VALUES (?, ?, ?, ?, ?)`);
-        sets.forEach(s => stmt.run(logId, s.exercise_id, s.set_number, s.reps, s.weight || 0));
+        _cleanSets.forEach(s3 => stmt.run(logId, s3.exercise_id, s3.set_number, s3.reps, s3.weight));
         stmt.finalize();
       }
       checkAchievements(tgId);
-      res.json({ status: 'ok', log_id: logId });
+      res.json({ status: 'ok', log_id: logId, total_volume: _totalVolume });
     });
 });
 
@@ -650,6 +696,27 @@ app.get('/api/workout/log/:id', (req, res) => {
 });
 
 /* ================= вода и вес ================= */
+app.post('/api/water/undo', (req, res) => {
+  const tgId = resolveTgId(req);
+  if (!tgId) return res.status(401).json({ error: 'Unauthorized' });
+  db.run("DELETE FROM water_logs WHERE id = (SELECT id FROM water_logs WHERE tg_id = ? AND date = ? ORDER BY id DESC LIMIT 1)",
+    [tgId, localDate()], function (err) {
+      if (err) return res.status(500).json({ error: err.message });
+      res.json({ status: 'ok', removed: this.changes });
+    });
+});
+
+app.post('/api/notifications/toggle', (req, res) => {
+  const tgId = resolveTgId(req);
+  if (!tgId) return res.status(401).json({ error: 'Unauthorized' });
+  db.run("UPDATE users SET notify_enabled = CASE WHEN notify_enabled THEN 0 ELSE 1 END WHERE tg_id = ?", [tgId], function (err) {
+    if (err) return res.status(500).json({ error: err.message });
+    db.get("SELECT notify_enabled FROM users WHERE tg_id = ?", [tgId], (e2, row) => {
+      res.json({ status: 'ok', notify_enabled: row ? row.notify_enabled : 1 });
+    });
+  });
+});
+
 app.post('/api/water', (req, res) => {
   const tgId = resolveTgId(req);
   if (!tgId) return res.status(401).json({ error: 'Unauthorized' });
@@ -690,8 +757,16 @@ app.post('/api/weight', (req, res) => {
   db.run("INSERT OR REPLACE INTO weight_logs (tg_id, date, weight) VALUES (?, ?, ?)",
     [tgId, localDate(), weight], (err) => {
       if (err) return res.status(500).json({ error: err.message });
-      db.run("UPDATE users SET current_weight = ? WHERE tg_id = ?", [weight, tgId]);
-      res.json({ status: 'ok' });
+      db.get("SELECT gender, height, age, activity_level, goal FROM users WHERE tg_id = ?", [tgId], (e2, u) => {
+        const norm = (e2 || !u) ? null : calcCalories(weight, u.height, u.age, u.gender, u.activity_level, u.goal);
+        if (norm) {
+          db.run("UPDATE users SET current_weight = ?, calorie_norm = ? WHERE tg_id = ?", [weight, norm, tgId]);
+          res.json({ status: 'ok', calorie_norm: norm });
+        } else {
+          db.run("UPDATE users SET current_weight = ? WHERE tg_id = ?", [weight, tgId]);
+          res.json({ status: 'ok' });
+        }
+      });
     });
 });
 
@@ -724,7 +799,7 @@ function runReminders() {
   if (!process.env.TELEGRAM_TOKEN) return;
   const today = localDate();
   const hour = new Date().getHours();
-  db.all("SELECT tg_id, name, created_at FROM users", [], (err, users) => {
+  db.all("SELECT tg_id, name, created_at FROM users WHERE notify_enabled = 1", [], (err, users) => {
     if (err) return;
     (users || []).forEach(u => {
       if (u.tg_id === 'demo_user') return;
@@ -758,6 +833,29 @@ function runReminders() {
     });
   });
 }
+function sendWeeklyReports() {
+  const now = new Date();
+  if (now.getDay() !== 1 || now.getHours() !== 9) return;
+  const today = localDate();
+  db.all("SELECT tg_id, name FROM users WHERE notify_enabled = 1", [], (e, users) => {
+    if (e || !users) return;
+    users.forEach(u => {
+      db.get("SELECT COUNT(*) c FROM workout_logs WHERE tg_id = ? AND date >= date('now','-7 days')", [u.tg_id], (e1, w) => {
+        db.get("SELECT COUNT(DISTINCT date) c FROM food_logs WHERE tg_id = ? AND date >= date('now','-7 days')", [u.tg_id], (e2, m) => {
+          db.all("SELECT weight FROM weight_logs WHERE tg_id = ? ORDER BY date ASC, id ASC LIMIT 1", [u.tg_id], (e3, wr) => {
+            db.all("SELECT weight FROM weight_logs WHERE tg_id = ? ORDER BY date DESC, id DESC LIMIT 1", [u.tg_id], (e4, wl) => {
+              const wLine = (wr.length && wl.length) ? (' Вес: ' + wr[0].weight + ' → ' + wl[0].weight + ' кг.') : '';
+              notifyOnce(u.tg_id, 'weekly:' + today, today, '📊 Неделя в GuideFit: тренировок — ' + (w ? w.c : 0) + ', дней с записанной едой — ' + (m ? m.c : 0) + ' из 7.' + wLine + ' Новая неделя — новый шаг к цели!');
+            });
+          });
+        });
+      });
+    });
+  });
+}
+setInterval(sendWeeklyReports, 30 * 60 * 1000);
+setTimeout(sendWeeklyReports, 90 * 1000);
+
 setInterval(runReminders, 30 * 60 * 1000);
 setTimeout(runReminders, 15 * 1000);
 
@@ -802,6 +900,12 @@ app.get('/api/yoga/flow/:id', (req, res) => {
     });
   });
 });
+
+['SIGINT','SIGTERM'].forEach(sig => process.on(sig, () => {
+  console.log('Остановка (' + sig + ')...');
+  try { require('./db').close(); } catch(e){}
+  process.exit(0);
+}));
 
 const PORT = Number(process.env.MINIAPP_PORT) || 3000;
 const server = app.listen(PORT, () => {

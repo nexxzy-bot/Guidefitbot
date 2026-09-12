@@ -1714,10 +1714,10 @@ async function loadProfile(){
         '<div class="flex gap2 mt3"><input type="number" step="0.1" class="input" id="newWeight" placeholder="Вес, кг" style="flex:1"><button class="btn btn-primary" onclick="saveWeight()">Сохранить</button></div></div>' +
       '<div class="card mb4"><h3 class="mb3">Приёмы пищи в день</h3><div class="flex gap2">' +
         [2,3,4,5,6].map(n => '<button class="chip pressable' + (user.meal_count===n?' active':'') + '" id="mc' + n + '" onclick="setMealCount(' + n + ')">' + n + '</button>').join('') + '</div></div>' +
-      '<div class="card mb4"><h3 class="mb3">Структура рациона</h3><div id="macroDonut"></div></div>' +
+      '<div class="card mb4"><h3 class="mb3">Нормы БЖУ</h3><div id="macroBars"></div></div>' +
       '<div class="flex between items-center mb3"><h3>Достижения</h3><span class="badge badge-amber" id="achCount"></span></div><div id="achList"></div>';
     renderWeightChart(weight.history || []);
-    try{ renderMacroDonut(user); }catch(e){}
+    try{ renderNormBars(user); }catch(e){}
     try{
       const tgu = (typeof tg !== 'undefined' && tg && tg.initDataUnsafe && tg.initDataUnsafe.user) ? tg.initDataUnsafe.user : null;
       if(tgu && tgu.photo_url){ const av = document.getElementById('profAvatar'); if(av) av.innerHTML = '<img src="' + tgu.photo_url + '" referrerpolicy="no-referrer" alt="">'; }
@@ -1970,6 +1970,53 @@ function copyShopList(){
     } else { showToast('Скопируй вручную: выдели список', 'err'); }
   }catch(e){ showToast('Не удалось скопировать', 'err'); }
 }
+</script>
+<script>
+/* ============ v14 ============ */
+function renderNormBars(u){
+  const box = document.getElementById('macroBars');
+  if(!box) return;
+  const kcal = u.calorie_norm || 2000;
+  const w = parseFloat(u.current_weight) || 70;
+  const p = Math.round(w * (u.goal === 'gain' ? 2 : 1.6));
+  const f = Math.round(w * 1);
+  let c = Math.round((kcal - p * 4 - f * 9) / 4);
+  if (c < 50) c = 50;
+  const rows = [['Белки', p, 'г', '#0D9BE8'], ['Жиры', f, 'г', '#F59E0B'], ['Углеводы', c, 'г', '#10B981']];
+  const maxV = Math.max(p, f, c);
+  box.innerHTML = rows.map(r =>
+    '<div style="margin-bottom:12px"><div class="flex between" style="font-size:12.5px;font-weight:700;margin-bottom:5px"><span>' + r[0] + '</span><span>' + r[1] + ' ' + r[2] + '</span></div>' +
+    '<div class="track"><div class="fill" style="width:' + Math.round(r[1]/maxV*100) + '%;background:' + r[3] + '"></div></div></div>').join('') +
+    '<p class="subtle" style="font-size:11px">' + kcal + ' ккал в день · пересчитывается при изменении веса</p>';
+}
+async function undoWater(){
+  try{
+    const r = await api('/api/water/undo', { method: 'POST', body: { tg_id: currentUser.tg_id } });
+    if(r && r.removed){ showToast('−250 мл', ''); if(typeof haptic === 'function') haptic(); }
+    else showToast('Отменять нечего', 'err');
+    if(typeof loadDashboard === 'function') loadDashboard();
+    setTimeout(renderHomeDonuts, 800);
+  }catch(e){ showToast('Ошибка', 'err'); }
+}
+const _rhd = renderHomeDonuts;
+renderHomeDonuts = function(){
+  _rhd();
+  setTimeout(function(){
+    const card = document.querySelector('#homeStatGrid .card');
+    if(card && !document.getElementById('wtrUndo')){
+      const bar = card.querySelector('.wtr2-bar');
+      if(bar){
+        const b = document.createElement('button');
+        b.id = 'wtrUndo'; b.className = 'pressable';
+        b.style.cssText = 'position:absolute;right:4px;top:4px;width:26px;height:26px;border-radius:8px;background:rgba(255,255,255,.85);color:#067;background:none;border:none;font-size:16px;font-weight:800;color:var(--text3)';
+        b.textContent = '−';
+        b.onclick = function(ev){ ev.stopPropagation(); undoWater(); };
+        bar.style.position = 'relative';
+        bar.appendChild(b);
+      }
+    }
+  }, 50);
+};
 </script>
 </body>
 </html>
