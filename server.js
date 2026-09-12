@@ -425,7 +425,9 @@ app.post('/api/meal', (req, res) => {
     if (row.ingredients) try { row.ingredients = JSON.parse(row.ingredients); } catch (e) {}
     if (row.recipe_steps) try { row.recipe_steps = JSON.parse(row.recipe_steps); } catch (e) {}
     res.json({ recipe: row });
-  });
+    });
+  };
+  pick(true);
 });
 
 app.get('/api/recipe/:id', (req, res) => {

@@ -3,6 +3,9 @@ const db = new sqlite3.Database('./guidefit.db');
 const fs = require('fs');
 
 db.serialize(() => {
+  db.all("PRAGMA table_info(users)", [], (e2, cols2) => {
+    if (!e2 && cols2 && !cols2.some(c => c.name === 'notify_enabled')) db.run("ALTER TABLE users ADD COLUMN notify_enabled INTEGER DEFAULT 1");
+  });
   db.run(`CREATE TABLE IF NOT EXISTS users (
     tg_id TEXT PRIMARY KEY, name TEXT, goal TEXT, gender TEXT,
     age INTEGER, height INTEGER, current_weight REAL, target_weight REAL,

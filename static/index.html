@@ -1151,7 +1151,7 @@ async function loadNextMeal(){
   area.innerHTML = '<div class="shimmer" style="height:220px"></div>';
   try{
     const exclude = currentMealRecipe ? currentMealRecipe.id : null;
-    const d = await api('/api/meal', { method:'POST', body:{ category: currentMealCategory, goal: currentUser ? currentUser.goal : null, exclude_id: exclude } });
+    const d = await api('/api/meal', { method:'POST', body:{ category: currentMealCategory, goal: currentUser ? currentUser.goal : null, exclude_id: exclude, max_calories: Math.round(((currentUser && currentUser.calorie_norm) || 2000) * ({breakfast:.3,lunch:.35,dinner:.25,snack:.1}[currentMealCategory] || .3)) } });
     if(!d.recipe){ area.innerHTML = '<div class="empty">Нет рецептов</div>'; return; }
     currentMealRecipe = d.recipe;
     const r = d.recipe;
@@ -2017,6 +2017,39 @@ renderHomeDonuts = function(){
     }
   }, 50);
 };
+</script>
+<script>
+try{
+  const _lp15 = loadProfile;
+  loadProfile = function(){
+    const r = _lp15.apply(this, arguments);
+    setTimeout(function(){
+      const c = document.getElementById('profileContent');
+      if(!c || document.getElementById('supportCard')) return;
+      const card = document.createElement('div');
+      card.className = 'card mb4'; card.id = 'supportCard';
+      card.innerHTML = '<h3 class="mb3">Помощь</h3>' +
+        '<a href="https://t.me/nexxdsgn" target="_blank" rel="noopener" class="btn btn-ghost btn-block pressable" style="text-decoration:none;display:flex;align-items:center;gap:8px">' + ic('person',16) + ' Написать в поддержку · t.me/nexxdsgn</a>' +
+        '<button class="btn btn-ghost btn-block pressable mt2" onclick="toggleNotifyUI()" style="display:flex;align-items:center;gap:8px">' + ic('sparkles',16) + ' <span id="notifyLbl">Уведомления: …</span></button>' +
+        '<p class="subtle mt2" style="font-size:11px">Напоминания о приёмах пищи, взвешивании и недельный отчёт по понедельникам.</p>';
+      c.appendChild(card);
+      const l = document.getElementById('notifyLbl');
+      if(l) l.textContent = 'Уведомления: ' + ((currentUser && currentUser.notify_enabled) ? 'включены' : 'выключены');
+    }, 250);
+    return r;
+  };
+}catch(e){}
+async function toggleNotifyUI(){
+  if(!currentUser) return;
+  try{
+    const r = await api('/api/notifications/toggle', { method: 'POST', body: { tg_id: currentUser.tg_id } });
+    currentUser.notify_enabled = r.notify_enabled;
+    if(typeof haptic === 'function') haptic('ok');
+    showSuccess('Уведомления ' + (r.notify_enabled ? 'включены' : 'выключены'));
+    const l = document.getElementById('notifyLbl');
+    if(l) l.textContent = 'Уведомления: ' + (r.notify_enabled ? 'включены' : 'выключены');
+  }catch(e){ showToast('Не удалось переключить', 'err'); }
+}
 </script>
 </body>
 </html>
