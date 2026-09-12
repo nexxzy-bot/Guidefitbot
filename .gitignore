@@ -1,9 +1,8 @@
-.env
 node_modules/
-db.sqlite3
 .env
-.env
-.env
-.env
-.env
-.env
+guidefit.db
+guidefit.db.backup*
+server.log
+*.bak-*
+static/*.bak*
+nohup.out

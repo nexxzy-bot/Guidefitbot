@@ -1244,6 +1244,7 @@ async function loadProfile(){
 
     const unlockedCount = (ach.achievements || []).filter(a => a.unlocked).length;
     if(document.getElementById('achCount')) document.getElementById('achCount').textContent = unlockedCount + ' / ' + (ach.achievements || []).length;
+    if(document.getElementById('achCount')) document.getElementById('achCount').textContent = unlockedCount + ' / ' + (ach.achievements || []).length;
     const seenKey = 'gf_ach_' + tgId;
     const seen = parseInt(localStorage.getItem(seenKey) || '0');
     if(unlockedCount > seen && seen > 0) setTimeout(() => showSuccess('Новое достижение разблокировано! 🏅'), 600);
