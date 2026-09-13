@@ -2628,1050 +2628,6 @@
   ]
  },
  {
-  "id": 105,
-  "name": "Зал: сушка",
-  "location": "gym",
-  "type": "strength",
-  "goal": "lose",
-  "duration_weeks": 8,
-  "difficulty": "intermediate",
-  "description": "Базовые упражнения со штангой и гантелями на 12–15 повторений. Сохраняем мышцы в дефиците калорий — это удерживает метаболизм высоким, пока уходит жир. Финишер-кардио в каждом дне.",
-  "days": [
-   {
-    "id": 105011,
-    "week": 1,
-    "day": 1,
-    "title": "Сушка: ноги + спина",
-    "exercises": [
-     {
-      "exercise_id": 35,
-      "exercise_name": "Приседания со штангой",
-      "sets": 4,
-      "reps": "12 раз",
-      "rest_seconds": 90
-     },
-     {
-      "exercise_id": 37,
-      "exercise_name": "Румынская тяга",
-      "sets": 4,
-      "reps": "12 раз",
-      "rest_seconds": 90
-     },
-     {
-      "exercise_id": 29,
-      "exercise_name": "Тяга верхнего блока",
-      "sets": 3,
-      "reps": "15 раз",
-      "rest_seconds": 60
-     },
-     {
-      "exercise_id": 39,
-      "exercise_name": "Сгибания ног лёжа",
-      "sets": 3,
-      "reps": "15 раз",
-      "rest_seconds": 60
-     },
-     {
-      "exercise_id": 201,
-      "exercise_name": "Берпи",
-      "sets": 3,
-      "reps": "40 сек",
-      "rest_seconds": 60
-     }
-    ]
-   },
-   {
-    "id": 105012,
-    "week": 1,
-    "day": 2,
-    "title": "Сушка: грудь + плечи",
-    "exercises": [
-     {
-      "exercise_id": 27,
-      "exercise_name": "Жим гантелей лёжа",
-      "sets": 4,
-      "reps": "12 раз",
-      "rest_seconds": 90
-     },
-     {
-      "exercise_id": 28,
-      "exercise_name": "Разведения гантелей",
-      "sets": 3,
-      "reps": "15 раз",
-      "rest_seconds": 60
-     },
-     {
-      "exercise_id": 31,
-      "exercise_name": "Жим гантелей сидя",
-      "sets": 3,
-      "reps": "15 раз",
-      "rest_seconds": 60
-     },
-     {
-      "exercise_id": 32,
-      "exercise_name": "Махи гантелями в стороны",
-      "sets": 3,
-      "reps": "15 раз",
-      "rest_seconds": 45
-     },
-     {
-      "exercise_id": 7,
-      "exercise_name": "Горная лыжня",
-      "sets": 3,
-      "reps": "40 сек",
-      "rest_seconds": 60
-     }
-    ]
-   },
-   {
-    "id": 105013,
-    "week": 1,
-    "day": 3,
-    "title": "Сушка: спина + руки",
-    "exercises": [
-     {
-      "exercise_id": 30,
-      "exercise_name": "Тяга гантели в наклоне",
-      "sets": 4,
-      "reps": "12 раз",
-      "rest_seconds": 75
-     },
-     {
-      "exercise_id": 29,
-      "exercise_name": "Тяга верхнего блока",
-      "sets": 3,
-      "reps": "15 раз",
-      "rest_seconds": 60
-     },
-     {
-      "exercise_id": 33,
-      "exercise_name": "Сгибания на бицепс",
-      "sets": 3,
-      "reps": "15 раз",
-      "rest_seconds": 45
-     },
-     {
-      "exercise_id": 34,
-      "exercise_name": "Французский жим",
-      "sets": 3,
-      "reps": "15 раз",
-      "rest_seconds": 60
-     },
-     {
-      "exercise_id": 16,
-      "exercise_name": "Бег с высокими коленями",
-      "sets": 3,
-      "reps": "40 сек",
-      "rest_seconds": 60
-     }
-    ]
-   },
-   {
-    "id": 105021,
-    "week": 2,
-    "day": 1,
-    "title": "Сушка: ноги + спина",
-    "exercises": [
-     {
-      "exercise_id": 35,
-      "exercise_name": "Приседания со штангой",
-      "sets": 4,
-      "reps": "12 раз",
-      "rest_seconds": 90
-     },
-     {
-      "exercise_id": 37,
-      "exercise_name": "Румынская тяга",
-      "sets": 4,
-      "reps": "12 раз",
-      "rest_seconds": 90
-     },
-     {
-      "exercise_id": 29,
-      "exercise_name": "Тяга верхнего блока",
-      "sets": 3,
-      "reps": "15 раз",
-      "rest_seconds": 60
-     },
-     {
-      "exercise_id": 39,
-      "exercise_name": "Сгибания ног лёжа",
-      "sets": 3,
-      "reps": "15 раз",
-      "rest_seconds": 60
-     },
-     {
-      "exercise_id": 201,
-      "exercise_name": "Берпи",
-      "sets": 3,
-      "reps": "40 сек",
-      "rest_seconds": 60
-     }
-    ]
-   },
-   {
-    "id": 105022,
-    "week": 2,
-    "day": 2,
-    "title": "Сушка: грудь + плечи",
-    "exercises": [
-     {
-      "exercise_id": 27,
-      "exercise_name": "Жим гантелей лёжа",
-      "sets": 4,
-      "reps": "12 раз",
-      "rest_seconds": 90
-     },
-     {
-      "exercise_id": 28,
-      "exercise_name": "Разведения гантелей",
-      "sets": 3,
-      "reps": "15 раз",
-      "rest_seconds": 60
-     },
-     {
-      "exercise_id": 31,
-      "exercise_name": "Жим гантелей сидя",
-      "sets": 3,
-      "reps": "15 раз",
-      "rest_seconds": 60
-     },
-     {
-      "exercise_id": 32,
-      "exercise_name": "Махи гантелями в стороны",
-      "sets": 3,
-      "reps": "15 раз",
-      "rest_seconds": 45
-     },
-     {
-      "exercise_id": 7,
-      "exercise_name": "Горная лыжня",
-      "sets": 3,
-      "reps": "40 сек",
-      "rest_seconds": 60
-     }
-    ]
-   },
-   {
-    "id": 105023,
-    "week": 2,
-    "day": 3,
-    "title": "Сушка: спина + руки",
-    "exercises": [
-     {
-      "exercise_id": 30,
-      "exercise_name": "Тяга гантели в наклоне",
-      "sets": 4,
-      "reps": "12 раз",
-      "rest_seconds": 75
-     },
-     {
-      "exercise_id": 29,
-      "exercise_name": "Тяга верхнего блока",
-      "sets": 3,
-      "reps": "15 раз",
-      "rest_seconds": 60
-     },
-     {
-      "exercise_id": 33,
-      "exercise_name": "Сгибания на бицепс",
-      "sets": 3,
-      "reps": "15 раз",
-      "rest_seconds": 45
-     },
-     {
-      "exercise_id": 34,
-      "exercise_name": "Французский жим",
-      "sets": 3,
-      "reps": "15 раз",
-      "rest_seconds": 60
-     },
-     {
-      "exercise_id": 16,
-      "exercise_name": "Бег с высокими коленями",
-      "sets": 3,
-      "reps": "40 сек",
-      "rest_seconds": 60
-     }
-    ]
-   },
-   {
-    "id": 105031,
-    "week": 3,
-    "day": 1,
-    "title": "Сушка: ноги + спина",
-    "exercises": [
-     {
-      "exercise_id": 35,
-      "exercise_name": "Приседания со штангой",
-      "sets": 4,
-      "reps": "12 раз",
-      "rest_seconds": 90
-     },
-     {
-      "exercise_id": 37,
-      "exercise_name": "Румынская тяга",
-      "sets": 4,
-      "reps": "12 раз",
-      "rest_seconds": 90
-     },
-     {
-      "exercise_id": 29,
-      "exercise_name": "Тяга верхнего блока",
-      "sets": 3,
-      "reps": "15 раз",
-      "rest_seconds": 60
-     },
-     {
-      "exercise_id": 39,
-      "exercise_name": "Сгибания ног лёжа",
-      "sets": 3,
-      "reps": "15 раз",
-      "rest_seconds": 60
-     },
-     {
-      "exercise_id": 201,
-      "exercise_name": "Берпи",
-      "sets": 3,
-      "reps": "40 сек",
-      "rest_seconds": 60
-     }
-    ]
-   },
-   {
-    "id": 105032,
-    "week": 3,
-    "day": 2,
-    "title": "Сушка: грудь + плечи",
-    "exercises": [
-     {
-      "exercise_id": 27,
-      "exercise_name": "Жим гантелей лёжа",
-      "sets": 4,
-      "reps": "12 раз",
-      "rest_seconds": 90
-     },
-     {
-      "exercise_id": 28,
-      "exercise_name": "Разведения гантелей",
-      "sets": 3,
-      "reps": "15 раз",
-      "rest_seconds": 60
-     },
-     {
-      "exercise_id": 31,
-      "exercise_name": "Жим гантелей сидя",
-      "sets": 3,
-      "reps": "15 раз",
-      "rest_seconds": 60
-     },
-     {
-      "exercise_id": 32,
-      "exercise_name": "Махи гантелями в стороны",
-      "sets": 3,
-      "reps": "15 раз",
-      "rest_seconds": 45
-     },
-     {
-      "exercise_id": 7,
-      "exercise_name": "Горная лыжня",
-      "sets": 3,
-      "reps": "40 сек",
-      "rest_seconds": 60
-     }
-    ]
-   },
-   {
-    "id": 105033,
-    "week": 3,
-    "day": 3,
-    "title": "Сушка: спина + руки",
-    "exercises": [
-     {
-      "exercise_id": 30,
-      "exercise_name": "Тяга гантели в наклоне",
-      "sets": 4,
-      "reps": "12 раз",
-      "rest_seconds": 75
-     },
-     {
-      "exercise_id": 29,
-      "exercise_name": "Тяга верхнего блока",
-      "sets": 3,
-      "reps": "15 раз",
-      "rest_seconds": 60
-     },
-     {
-      "exercise_id": 33,
-      "exercise_name": "Сгибания на бицепс",
-      "sets": 3,
-      "reps": "15 раз",
-      "rest_seconds": 45
-     },
-     {
-      "exercise_id": 34,
-      "exercise_name": "Французский жим",
-      "sets": 3,
-      "reps": "15 раз",
-      "rest_seconds": 60
-     },
-     {
-      "exercise_id": 16,
-      "exercise_name": "Бег с высокими коленями",
-      "sets": 3,
-      "reps": "40 сек",
-      "rest_seconds": 60
-     }
-    ]
-   },
-   {
-    "id": 105041,
-    "week": 4,
-    "day": 1,
-    "title": "Сушка: ноги + спина",
-    "exercises": [
-     {
-      "exercise_id": 35,
-      "exercise_name": "Приседания со штангой",
-      "sets": 4,
-      "reps": "12 раз",
-      "rest_seconds": 90
-     },
-     {
-      "exercise_id": 37,
-      "exercise_name": "Румынская тяга",
-      "sets": 4,
-      "reps": "12 раз",
-      "rest_seconds": 90
-     },
-     {
-      "exercise_id": 29,
-      "exercise_name": "Тяга верхнего блока",
-      "sets": 3,
-      "reps": "15 раз",
-      "rest_seconds": 60
-     },
-     {
-      "exercise_id": 39,
-      "exercise_name": "Сгибания ног лёжа",
-      "sets": 3,
-      "reps": "15 раз",
-      "rest_seconds": 60
-     },
-     {
-      "exercise_id": 201,
-      "exercise_name": "Берпи",
-      "sets": 3,
-      "reps": "40 сек",
-      "rest_seconds": 60
-     }
-    ]
-   },
-   {
-    "id": 105042,
-    "week": 4,
-    "day": 2,
-    "title": "Сушка: грудь + плечи",
-    "exercises": [
-     {
-      "exercise_id": 27,
-      "exercise_name": "Жим гантелей лёжа",
-      "sets": 4,
-      "reps": "12 раз",
-      "rest_seconds": 90
-     },
-     {
-      "exercise_id": 28,
-      "exercise_name": "Разведения гантелей",
-      "sets": 3,
-      "reps": "15 раз",
-      "rest_seconds": 60
-     },
-     {
-      "exercise_id": 31,
-      "exercise_name": "Жим гантелей сидя",
-      "sets": 3,
-      "reps": "15 раз",
-      "rest_seconds": 60
-     },
-     {
-      "exercise_id": 32,
-      "exercise_name": "Махи гантелями в стороны",
-      "sets": 3,
-      "reps": "15 раз",
-      "rest_seconds": 45
-     },
-     {
-      "exercise_id": 7,
-      "exercise_name": "Горная лыжня",
-      "sets": 3,
-      "reps": "40 сек",
-      "rest_seconds": 60
-     }
-    ]
-   },
-   {
-    "id": 105043,
-    "week": 4,
-    "day": 3,
-    "title": "Сушка: спина + руки",
-    "exercises": [
-     {
-      "exercise_id": 30,
-      "exercise_name": "Тяга гантели в наклоне",
-      "sets": 4,
-      "reps": "12 раз",
-      "rest_seconds": 75
-     },
-     {
-      "exercise_id": 29,
-      "exercise_name": "Тяга верхнего блока",
-      "sets": 3,
-      "reps": "15 раз",
-      "rest_seconds": 60
-     },
-     {
-      "exercise_id": 33,
-      "exercise_name": "Сгибания на бицепс",
-      "sets": 3,
-      "reps": "15 раз",
-      "rest_seconds": 45
-     },
-     {
-      "exercise_id": 34,
-      "exercise_name": "Французский жим",
-      "sets": 3,
-      "reps": "15 раз",
-      "rest_seconds": 60
-     },
-     {
-      "exercise_id": 16,
-      "exercise_name": "Бег с высокими коленями",
-      "sets": 3,
-      "reps": "40 сек",
-      "rest_seconds": 60
-     }
-    ]
-   },
-   {
-    "id": 105051,
-    "week": 5,
-    "day": 1,
-    "title": "Сушка: ноги + спина",
-    "exercises": [
-     {
-      "exercise_id": 35,
-      "exercise_name": "Приседания со штангой",
-      "sets": 5,
-      "reps": "12 раз",
-      "rest_seconds": 90
-     },
-     {
-      "exercise_id": 37,
-      "exercise_name": "Румынская тяга",
-      "sets": 5,
-      "reps": "12 раз",
-      "rest_seconds": 90
-     },
-     {
-      "exercise_id": 29,
-      "exercise_name": "Тяга верхнего блока",
-      "sets": 4,
-      "reps": "15 раз",
-      "rest_seconds": 60
-     },
-     {
-      "exercise_id": 39,
-      "exercise_name": "Сгибания ног лёжа",
-      "sets": 4,
-      "reps": "15 раз",
-      "rest_seconds": 60
-     },
-     {
-      "exercise_id": 201,
-      "exercise_name": "Берпи",
-      "sets": 4,
-      "reps": "40 сек",
-      "rest_seconds": 60
-     }
-    ]
-   },
-   {
-    "id": 105052,
-    "week": 5,
-    "day": 2,
-    "title": "Сушка: грудь + плечи",
-    "exercises": [
-     {
-      "exercise_id": 27,
-      "exercise_name": "Жим гантелей лёжа",
-      "sets": 5,
-      "reps": "12 раз",
-      "rest_seconds": 90
-     },
-     {
-      "exercise_id": 28,
-      "exercise_name": "Разведения гантелей",
-      "sets": 4,
-      "reps": "15 раз",
-      "rest_seconds": 60
-     },
-     {
-      "exercise_id": 31,
-      "exercise_name": "Жим гантелей сидя",
-      "sets": 4,
-      "reps": "15 раз",
-      "rest_seconds": 60
-     },
-     {
-      "exercise_id": 32,
-      "exercise_name": "Махи гантелями в стороны",
-      "sets": 4,
-      "reps": "15 раз",
-      "rest_seconds": 45
-     },
-     {
-      "exercise_id": 7,
-      "exercise_name": "Горная лыжня",
-      "sets": 4,
-      "reps": "40 сек",
-      "rest_seconds": 60
-     }
-    ]
-   },
-   {
-    "id": 105053,
-    "week": 5,
-    "day": 3,
-    "title": "Сушка: спина + руки",
-    "exercises": [
-     {
-      "exercise_id": 30,
-      "exercise_name": "Тяга гантели в наклоне",
-      "sets": 5,
-      "reps": "12 раз",
-      "rest_seconds": 75
-     },
-     {
-      "exercise_id": 29,
-      "exercise_name": "Тяга верхнего блока",
-      "sets": 4,
-      "reps": "15 раз",
-      "rest_seconds": 60
-     },
-     {
-      "exercise_id": 33,
-      "exercise_name": "Сгибания на бицепс",
-      "sets": 4,
-      "reps": "15 раз",
-      "rest_seconds": 45
-     },
-     {
-      "exercise_id": 34,
-      "exercise_name": "Французский жим",
-      "sets": 4,
-      "reps": "15 раз",
-      "rest_seconds": 60
-     },
-     {
-      "exercise_id": 16,
-      "exercise_name": "Бег с высокими коленями",
-      "sets": 4,
-      "reps": "40 сек",
-      "rest_seconds": 60
-     }
-    ]
-   },
-   {
-    "id": 105061,
-    "week": 6,
-    "day": 1,
-    "title": "Сушка: ноги + спина",
-    "exercises": [
-     {
-      "exercise_id": 35,
-      "exercise_name": "Приседания со штангой",
-      "sets": 5,
-      "reps": "12 раз",
-      "rest_seconds": 90
-     },
-     {
-      "exercise_id": 37,
-      "exercise_name": "Румынская тяга",
-      "sets": 5,
-      "reps": "12 раз",
-      "rest_seconds": 90
-     },
-     {
-      "exercise_id": 29,
-      "exercise_name": "Тяга верхнего блока",
-      "sets": 4,
-      "reps": "15 раз",
-      "rest_seconds": 60
-     },
-     {
-      "exercise_id": 39,
-      "exercise_name": "Сгибания ног лёжа",
-      "sets": 4,
-      "reps": "15 раз",
-      "rest_seconds": 60
-     },
-     {
-      "exercise_id": 201,
-      "exercise_name": "Берпи",
-      "sets": 4,
-      "reps": "40 сек",
-      "rest_seconds": 60
-     }
-    ]
-   },
-   {
-    "id": 105062,
-    "week": 6,
-    "day": 2,
-    "title": "Сушка: грудь + плечи",
-    "exercises": [
-     {
-      "exercise_id": 27,
-      "exercise_name": "Жим гантелей лёжа",
-      "sets": 5,
-      "reps": "12 раз",
-      "rest_seconds": 90
-     },
-     {
-      "exercise_id": 28,
-      "exercise_name": "Разведения гантелей",
-      "sets": 4,
-      "reps": "15 раз",
-      "rest_seconds": 60
-     },
-     {
-      "exercise_id": 31,
-      "exercise_name": "Жим гантелей сидя",
-      "sets": 4,
-      "reps": "15 раз",
-      "rest_seconds": 60
-     },
-     {
-      "exercise_id": 32,
-      "exercise_name": "Махи гантелями в стороны",
-      "sets": 4,
-      "reps": "15 раз",
-      "rest_seconds": 45
-     },
-     {
-      "exercise_id": 7,
-      "exercise_name": "Горная лыжня",
-      "sets": 4,
-      "reps": "40 сек",
-      "rest_seconds": 60
-     }
-    ]
-   },
-   {
-    "id": 105063,
-    "week": 6,
-    "day": 3,
-    "title": "Сушка: спина + руки",
-    "exercises": [
-     {
-      "exercise_id": 30,
-      "exercise_name": "Тяга гантели в наклоне",
-      "sets": 5,
-      "reps": "12 раз",
-      "rest_seconds": 75
-     },
-     {
-      "exercise_id": 29,
-      "exercise_name": "Тяга верхнего блока",
-      "sets": 4,
-      "reps": "15 раз",
-      "rest_seconds": 60
-     },
-     {
-      "exercise_id": 33,
-      "exercise_name": "Сгибания на бицепс",
-      "sets": 4,
-      "reps": "15 раз",
-      "rest_seconds": 45
-     },
-     {
-      "exercise_id": 34,
-      "exercise_name": "Французский жим",
-      "sets": 4,
-      "reps": "15 раз",
-      "rest_seconds": 60
-     },
-     {
-      "exercise_id": 16,
-      "exercise_name": "Бег с высокими коленями",
-      "sets": 4,
-      "reps": "40 сек",
-      "rest_seconds": 60
-     }
-    ]
-   },
-   {
-    "id": 105071,
-    "week": 7,
-    "day": 1,
-    "title": "Сушка: ноги + спина",
-    "exercises": [
-     {
-      "exercise_id": 35,
-      "exercise_name": "Приседания со штангой",
-      "sets": 5,
-      "reps": "12 раз",
-      "rest_seconds": 90
-     },
-     {
-      "exercise_id": 37,
-      "exercise_name": "Румынская тяга",
-      "sets": 5,
-      "reps": "12 раз",
-      "rest_seconds": 90
-     },
-     {
-      "exercise_id": 29,
-      "exercise_name": "Тяга верхнего блока",
-      "sets": 4,
-      "reps": "15 раз",
-      "rest_seconds": 60
-     },
-     {
-      "exercise_id": 39,
-      "exercise_name": "Сгибания ног лёжа",
-      "sets": 4,
-      "reps": "15 раз",
-      "rest_seconds": 60
-     },
-     {
-      "exercise_id": 201,
-      "exercise_name": "Берпи",
-      "sets": 4,
-      "reps": "40 сек",
-      "rest_seconds": 60
-     }
-    ]
-   },
-   {
-    "id": 105072,
-    "week": 7,
-    "day": 2,
-    "title": "Сушка: грудь + плечи",
-    "exercises": [
-     {
-      "exercise_id": 27,
-      "exercise_name": "Жим гантелей лёжа",
-      "sets": 5,
-      "reps": "12 раз",
-      "rest_seconds": 90
-     },
-     {
-      "exercise_id": 28,
-      "exercise_name": "Разведения гантелей",
-      "sets": 4,
-      "reps": "15 раз",
-      "rest_seconds": 60
-     },
-     {
-      "exercise_id": 31,
-      "exercise_name": "Жим гантелей сидя",
-      "sets": 4,
-      "reps": "15 раз",
-      "rest_seconds": 60
-     },
-     {
-      "exercise_id": 32,
-      "exercise_name": "Махи гантелями в стороны",
-      "sets": 4,
-      "reps": "15 раз",
-      "rest_seconds": 45
-     },
-     {
-      "exercise_id": 7,
-      "exercise_name": "Горная лыжня",
-      "sets": 4,
-      "reps": "40 сек",
-      "rest_seconds": 60
-     }
-    ]
-   },
-   {
-    "id": 105073,
-    "week": 7,
-    "day": 3,
-    "title": "Сушка: спина + руки",
-    "exercises": [
-     {
-      "exercise_id": 30,
-      "exercise_name": "Тяга гантели в наклоне",
-      "sets": 5,
-      "reps": "12 раз",
-      "rest_seconds": 75
-     },
-     {
-      "exercise_id": 29,
-      "exercise_name": "Тяга верхнего блока",
-      "sets": 4,
-      "reps": "15 раз",
-      "rest_seconds": 60
-     },
-     {
-      "exercise_id": 33,
-      "exercise_name": "Сгибания на бицепс",
-      "sets": 4,
-      "reps": "15 раз",
-      "rest_seconds": 45
-     },
-     {
-      "exercise_id": 34,
-      "exercise_name": "Французский жим",
-      "sets": 4,
-      "reps": "15 раз",
-      "rest_seconds": 60
-     },
-     {
-      "exercise_id": 16,
-      "exercise_name": "Бег с высокими коленями",
-      "sets": 4,
-      "reps": "40 сек",
-      "rest_seconds": 60
-     }
-    ]
-   },
-   {
-    "id": 105081,
-    "week": 8,
-    "day": 1,
-    "title": "Сушка: ноги + спина",
-    "exercises": [
-     {
-      "exercise_id": 35,
-      "exercise_name": "Приседания со штангой",
-      "sets": 5,
-      "reps": "12 раз",
-      "rest_seconds": 90
-     },
-     {
-      "exercise_id": 37,
-      "exercise_name": "Румынская тяга",
-      "sets": 5,
-      "reps": "12 раз",
-      "rest_seconds": 90
-     },
-     {
-      "exercise_id": 29,
-      "exercise_name": "Тяга верхнего блока",
-      "sets": 4,
-      "reps": "15 раз",
-      "rest_seconds": 60
-     },
-     {
-      "exercise_id": 39,
-      "exercise_name": "Сгибания ног лёжа",
-      "sets": 4,
-      "reps": "15 раз",
-      "rest_seconds": 60
-     },
-     {
-      "exercise_id": 201,
-      "exercise_name": "Берпи",
-      "sets": 4,
-      "reps": "40 сек",
-      "rest_seconds": 60
-     }
-    ]
-   },
-   {
-    "id": 105082,
-    "week": 8,
-    "day": 2,
-    "title": "Сушка: грудь + плечи",
-    "exercises": [
-     {
-      "exercise_id": 27,
-      "exercise_name": "Жим гантелей лёжа",
-      "sets": 5,
-      "reps": "12 раз",
-      "rest_seconds": 90
-     },
-     {
-      "exercise_id": 28,
-      "exercise_name": "Разведения гантелей",
-      "sets": 4,
-      "reps": "15 раз",
-      "rest_seconds": 60
-     },
-     {
-      "exercise_id": 31,
-      "exercise_name": "Жим гантелей сидя",
-      "sets": 4,
-      "reps": "15 раз",
-      "rest_seconds": 60
-     },
-     {
-      "exercise_id": 32,
-      "exercise_name": "Махи гантелями в стороны",
-      "sets": 4,
-      "reps": "15 раз",
-      "rest_seconds": 45
-     },
-     {
-      "exercise_id": 7,
-      "exercise_name": "Горная лыжня",
-      "sets": 4,
-      "reps": "40 сек",
-      "rest_seconds": 60
-     }
-    ]
-   },
-   {
-    "id": 105083,
-    "week": 8,
-    "day": 3,
-    "title": "Сушка: спина + руки",
-    "exercises": [
-     {
-      "exercise_id": 30,
-      "exercise_name": "Тяга гантели в наклоне",
-      "sets": 5,
-      "reps": "12 раз",
-      "rest_seconds": 75
-     },
-     {
-      "exercise_id": 29,
-      "exercise_name": "Тяга верхнего блока",
-      "sets": 4,
-      "reps": "15 раз",
-      "rest_seconds": 60
-     },
-     {
-      "exercise_id": 33,
-      "exercise_name": "Сгибания на бицепс",
-      "sets": 4,
-      "reps": "15 раз",
-      "rest_seconds": 45
-     },
-     {
-      "exercise_id": 34,
-      "exercise_name": "Французский жим",
-      "sets": 4,
-      "reps": "15 раз",
-      "rest_seconds": 60
-     },
-     {
-      "exercise_id": 16,
-      "exercise_name": "Бег с высокими коленями",
-      "sets": 4,
-      "reps": "40 сек",
-      "rest_seconds": 60
-     }
-    ]
-   }
-  ]
- },
- {
   "id": 106,
   "name": "Улица: кардио-жиросжигание",
   "location": "outdoor",
@@ -8579,6 +7535,741 @@
       "exercise_name": "Боковая планка",
       "sets": 2,
       "reps": "20 сек на сторону",
+      "rest_seconds": 35
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "id": 113,
+  "name": "Сила дома: верх тела",
+  "location": "home",
+  "type": "strength",
+  "goal": "lose",
+  "duration_weeks": 3,
+  "difficulty": "beginner",
+  "description": "Отжимания разных хватов, обратные отжимания и планки с подъёмом руки — грудь, руки и кор без инвентаря. Идеально как первая силовая.",
+  "days": [
+   {
+    "id": 113011,
+    "week": 1,
+    "day": 1,
+    "title": "Верх тела: жим и опора",
+    "exercises": [
+     {
+      "exercise_id": 1,
+      "exercise_name": "Отжимания от пола",
+      "sets": "4",
+      "reps": "10 раз",
+      "rest_seconds": 50
+     },
+     {
+      "exercise_id": 19,
+      "exercise_name": "Отжимания на скамейке",
+      "sets": "3",
+      "reps": "12 раз",
+      "rest_seconds": 45
+     },
+     {
+      "exercise_id": 3,
+      "exercise_name": "Планка",
+      "sets": "3",
+      "reps": "45 сек",
+      "rest_seconds": 40
+     },
+     {
+      "exercise_id": 57,
+      "exercise_name": "Отжимания с широким хватом",
+      "sets": "3",
+      "reps": "8 раз",
+      "rest_seconds": 50
+     },
+     {
+      "exercise_id": 42,
+      "exercise_name": "Планка с подъёмом руки",
+      "sets": "2",
+      "reps": "30 сек",
+      "rest_seconds": 40
+     }
+    ]
+   },
+   {
+    "id": 113012,
+    "week": 1,
+    "day": 2,
+    "title": "Верх тела: руки и плечи",
+    "exercises": [
+     {
+      "exercise_id": 24,
+      "exercise_name": "Обратные отжимания на скамейке",
+      "sets": "3",
+      "reps": "10 раз",
+      "rest_seconds": 45
+     },
+     {
+      "exercise_id": 1,
+      "exercise_name": "Отжимания от пола",
+      "sets": "4",
+      "reps": "12 раз",
+      "rest_seconds": 50
+     },
+     {
+      "exercise_id": 58,
+      "exercise_name": "Отжимания с узким хватом",
+      "sets": "3",
+      "reps": "6 раз",
+      "rest_seconds": 50
+     },
+     {
+      "exercise_id": 42,
+      "exercise_name": "Планка с подъёмом руки",
+      "sets": "3",
+      "reps": "25 сек",
+      "rest_seconds": 40
+     },
+     {
+      "exercise_id": 3,
+      "exercise_name": "Планка",
+      "sets": "2",
+      "reps": "60 сек",
+      "rest_seconds": 35
+     }
+    ]
+   },
+   {
+    "id": 113013,
+    "week": 1,
+    "day": 3,
+    "title": "Верх тела: кор и спина",
+    "exercises": [
+     {
+      "exercise_id": 42,
+      "exercise_name": "Планка с подъёмом руки",
+      "sets": "3",
+      "reps": "30 сек",
+      "rest_seconds": 40
+     },
+     {
+      "exercise_id": 19,
+      "exercise_name": "Отжимания на скамейке",
+      "sets": "3",
+      "reps": "12 раз",
+      "rest_seconds": 45
+     },
+     {
+      "exercise_id": 1,
+      "exercise_name": "Отжимания от пола",
+      "sets": "3",
+      "reps": "10 раз",
+      "rest_seconds": 50
+     },
+     {
+      "exercise_id": 54,
+      "exercise_name": "Боковая планка",
+      "sets": "3",
+      "reps": "20 сек на сторону",
+      "rest_seconds": 35
+     },
+     {
+      "exercise_id": 24,
+      "exercise_name": "Обратные отжимания на скамейке",
+      "sets": "2",
+      "reps": "10 раз",
+      "rest_seconds": 45
+     }
+    ]
+   },
+   {
+    "id": 113021,
+    "week": 2,
+    "day": 1,
+    "title": "Верх тела: жим и опора · ур. 2",
+    "exercises": [
+     {
+      "exercise_id": 1,
+      "exercise_name": "Отжимания от пола",
+      "sets": "4",
+      "reps": "12 раз",
+      "rest_seconds": 50
+     },
+     {
+      "exercise_id": 57,
+      "exercise_name": "Отжимания с широким хватом",
+      "sets": "3",
+      "reps": "10 раз",
+      "rest_seconds": 50
+     },
+     {
+      "exercise_id": 24,
+      "exercise_name": "Обратные отжимания на скамейке",
+      "sets": "3",
+      "reps": "12 раз",
+      "rest_seconds": 45
+     },
+     {
+      "exercise_id": 3,
+      "exercise_name": "Планка",
+      "sets": "3",
+      "reps": "50 сек",
+      "rest_seconds": 40
+     },
+     {
+      "exercise_id": 42,
+      "exercise_name": "Планка с подъёмом руки",
+      "sets": "2",
+      "reps": "30 сек",
+      "rest_seconds": 40
+     }
+    ]
+   },
+   {
+    "id": 113022,
+    "week": 2,
+    "day": 2,
+    "title": "Верх тела: руки и плечи · ур. 2",
+    "exercises": [
+     {
+      "exercise_id": 58,
+      "exercise_name": "Отжимания с узким хватом",
+      "sets": "3",
+      "reps": "7 раз",
+      "rest_seconds": 50
+     },
+     {
+      "exercise_id": 19,
+      "exercise_name": "Отжимания на скамейке",
+      "sets": "4",
+      "reps": "12 раз",
+      "rest_seconds": 45
+     },
+     {
+      "exercise_id": 1,
+      "exercise_name": "Отжимания от пола",
+      "sets": "3",
+      "reps": "12 раз",
+      "rest_seconds": 50
+     },
+     {
+      "exercise_id": 54,
+      "exercise_name": "Боковая планка",
+      "sets": "3",
+      "reps": "25 сек на сторону",
+      "rest_seconds": 35
+     },
+     {
+      "exercise_id": 3,
+      "exercise_name": "Планка",
+      "sets": "2",
+      "reps": "60 сек",
+      "rest_seconds": 40
+     }
+    ]
+   },
+   {
+    "id": 113023,
+    "week": 2,
+    "day": 3,
+    "title": "Верх тела: кор и спина · ур. 2",
+    "exercises": [
+     {
+      "exercise_id": 1,
+      "exercise_name": "Отжимания от пола",
+      "sets": "5",
+      "reps": "10 раз",
+      "rest_seconds": 50
+     },
+     {
+      "exercise_id": 24,
+      "exercise_name": "Обратные отжимания на скамейке",
+      "sets": "3",
+      "reps": "12 раз",
+      "rest_seconds": 45
+     },
+     {
+      "exercise_id": 57,
+      "exercise_name": "Отжимания с широким хватом",
+      "sets": "3",
+      "reps": "9 раз",
+      "rest_seconds": 50
+     },
+     {
+      "exercise_id": 42,
+      "exercise_name": "Планка с подъёмом руки",
+      "sets": "3",
+      "reps": "30 сек",
+      "rest_seconds": 40
+     },
+     {
+      "exercise_id": 54,
+      "exercise_name": "Боковая планка",
+      "sets": "3",
+      "reps": "20 сек на сторону",
+      "rest_seconds": 35
+     }
+    ]
+   },
+   {
+    "id": 113031,
+    "week": 3,
+    "day": 1,
+    "title": "Верх тела: жим и опора · ур. 3",
+    "exercises": [
+     {
+      "exercise_id": 19,
+      "exercise_name": "Отжимания на скамейке",
+      "sets": "4",
+      "reps": "14 раз",
+      "rest_seconds": 45
+     },
+     {
+      "exercise_id": 1,
+      "exercise_name": "Отжимания от пола",
+      "sets": "4",
+      "reps": "13 раз",
+      "rest_seconds": 50
+     },
+     {
+      "exercise_id": 58,
+      "exercise_name": "Отжимания с узким хватом",
+      "sets": "2",
+      "reps": "7 раз",
+      "rest_seconds": 50
+     },
+     {
+      "exercise_id": 3,
+      "exercise_name": "Планка",
+      "sets": "3",
+      "reps": "55 сек",
+      "rest_seconds": 40
+     },
+     {
+      "exercise_id": 42,
+      "exercise_name": "Планка с подъёмом руки",
+      "sets": "3",
+      "reps": "30 сек",
+      "rest_seconds": 40
+     }
+    ]
+   },
+   {
+    "id": 113032,
+    "week": 3,
+    "day": 2,
+    "title": "Верх тела: руки и плечи · ур. 3",
+    "exercises": [
+     {
+      "exercise_id": 1,
+      "exercise_name": "Отжимания от пола",
+      "sets": "4",
+      "reps": "14 раз",
+      "rest_seconds": 45
+     },
+     {
+      "exercise_id": 57,
+      "exercise_name": "Отжимания с широким хватом",
+      "sets": "3",
+      "reps": "10 раз",
+      "rest_seconds": 50
+     },
+     {
+      "exercise_id": 24,
+      "exercise_name": "Обратные отжимания на скамейке",
+      "sets": "3",
+      "reps": "14 раз",
+      "rest_seconds": 45
+     },
+     {
+      "exercise_id": 54,
+      "exercise_name": "Боковая планка",
+      "sets": "3",
+      "reps": "25 сек на сторону",
+      "rest_seconds": 35
+     },
+     {
+      "exercise_id": 42,
+      "exercise_name": "Планка с подъёмом руки",
+      "sets": "3",
+      "reps": "30 сек",
+      "rest_seconds": 40
+     }
+    ]
+   },
+   {
+    "id": 113033,
+    "week": 3,
+    "day": 3,
+    "title": "Верх тела: кор и спина · ур. 3",
+    "exercises": [
+     {
+      "exercise_id": 1,
+      "exercise_name": "Отжимания от пола",
+      "sets": "5",
+      "reps": "12 раз",
+      "rest_seconds": 50
+     },
+     {
+      "exercise_id": 58,
+      "exercise_name": "Отжимания с узким хватом",
+      "sets": "3",
+      "reps": "8 раз",
+      "rest_seconds": 50
+     },
+     {
+      "exercise_id": 19,
+      "exercise_name": "Отжимания на скамейке",
+      "sets": "3",
+      "reps": "14 раз",
+      "rest_seconds": 45
+     },
+     {
+      "exercise_id": 42,
+      "exercise_name": "Планка с подъёмом руки",
+      "sets": "3",
+      "reps": "35 сек",
+      "rest_seconds": 40
+     },
+     {
+      "exercise_id": 3,
+      "exercise_name": "Планка",
+      "sets": "3",
+      "reps": "60 сек",
+      "rest_seconds": 40
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "id": 114,
+  "name": "Сила дома: ноги и ягодицы",
+  "location": "home",
+  "type": "strength",
+  "goal": "lose",
+  "duration_weeks": 3,
+  "difficulty": "intermediate",
+  "description": "Приседания, выпады, подъёмы таза и боковая планка — целевые ягодицы и ноги без инвентаря. Нагрузка растёт от недели к неделе.",
+  "days": [
+   {
+    "id": 114011,
+    "week": 1,
+    "day": 1,
+    "title": "Ноги: сила",
+    "exercises": [
+     {
+      "exercise_id": 2,
+      "exercise_name": "Приседания",
+      "sets": "4",
+      "reps": "20 раз",
+      "rest_seconds": 50
+     },
+     {
+      "exercise_id": 4,
+      "exercise_name": "Выпады",
+      "sets": "3",
+      "reps": "14 на ногу",
+      "rest_seconds": 45
+     },
+     {
+      "exercise_id": 5,
+      "exercise_name": "Подъёмы таза",
+      "sets": "4",
+      "reps": "18 раз",
+      "rest_seconds": 45
+     },
+     {
+      "exercise_id": 54,
+      "exercise_name": "Боковая планка",
+      "sets": "3",
+      "reps": "20 сек на сторону",
+      "rest_seconds": 35
+     }
+    ]
+   },
+   {
+    "id": 114012,
+    "week": 1,
+    "day": 2,
+    "title": "Ягодицы: изоляция",
+    "exercises": [
+     {
+      "exercise_id": 2,
+      "exercise_name": "Приседания",
+      "sets": "4",
+      "reps": "25 раз",
+      "rest_seconds": 45
+     },
+     {
+      "exercise_id": 5,
+      "exercise_name": "Подъёмы таза",
+      "sets": "4",
+      "reps": "20 раз",
+      "rest_seconds": 45
+     },
+     {
+      "exercise_id": 54,
+      "exercise_name": "Боковая планка",
+      "sets": "3",
+      "reps": "25 сек на сторону",
+      "rest_seconds": 35
+     },
+     {
+      "exercise_id": 40,
+      "exercise_name": "Подъёмы на носки стоя",
+      "sets": "3",
+      "reps": "25 раз",
+      "rest_seconds": 35
+     }
+    ]
+   },
+   {
+    "id": 114013,
+    "week": 1,
+    "day": 3,
+    "title": "Ноги: тонус и выносливость",
+    "exercises": [
+     {
+      "exercise_id": 4,
+      "exercise_name": "Выпады",
+      "sets": "4",
+      "reps": "16 на ногу",
+      "rest_seconds": 45
+     },
+     {
+      "exercise_id": 2,
+      "exercise_name": "Приседания",
+      "sets": "4",
+      "reps": "22 раза",
+      "rest_seconds": 45
+     },
+     {
+      "exercise_id": 54,
+      "exercise_name": "Боковая планка",
+      "sets": "4",
+      "reps": "20 сек на сторону",
+      "rest_seconds": 35
+     },
+     {
+      "exercise_id": 5,
+      "exercise_name": "Подъёмы таза",
+      "sets": "3",
+      "reps": "20 раз",
+      "rest_seconds": 40
+     }
+    ]
+   },
+   {
+    "id": 114021,
+    "week": 2,
+    "day": 1,
+    "title": "Ноги: сила · ур. 2",
+    "exercises": [
+     {
+      "exercise_id": 2,
+      "exercise_name": "Приседания",
+      "sets": "4",
+      "reps": "26 раз",
+      "rest_seconds": 45
+     },
+     {
+      "exercise_id": 5,
+      "exercise_name": "Подъёмы таза",
+      "sets": "4",
+      "reps": "22 раза",
+      "rest_seconds": 45
+     },
+     {
+      "exercise_id": 54,
+      "exercise_name": "Боковая планка",
+      "sets": "3",
+      "reps": "30 сек на сторону",
+      "rest_seconds": 35
+     },
+     {
+      "exercise_id": 40,
+      "exercise_name": "Подъёмы на носки стоя",
+      "sets": "3",
+      "reps": "28 раз",
+      "rest_seconds": 35
+     }
+    ]
+   },
+   {
+    "id": 114022,
+    "week": 2,
+    "day": 2,
+    "title": "Ягодицы: изоляция · ур. 2",
+    "exercises": [
+     {
+      "exercise_id": 4,
+      "exercise_name": "Выпады",
+      "sets": "4",
+      "reps": "18 на ногу",
+      "rest_seconds": 45
+     },
+     {
+      "exercise_id": 2,
+      "exercise_name": "Приседания",
+      "sets": "4",
+      "reps": "25 раз",
+      "rest_seconds": 45
+     },
+     {
+      "exercise_id": 5,
+      "exercise_name": "Подъёмы таза",
+      "sets": "4",
+      "reps": "24 раза",
+      "rest_seconds": 40
+     },
+     {
+      "exercise_id": 54,
+      "exercise_name": "Боковая планка",
+      "sets": "3",
+      "reps": "30 сек на сторону",
+      "rest_seconds": 35
+     }
+    ]
+   },
+   {
+    "id": 114023,
+    "week": 2,
+    "day": 3,
+    "title": "Ноги: тонус и выносливость · ур. 2",
+    "exercises": [
+     {
+      "exercise_id": 2,
+      "exercise_name": "Приседания",
+      "sets": "5",
+      "reps": "22 раза",
+      "rest_seconds": 45
+     },
+     {
+      "exercise_id": 4,
+      "exercise_name": "Выпады",
+      "sets": "4",
+      "reps": "16 на ногу",
+      "rest_seconds": 45
+     },
+     {
+      "exercise_id": 54,
+      "exercise_name": "Боковая планка",
+      "sets": "4",
+      "reps": "30 сек на сторону",
+      "rest_seconds": 35
+     },
+     {
+      "exercise_id": 40,
+      "exercise_name": "Подъёмы на носки стоя",
+      "sets": "3",
+      "reps": "30 раз",
+      "rest_seconds": 35
+     }
+    ]
+   },
+   {
+    "id": 114031,
+    "week": 3,
+    "day": 1,
+    "title": "Ноги: сила · ур. 3",
+    "exercises": [
+     {
+      "exercise_id": 2,
+      "exercise_name": "Приседания",
+      "sets": "4",
+      "reps": "28 раз",
+      "rest_seconds": 45
+     },
+     {
+      "exercise_id": 5,
+      "exercise_name": "Подъёмы таза",
+      "sets": "4",
+      "reps": "25 раз",
+      "rest_seconds": 40
+     },
+     {
+      "exercise_id": 54,
+      "exercise_name": "Боковая планка",
+      "sets": "4",
+      "reps": "35 сек на сторону",
+      "rest_seconds": 30
+     },
+     {
+      "exercise_id": 40,
+      "exercise_name": "Подъёмы на носки стоя",
+      "sets": "3",
+      "reps": "30 раз",
+      "rest_seconds": 35
+     }
+    ]
+   },
+   {
+    "id": 114032,
+    "week": 3,
+    "day": 2,
+    "title": "Ягодицы: изоляция · ур. 3",
+    "exercises": [
+     {
+      "exercise_id": 4,
+      "exercise_name": "Выпады",
+      "sets": "4",
+      "reps": "20 на ногу",
+      "rest_seconds": 45
+     },
+     {
+      "exercise_id": 2,
+      "exercise_name": "Приседания",
+      "sets": "5",
+      "reps": "24 раза",
+      "rest_seconds": 45
+     },
+     {
+      "exercise_id": 54,
+      "exercise_name": "Боковая планка",
+      "sets": "4",
+      "reps": "35 сек на сторону",
+      "rest_seconds": 30
+     },
+     {
+      "exercise_id": 5,
+      "exercise_name": "Подъёмы таза",
+      "sets": "3",
+      "reps": "25 раз",
+      "rest_seconds": 40
+     }
+    ]
+   },
+   {
+    "id": 114033,
+    "week": 3,
+    "day": 3,
+    "title": "Ноги: тонус и выносливость · ур. 3",
+    "exercises": [
+     {
+      "exercise_id": 2,
+      "exercise_name": "Приседания",
+      "sets": "5",
+      "reps": "26 раз",
+      "rest_seconds": 45
+     },
+     {
+      "exercise_id": 4,
+      "exercise_name": "Выпады",
+      "sets": "4",
+      "reps": "18 на ногу",
+      "rest_seconds": 45
+     },
+     {
+      "exercise_id": 54,
+      "exercise_name": "Боковая планка",
+      "sets": "4",
+      "reps": "35 сек на сторону",
+      "rest_seconds": 30
+     },
+     {
+      "exercise_id": 40,
+      "exercise_name": "Подъёмы на носки стоя",
+      "sets": "3",
+      "reps": "32 раза",
       "rest_seconds": 35
      }
     ]

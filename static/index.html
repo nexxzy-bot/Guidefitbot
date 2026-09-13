@@ -272,9 +272,11 @@ body{touch-action:manipulation}
   </div>
   <div id="homeTip"></div>
   <div class="hero-card">
-    <div>
+    <div style="min-width:0">
       <div class="hero-label">Калории сегодня</div>
       <div class="hero-num"><span id="heroCalsLeft">—</span><span class="hero-unit">ккал осталось</span></div>
+      <div class="bju-toggle pressable" id="bjuMore" onclick="toggleBju(event)">БЖУ <svg id="bjuArrow" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></div>
+      <div class="bju-box" id="bjuBox"></div>
     </div>
     <div class="ring">
       <svg viewBox="0 0 100 100"><circle class="bg" cx="50" cy="50" r="42"/><circle class="fg" cx="50" cy="50" r="42" id="weekRing" stroke-dasharray="263.9" stroke-dashoffset="263.9"/></svg>
@@ -285,7 +287,7 @@ body{touch-action:manipulation}
   <span class="hidden" id="homeCals"></span><span class="hidden" id="homeWater"></span><span class="hidden" id="homeStreakVal"></span>
   <div class="flex between items-center mb3"><h3>Приёмы пищи</h3><span class="subtle" style="font-size:11px;font-weight:700" id="mealCountLbl"></span></div>
   <div id="homeMealsList"></div>
-  <div class="card pressable mb4 mt3" onclick="navigate('workouts')" style="cursor:pointer;display:flex;align-items:center;gap:14px">
+  <div class="card pressable mb4 mt3" onclick="goStreak()" style="cursor:pointer;display:flex;align-items:center;gap:14px">
     <div style="flex:1">
       <div class="badge badge-amber mb2" id="dashWorkoutBadge">Тренировка</div>
       <h3 style="font-size:16px" id="dashWorkoutTitle">Начни тренировку</h3>
@@ -356,7 +358,7 @@ body{touch-action:manipulation}
 <nav class="bottom-nav" id="bottomNav" style="display:none">
   <button class="nav-item active" data-tab="home" onclick="navigate('home')"><div class="pill"><svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg><span>Главная</span></div></button>
   <button class="nav-item" data-tab="stats" onclick="navigate('stats')"><div class="pill"><svg viewBox="0 0 24 24"><path d="M18 20V10"/><path d="M12 20V4"/><path d="M6 20v-6"/></svg><span>Стат.</span></div></button>
-  <button class="nav-item" data-tab="workouts" onclick="navigate('workouts')"><div class="pill"><svg viewBox="0 0 24 24"><path d="M6.5 6.5h11"/><path d="M6.5 17.5h11"/><path d="M6 20v-6a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v6"/><path d="M6 10V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v6"/></svg><span>Трени</span></div></button>
+  <button class="nav-item" data-tab="workouts" onclick="navigate('workouts')"><div class="pill"><svg viewBox="0 0 24 24"><path d="M6.5 6.5h11"/><path d="M6.5 17.5h11"/><path d="M6 20v-6a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v6"/><path d="M6 10V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v6"/></svg><span>Тренировки</span></div></button>
   <button class="nav-item" data-tab="nutrition" onclick="navigate('nutrition')"><div class="pill"><svg viewBox="0 0 24 24"><path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0L12 2.69z"/><path d="M12 22v-8"/></svg><span>Еда</span></div></button>
   <button class="nav-item" data-tab="profile" onclick="navigate('profile')"><div class="pill"><svg viewBox="0 0 24 24"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg><span>Настройки</span></div></button>
 </nav>
@@ -376,6 +378,11 @@ let backTarget = null;
 
 function $(id){ return document.getElementById(id); }
 function esc(s){ return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+let _apDay = 1, _apId = null;
+function goStreak(){
+  if(_apId){ openProgram(_apId); return; }
+  navigate('workouts');
+}
 function plural(n, one, few, many){ n = Math.abs(n)%100; const d = n%10; if(n===1) return one; if(n>1&&n<5) return few; if(n>=5&&n<21) return many; if(d===1) return one; if(d>1&&d<5) return few; return many; }
 function haptic(style){ try{ if(tg && tg.HapticFeedback){ if(style==='ok') tg.HapticFeedback.notificationOccurred('success'); else if(style==='err') tg.HapticFeedback.notificationOccurred('error'); else tg.HapticFeedback.impactOccurred('light'); } }catch(e){} }
 
@@ -1298,6 +1305,7 @@ async function woRenderYoga(c){
         '<span class="badge badge-amber">' + esc(f.level) + '</span></div>' +
         '<p class="muted" style="font-size:12.5px;line-height:1.6">' + esc(f.description) + '</p></div>';
     });
+    c.style.animation = 'none'; /* v20: без cardIn на первом экране вкладки — один плавный fade, без наслоения анимаций */
     c.innerHTML = html;
   }catch(e){ c.innerHTML = '<div class="empty">Не удалось загрузить йогу</div>'; }
 }
@@ -1412,7 +1420,14 @@ function wzRender(isProgram){
           'Подход ' + (done+1) + ' сделан ' + ic('check',20) + '</button>' +
         '<p class="text-center subtle mt2" style="font-size:11.5px">Нажми кнопку после каждого подхода. Отдых между подходами — ' + (ex.rest_seconds||40) + ' сек.</p>');
   awMeta = [{ id: ex.id || 0, name: ex.name || '', muscle: '' }];
-  awResolveMeta();
+  loadExPhoto(0, ex.name, '');
+  awResolveMeta().then(function(){
+    const m = awMeta[0];
+    if(m && m.muscle){
+      const img = document.querySelector('#exphoto-0 img');
+      if(!img) loadExPhoto(0, ex.name, m.muscle);
+    }
+  }).catch(function(){});
 }
 function wzSetDone(isProgram){
   const ex = currentExercises[wzEx];
@@ -1521,8 +1536,11 @@ async function saveProfileSettings(){
     setTimeout(loadProfile, 900);
   }catch(e){ showToast('Не удалось сохранить', 'err'); }
 }
+let _profileLoading = false;
 async function loadProfile(){
   const c = document.getElementById('profileContent'); const tgId = currentUser && currentUser.tg_id; if(!c || !tgId) return;
+  if(_profileLoading) return;
+  _profileLoading = true;
   c.innerHTML = '<div class="shimmer"></div>';
   try{
     const [user, weight, ach] = await Promise.all([
@@ -1572,6 +1590,7 @@ async function loadProfile(){
       '<div class="subtle" style="font-size:11.5px;margin-top:2px">' + esc(a.description || '') + '</div></div>' +
       (a.unlocked ? '' : ic('lock',16)) + '</div>').join('') || '<div class="empty">Пока нет достижений</div>';
   }catch(e){ c.innerHTML = '<div class="empty">Не удалось загрузить</div>'; }
+  _profileLoading = false;
 }
 try{
   document.addEventListener('change', function(e){
@@ -1764,6 +1783,17 @@ async function toggleNotifyUI(){
 .wz-photo{height:220px}
 .ex-photo{width:72px;height:72px}
 .exlib-thumb{width:60px;height:60px}
+/* v20: БЖУ внутри hero-карточки */
+.bju-toggle{display:inline-flex;align-items:center;gap:5px;margin-top:9px;padding:5px 10px;border-radius:12px;background:rgba(255,255,255,.16);font-size:12.5px;font-weight:800;color:#fff;cursor:pointer;transition:background .2s}
+.bju-toggle:active{background:rgba(255,255,255,.26)}
+.bju-toggle svg{transition:transform .25s}
+.bju-box{max-height:0;opacity:0;overflow:hidden;transition:max-height .25s ease,opacity .25s ease}
+.bju-box.open{max-height:180px;opacity:1}
+.bju-line{margin-top:9px}
+.bju-head{display:flex;justify-content:space-between;align-items:center;font-size:12px;font-weight:700;margin-bottom:4px;color:#fff}
+.bju-val{opacity:.92;font-size:11.5px}
+.bju-track{height:5px;border-radius:99px;background:rgba(255,255,255,.28);overflow:hidden}
+.bju-fill{height:100%;border-radius:99px;transition:width .5s ease}
 </style>
 <script>
 function renderHomeDonuts(){
@@ -1793,18 +1823,14 @@ function renderHomeDonuts(){
           '<button class="pressable" style="width:44px;height:44px;border-radius:50%;background:var(--solid);color:var(--text2);border:1.5px solid var(--border);font-size:20px;font-weight:800" onclick="undoWater()">−</button>' +
           '<button class="wtr2-add pressable" style="width:44px;height:44px" onclick="addWater()">' + ic('plus',22) + '</button>' +
         '</div></div></div>';
-  renderMacrosPlate(_lastCons);
 }
 let _lastCons = {};
 function renderMacrosPlate(cons){
-  const oldP = document.getElementById('macrosPlate');
-  if(oldP) oldP.remove();
-  if(!currentUser) return;
-  const grid = document.getElementById('homeStatGrid');
-  if(!grid) return;
-  const w = parseFloat(currentUser.current_weight) || 70;
-  const kcal = currentUser.calorie_norm || 2000;
-  const p = Math.round(w * (currentUser.goal === 'gain' ? 2 : 1.6));
+  const box = document.getElementById('bjuBox');
+  if(!box) return;
+  const w = parseFloat(currentUser && currentUser.current_weight) || 70;
+  const kcal = (currentUser && currentUser.calorie_norm) || 2000;
+  const p = Math.round(w * ((currentUser && currentUser.goal === 'gain') ? 2 : 1.6));
   const f = Math.round(w);
   let c = Math.round((kcal - p * 4 - f * 9) / 4);
   if (c < 50) c = 50;
@@ -1813,22 +1839,20 @@ function renderMacrosPlate(cons){
     ['Жиры', Math.round(cons.fat || 0), f, '#F59E0B'],
     ['Углеводы', Math.round(cons.carbs || 0), c, '#10B981']
   ];
-  const plate = document.createElement('div');
-  plate.className = 'card pressable';
-  plate.style.cssText = 'grid-column:1/-1;padding:16px;margin-bottom:0;border-radius:18px;cursor:pointer';
-  plate.id = 'macrosPlate';
-  plate.onclick = function(){ navigate('nutrition'); };
-  plate.innerHTML =
-    '<div class="flex between items-center mb2">' +
-      '<div style="font-weight:800;font-size:14px;display:flex;align-items:center;gap:7px;color:var(--accent-dark)">' + ic('nut',17) + ' БЖУ сегодня</div>' +
-      '<div class="subtle" style="font-size:12px;font-weight:700">' + Math.round(cons.calories || 0) + ' / ' + kcal + ' ккал</div>' +
-    '</div>' +
-    rows.map(function(r){
-      const pct = Math.min(Math.round(r[1] / r[2] * 100), 100);
-      return '<div style="margin-bottom:10px"><div class="flex between" style="font-size:12px;font-weight:700;margin-bottom:4px"><span>' + r[0] + '</span><span class="subtle">' + r[1] + ' / ' + r[2] + ' г</span></div>' +
-        '<div class="track" style="height:6px"><div class="fill" style="width:' + pct + '%;background:' + r[3] + '"></div></div></div>';
-    }).join('');
-  grid.appendChild(plate);
+  box.innerHTML = rows.map(function(r){
+    const pct = Math.min(Math.round(r[1] / r[2] * 100), 100);
+    return '<div class="bju-line"><div class="bju-head"><span>' + r[0] + '</span><span class="bju-val">' + r[1] + ' / ' + r[2] + ' г</span></div>' +
+      '<div class="bju-track"><div class="bju-fill" style="width:' + pct + '%;background:' + r[3] + '"></div></div></div>';
+  }).join('');
+}
+function toggleBju(ev){
+  if(ev) ev.stopPropagation();
+  const box = document.getElementById('bjuBox');
+  if(!box) return;
+  box.classList.toggle('open');
+  const arrow = document.getElementById('bjuArrow');
+  if(arrow) arrow.style.transform = box.classList.contains('open') ? 'rotate(90deg)' : '';
+  if(typeof haptic === 'function') haptic();
 }
 async function addWater(){
   if(!currentUser) return;
@@ -1869,6 +1893,24 @@ try{
     };
     if(r && typeof r.then === 'function') r.then(function(){ setTimeout(attach, 100); });
     else setTimeout(attach, 500);
+    return r;
+  };
+}catch(e){}
+try{
+  const _ldOrig = loadDashboard;
+  loadDashboard = async function(){
+    const r = _ldOrig.apply(this, arguments);
+    try{
+      const st = await api('/api/user/program/' + ((currentUser && currentUser.tg_id) || ''));
+      const ap = st && st.program;
+      _apId = (ap && ap.program_id) || null;
+      _apDay = ap ? (((ap.current_week || 1) - 1) * 7 + (ap.current_day || 1)) : 1;
+      const plate = document.getElementById('streakPlate');
+      if(plate){
+        const sub = plate.querySelector('.subtle');
+        if(sub && _apId){ sub.textContent = 'Продолжай программу — серия растёт'; }
+      }
+    }catch(e){ _apId = null; }
     return r;
   };
 }catch(e){}
@@ -1934,13 +1976,35 @@ async function loadWorkouts(){
   try{
     const d = await api('/api/programs');
     const types = woGoal === 'fat' ? ['hiit','cardio','mix'] : ['strength'];
-    let list = (d.programms || d.programs || []).filter(p => types.includes(p.type));
+    let list = (d.programms || d.programs || []).filter(p => types.includes(p.type) && p.location !== 'gym');
+    let active = null;
+    try{
+      const st = await api('/api/user/program/' + ((currentUser && currentUser.tg_id) || ''));
+      const ap = st && st.program;
+      if(ap && ap.program_id){
+        const all = d.programms || d.programs || [];
+        active = list.find(p => p.id === ap.program_id) || all.find(p => p.id === ap.program_id) || null;
+        if(active) list = list.filter(p => p.id !== ap.program_id);
+      }
+    }catch(e){}
     if(woLevel !== 'all') list = list.filter(p => p.difficulty === woLevel);
     list.sort(function(a, b){ return a.id - b.id; });
     let html = '<p class="subtle mb3" style="font-size:12.5px;line-height:1.6">' + (woGoal==='fat'
       ? 'Главный фокус приложения. Новичкам — начните с «Лёгкого старта» или «Мягкого утра».'
       : 'Силовые тренировки на тонус. Мышцы — главный расходник калорий в покое.') + '</p>';
-    if(!list.length) html += '<div class="empty">Ничего не найдено</div>';
+    if(!list.length && !active) html += '<div class="empty">Ничего не найдено</div>';
+    if(active){
+      const apd = active.total_days || (active.days && active.days.length) || 1;
+      html += '<div class="prog-card pressable" style="border:1.5px solid var(--accent)" onclick="openProgram(' + active.id + ')">' +
+        '<div class="flex between items-center"><h3 style="font-size:17px">' + esc(active.name) + '</h3>' +
+        '<span class="badge badge-accent">Твоя программа</span></div>' +
+        '<div class="prog-tags"><span class="badge badge-accent">' + active.duration_weeks + ' нед</span>' +
+        '<span class="badge badge-blue">' + esc(active.location==='home'?'Дома':active.location==='gym'?'В зале':'На улице') + '</span>' +
+        '<span class="badge badge-violet">' + (active.type==='hiit'?'HIIT':active.type==='cardio'?'Кардио':active.type==='strength'?'Силовая':'Микс') + '</span></div>' +
+        '<p class="muted" style="font-size:12.5px;line-height:1.6">' + esc(active.description) + '</p>' +
+        '<div class="subtle" style="font-size:11.5px;font-weight:800;margin-top:8px">день ' + (_apDay || 1) + ' из ' + apd + '</div>' +
+        '<div class="track" style="margin-top:6px"><div class="fill fill-accent" style="width:' + (apd ? Math.min((_apDay - 1) / apd * 100, 100) : 0) + '%"></div></div></div>';
+    }
     if(woLevel === 'all'){
       [['beginner','Лёгкие'],['intermediate','Средние']].forEach(function(g){
         const grp = list.filter(p => p.difficulty === g[0]);

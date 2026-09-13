@@ -482,7 +482,7 @@ app.get('/api/shopping-list/:tgId', (req, res) => {
   const tgId = resolveTgId(req);
   if (!tgId) return res.status(401).json({ error: 'Unauthorized' });
   db.all(`SELECT r.ingredients FROM food_logs f JOIN recipes r ON f.recipe_id = r.id
-      WHERE f.tg_id = ? AND f.date >= date('now', '-7 days')`,
+      WHERE f.tg_id = ? AND date(f.timestamp) >= date('now', '-7 days')`,
     [tgId], (err, rows) => {
       if (err) return res.status(500).json({ error: err.message });
       const SMALL = /(ст\.?\s*л|столов|ч\.?\s*л|чайн|щепот|по вкусу|зубч|пуч|доль|ломт|лист|веточ|горсть)/i;
@@ -872,7 +872,7 @@ function sendWeeklyReports() {
     if (e || !users) return;
     users.forEach(u => {
       db.get("SELECT COUNT(*) c FROM workout_logs WHERE tg_id = ? AND date >= date('now','-7 days')", [u.tg_id], (e1, w) => {
-        db.get("SELECT COUNT(DISTINCT date) c FROM food_logs WHERE tg_id = ? AND date >= date('now','-7 days')", [u.tg_id], (e2, m) => {
+        db.get("SELECT COUNT(DISTINCT date(timestamp)) c FROM food_logs WHERE tg_id = ? AND date(timestamp) >= date('now','-7 days')", [u.tg_id], (e2, m) => {
           db.all("SELECT weight FROM weight_logs WHERE tg_id = ? ORDER BY date ASC, id ASC LIMIT 1", [u.tg_id], (e3, wr) => {
             db.all("SELECT weight FROM weight_logs WHERE tg_id = ? ORDER BY date DESC, id DESC LIMIT 1", [u.tg_id], (e4, wl) => {
               const wLine = (wr.length && wl.length) ? (' Вес: ' + wr[0].weight + ' → ' + wl[0].weight + ' кг.') : '';
