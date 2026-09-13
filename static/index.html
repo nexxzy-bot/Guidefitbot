@@ -409,7 +409,11 @@ const ICONS = {
   chevron:'<polyline points="9 6 15 12 9 18"/>',
   chevronL:'<polyline points="15 6 9 12 15 18"/>',
   trophy:'<path d="M8 21h8M12 17v4M7 4h10v6a5 5 0 0 1-10 0V4z"/><path d="M7 6H4a2 2 0 0 0 2 4h1M17 6h3a2 2 0 0 1-2 4h-1"/>',
-  sparkles:'<path d="M12 4l1.7 4.3L18 10l-4.3 1.7L12 16l-1.7-4.3L6 10l4.3-1.7L12 4z"/><path d="M18.5 15.5l.8 2.2 2.2.8-2.2.8-.8 2.2-.8-2.2-2.2-.8 2.2-.8.8-2.2z"/>'
+  sparkles:'<path d="M12 4l1.7 4.3L18 10l-4.3 1.7L12 16l-1.7-4.3L6 10l4.3-1.7L12 4z"/><path d="M18.5 15.5l.8 2.2 2.2.8-2.2.8-.8 2.2-.8-2.2-2.2-.8 2.2-.8.8-2.2z"/>',
+  plus:'<path d="M12 5v14M5 12h14"/>',
+  check:'<polyline points="20 6 9 17 4 12"/>',
+  lock:'<rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/>',
+  sun:'<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/>'
 };
 function ic(name, size){
   size = size || 20;
@@ -588,6 +592,8 @@ async function loadDashboard(){
 
     $('homeCals').textContent = Math.round(data.consumption ? data.consumption.calories : 0);
     $('homeWater').textContent = data.water || 0;
+    _lastCons = data.consumption || {};
+    renderMacrosPlate(_lastCons);
 
     renderHomeMeals(data);
 
@@ -1061,7 +1067,7 @@ async function loadNextMeal(){
     api('/api/recipe-image/' + r.id).then(img => {
       if(img.image_url){ const el = $('mealHero'); if(el) el.innerHTML = '<img src="' + esc(img.image_url) + '" loading="lazy" decoding="async" alt="">'; }
     }).catch(()=>{});
-  }catch(e){ area.innerHTML = '<div class="empty">Ошибка загрузки</div>'; }
+  }catch(e){ area.innerHTML = '<div class="empty">' + (e && e.status === 404 ? 'Рецептов пока нет, загляни позже' : 'Ошибка загрузки') + '</div>'; }
 }
 
 function showRecipeDetail(){
@@ -1752,6 +1758,12 @@ async function toggleNotifyUI(){
 .pg-bar-in{height:100%;border-radius:99px;background:var(--accent);transition:width .5s ease}
 .lvl-chip{padding:8px 14px;border-radius:99px;background:var(--surface);border:1.5px solid var(--border);font-size:12px;font-weight:800;color:var(--text2);flex-shrink:0}
 .lvl-chip.active{background:var(--accent);border-color:var(--accent);color:#fff}
+.wo-group-hd{display:flex;align-items:center;gap:10px;margin:6px 0 10px}
+.wo-group-hd b{font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--text3);white-space:nowrap}
+.wo-group-hd span{flex:1;height:1px;background:var(--border)}
+.wz-photo{height:220px}
+.ex-photo{width:72px;height:72px}
+.exlib-thumb{width:60px;height:60px}
 </style>
 <script>
 function renderHomeDonuts(){
@@ -1781,6 +1793,42 @@ function renderHomeDonuts(){
           '<button class="pressable" style="width:44px;height:44px;border-radius:50%;background:var(--solid);color:var(--text2);border:1.5px solid var(--border);font-size:20px;font-weight:800" onclick="undoWater()">−</button>' +
           '<button class="wtr2-add pressable" style="width:44px;height:44px" onclick="addWater()">' + ic('plus',22) + '</button>' +
         '</div></div></div>';
+  renderMacrosPlate(_lastCons);
+}
+let _lastCons = {};
+function renderMacrosPlate(cons){
+  const oldP = document.getElementById('macrosPlate');
+  if(oldP) oldP.remove();
+  if(!currentUser) return;
+  const grid = document.getElementById('homeStatGrid');
+  if(!grid) return;
+  const w = parseFloat(currentUser.current_weight) || 70;
+  const kcal = currentUser.calorie_norm || 2000;
+  const p = Math.round(w * (currentUser.goal === 'gain' ? 2 : 1.6));
+  const f = Math.round(w);
+  let c = Math.round((kcal - p * 4 - f * 9) / 4);
+  if (c < 50) c = 50;
+  const rows = [
+    ['Белки', Math.round(cons.protein || 0), p, '#0D9BE8'],
+    ['Жиры', Math.round(cons.fat || 0), f, '#F59E0B'],
+    ['Углеводы', Math.round(cons.carbs || 0), c, '#10B981']
+  ];
+  const plate = document.createElement('div');
+  plate.className = 'card pressable';
+  plate.style.cssText = 'grid-column:1/-1;padding:16px;margin-bottom:0;border-radius:18px;cursor:pointer';
+  plate.id = 'macrosPlate';
+  plate.onclick = function(){ navigate('nutrition'); };
+  plate.innerHTML =
+    '<div class="flex between items-center mb2">' +
+      '<div style="font-weight:800;font-size:14px;display:flex;align-items:center;gap:7px;color:var(--accent-dark)">' + ic('nut',17) + ' БЖУ сегодня</div>' +
+      '<div class="subtle" style="font-size:12px;font-weight:700">' + Math.round(cons.calories || 0) + ' / ' + kcal + ' ккал</div>' +
+    '</div>' +
+    rows.map(function(r){
+      const pct = Math.min(Math.round(r[1] / r[2] * 100), 100);
+      return '<div style="margin-bottom:10px"><div class="flex between" style="font-size:12px;font-weight:700;margin-bottom:4px"><span>' + r[0] + '</span><span class="subtle">' + r[1] + ' / ' + r[2] + ' г</span></div>' +
+        '<div class="track" style="height:6px"><div class="fill" style="width:' + pct + '%;background:' + r[3] + '"></div></div></div>';
+    }).join('');
+  grid.appendChild(plate);
 }
 async function addWater(){
   if(!currentUser) return;
@@ -1851,6 +1899,16 @@ try{
   };
 }catch(e){}
 let woLevel = 'all';
+function progCardHtml(p){
+  return '<div class="prog-card pressable" onclick="openProgram(' + p.id + ')">' +
+    '<div class="flex between items-center"><h3 style="font-size:17px">' + esc(p.name) + '</h3>' +
+    '<span class="badge ' + (p.difficulty==='beginner'?'badge-green':'badge-amber') + '">' + (p.difficulty==='beginner'?'Легко':'Средне') + '</span></div>' +
+    '<div class="prog-tags">' +
+    '<span class="badge badge-accent">' + p.duration_weeks + ' нед</span>' +
+    '<span class="badge badge-blue">' + esc(p.location==='home'?'Дома':p.location==='gym'?'В зале':'На улице') + '</span>' +
+    '<span class="badge badge-violet">' + (p.type==='hiit'?'HIIT':p.type==='cardio'?'Кардио':p.type==='strength'?'Силовая':'Микс') + '</span></div>' +
+    '<p class="muted" style="font-size:12.5px;line-height:1.6">' + esc(p.description) + '</p></div>';
+}
 async function loadWorkouts(){
   const chips = document.getElementById('woChips');
   if(chips){
@@ -1878,21 +1936,26 @@ async function loadWorkouts(){
     const types = woGoal === 'fat' ? ['hiit','cardio','mix'] : ['strength'];
     let list = (d.programms || d.programs || []).filter(p => types.includes(p.type));
     if(woLevel !== 'all') list = list.filter(p => p.difficulty === woLevel);
-    list.sort(function(a, b){ return (a.difficulty === b.difficulty) ? 0 : (a.difficulty === 'beginner' ? -1 : 1); });
+    list.sort(function(a, b){ return a.id - b.id; });
     let html = '<p class="subtle mb3" style="font-size:12.5px;line-height:1.6">' + (woGoal==='fat'
       ? 'Главный фокус приложения. Новичкам — начните с «Лёгкого старта» или «Мягкого утра».'
       : 'Силовые тренировки на тонус. Мышцы — главный расходник калорий в покое.') + '</p>';
     if(!list.length) html += '<div class="empty">Ничего не найдено</div>';
-    list.forEach(p => {
-      html += '<div class="prog-card pressable" onclick="openProgram(' + p.id + ')">' +
-        '<div class="flex between items-center"><h3 style="font-size:17px">' + esc(p.name) + '</h3>' +
-        '<span class="badge ' + (p.difficulty==='beginner'?'badge-green':'badge-amber') + '">' + (p.difficulty==='beginner'?'Легко':'Средне') + '</span></div>' +
-        '<div class="prog-tags">' +
-        '<span class="badge badge-accent">' + p.duration_weeks + ' нед</span>' +
-        '<span class="badge badge-blue">' + esc(p.location==='home'?'Дома':p.location==='gym'?'В зале':'На улице') + '</span>' +
-        '<span class="badge badge-violet">' + (p.type==='hiit'?'HIIT':p.type==='cardio'?'Кардио':p.type==='strength'?'Силовая':'Микс') + '</span></div>' +
-        '<p class="muted" style="font-size:12.5px;line-height:1.6">' + esc(p.description) + '</p></div>';
-    });
+    if(woLevel === 'all'){
+      [['beginner','Лёгкие'],['intermediate','Средние']].forEach(function(g){
+        const grp = list.filter(p => p.difficulty === g[0]);
+        if(!grp.length) return;
+        html += '<div class="wo-group-hd"><b>' + g[1] + '</b><span></span></div>';
+        grp.forEach(p => { html += progCardHtml(p); });
+      });
+      const rest = list.filter(p => p.difficulty !== 'beginner' && p.difficulty !== 'intermediate');
+      if(rest.length){
+        html += '<div class="wo-group-hd"><b>Другие</b><span></span></div>';
+        rest.forEach(p => { html += progCardHtml(p); });
+      }
+    } else {
+      list.forEach(p => { html += progCardHtml(p); });
+    }
     c.innerHTML = html;
   }catch(e){ c.innerHTML = '<div class="empty">Не удалось загрузить</div>'; }
 }
