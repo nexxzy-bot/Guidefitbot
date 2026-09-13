@@ -216,46 +216,8 @@ body{touch-action:manipulation}
   <button class="btn btn-primary" onclick="skipRest()">Пропустить</button>
 </div>
 
-<!-- ОНБОРДИНГ -->
-<div class="screen active" id="screen-register">
-  <div style="padding-top:36px">
-    <div class="badge badge-accent mb2">GuideFit</div>
-    <h1 style="margin-bottom:6px">Расскажи<br>о себе</h1>
-    <p class="muted" style="font-size:14px;margin:10px 0 24px;line-height:1.55">Рассчитаем калории, БЖУ и подберём программу под твою цель</p>
-    <form id="registerForm">
-      <div class="input-wrap"><label class="input-label">Как тебя зовут?</label><input type="text" class="input" id="regName" required maxlength="30"></div>
-      <div class="input-wrap"><label class="input-label">Пол</label>
-        <div class="sel-row">
-          <button type="button" class="sel-btn" id="btnMale" onclick="setGender('male')"><span class="ic" style="color:var(--accent)"><span data-ic="male" data-sz="22"></span></span><span class="tx">Мужчина</span></button>
-          <button type="button" class="sel-btn" id="btnFemale" onclick="setGender('female')"><span class="ic" style="color:var(--accent)"><span data-ic="female" data-sz="22"></span></span><span class="tx">Женщина</span></button>
-        </div><input type="hidden" id="regGender" required>
-      </div>
-      <div class="grid2">
-        <div class="input-wrap"><label class="input-label">Возраст</label><input type="number" class="input" id="regAge" min="10" max="100" required></div>
-        <div class="input-wrap"><label class="input-label">Рост, см</label><input type="number" class="input" id="regHeight" min="100" max="250" required></div>
-      </div>
-      <div class="grid2">
-        <div class="input-wrap"><label class="input-label">Текущий вес</label><input type="number" step="0.1" class="input" id="regWeight" min="30" max="250" required></div>
-        <div class="input-wrap"><label class="input-label">Целевой вес</label><input type="number" step="0.1" class="input" id="regTarget" min="30" max="250" required></div>
-      </div>
-      <div class="input-wrap"><label class="input-label">Цель</label>
-        <div class="sel-row">
-          <button type="button" class="sel-btn" id="btnLose" onclick="setGoal('lose')"><span class="ic" style="color:var(--accent)"><span data-ic="flame" data-sz="22"></span></span><span class="tx">Похудеть</span><span class="sb">−500 ккал</span></button>
-          <button type="button" class="sel-btn" id="btnGain" onclick="setGoal('gain')"><span class="ic" style="color:var(--accent)"><span data-ic="dumbbell" data-sz="22"></span></span><span class="tx">Набрать</span><span class="sb">+500 ккал</span></button>
-          <button type="button" class="sel-btn" id="btnMaintain" onclick="setGoal('maintain')"><span class="ic" style="color:var(--accent)"><span data-ic="zap" data-sz="22"></span></span><span class="tx">Поддержать</span><span class="sb">Баланс</span></button>
-        </div><input type="hidden" id="regGoal" required>
-      </div>
-      <div class="input-wrap"><label class="input-label">Активность</label>
-        <div class="sel-row">
-          <button type="button" class="sel-btn" id="btnSedentary" onclick="setActivity('sedentary')"><span class="ic" style="color:var(--accent)"><span data-ic="chair" data-sz="22"></span></span><span class="tx">Малая</span><span class="sb">Сидячая</span></button>
-          <button type="button" class="sel-btn" id="btnLight" onclick="setActivity('light')"><span class="ic" style="color:var(--accent)"><span data-ic="walk" data-sz="22"></span></span><span class="tx">Лёгкая</span><span class="sb">1–3 раза</span></button>
-          <button type="button" class="sel-btn" id="btnModerate" onclick="setActivity('moderate')"><span class="ic" style="color:var(--accent)"><span data-ic="run" data-sz="22"></span></span><span class="tx">Средняя</span><span class="sb">3–5 раз</span></button>
-        </div><input type="hidden" id="regActivity" value="moderate">
-      </div>
-      <button type="submit" class="btn btn-primary btn-block" style="font-size:16px">Создать профиль →</button>
-    </form>
-  </div>
-</div>
+<!-- ОНБОРДИНГ (пошаговый мастер) -->
+<div class="screen active" id="screen-onboard"><div id="onboardBox" style="padding-top:28px"></div></div>
 
 <!-- ГЛАВНАЯ -->
 <div class="screen" id="screen-home">
@@ -542,7 +504,8 @@ async function initApp(){
     $('bottomNav').style.display = 'flex';
     navigate('home');
   }catch(e){
-    $('screen-register').classList.add('active');
+    ob = { step: 0, total: 10, meal_count: 3 };
+    obRender();
   }
 }
 
@@ -553,34 +516,118 @@ function renderAvatar(name){
   else el.textContent = (name || 'U').charAt(0).toUpperCase();
 }
 
-/* ============ онбординг ============ */
-function setGender(g){ $('regGender').value = g; $('btnMale').classList.toggle('active', g==='male'); $('btnFemale').classList.toggle('active', g==='female'); }
-function setGoal(g){ $('regGoal').value = g; ['Lose','Gain','Maintain'].forEach(x => $('btn'+x).classList.toggle('active', x.toLowerCase()===g)); }
-function setActivity(a){ $('regActivity').value = a; ['Sedentary','Light','Moderate'].forEach(x => $('btn'+x).classList.toggle('active', x.toLowerCase()===a)); }
-
-$('registerForm').addEventListener('submit', async e => {
-  e.preventDefault();
-  if(!$('regGender').value || !$('regGoal').value){ showError('Выбери пол и цель'); return; }
-  const data = {
-    tg_id: myTgId(),
-    name: $('regName').value.trim(),
-    gender: $('regGender').value,
-    age: parseInt($('regAge').value),
-    height: parseInt($('regHeight').value),
-    current_weight: parseFloat($('regWeight').value),
-    target_weight: parseFloat($('regTarget').value),
-    goal: $('regGoal').value,
-    activity_level: $('regActivity').value
-  };
+/* ============ онбординг: пошаговый мастер ============ */
+const OB_ICONS = { male:'male', female:'female', lose:'flame', gain:'dumbbell', maintain:'zap', sedentary:'chair', light:'walk', moderate:'run', very_active:'zap' };
+let ob = null;
+function obHydrate(root){ root.querySelectorAll('[data-ic]').forEach(el => el.innerHTML = ic(el.getAttribute('data-ic'), parseInt(el.getAttribute('data-sz') || '22', 10))); }
+function obCard(val, label, sub, sel){
+  return '<button type="button" class="sel-btn pressable' + (ob[sel]===val?' active':'') + '" onclick="obPick(\'' + sel + '\',\'' + val + '\')">' +
+    '<span class="ic" style="color:var(--accent)"><span data-ic="' + (OB_ICONS[val]||val) + '" data-sz="22"></span></span>' +
+    '<span class="tx">' + label + '</span>' + (sub ? '<span class="sb">' + sub + '</span>' : '') + '</button>';
+}
+function obPick(sel, val){ ob[sel] = (sel === 'meal_count') ? parseInt(val) : val; obRender(); }
+function obNum(id){ const el = document.getElementById(id); return el ? parseFloat(el.value) : NaN; }
+function obNumErr(id, msg){
+  const e = document.getElementById(id + 'Err'); if(e){ e.textContent = msg || ''; e.style.display = msg ? 'block' : 'none'; }
+  const i = document.getElementById(id); if(i) i.classList.toggle('input-error', !!msg);
+}
+function obField(id, label, ph, val){
+  return '<div class="input-wrap"><label class="input-label">' + label + '</label>' +
+    '<input type="number" step="0.1" class="input" id="' + id + '" value="' + (val || '') + '" placeholder="' + ph + '">' +
+    '<div class="ob-err" id="' + id + 'Err"></div></div>';
+}
+function obGo(n){ ob.step = n; obRender(); }
+function obBack(){ if(ob.step > 0){ obGo(ob.step - 1); } }
+function obNext(){
+  const s = ob.step;
+  if(s === 0){
+    const n = (document.getElementById('obName').value || '').trim();
+    if(!n){ showError('Как тебя зовут?'); return; }
+    ob.name = n.slice(0, 30); obGo(1); return;
+  }
+  if(s === 1){ if(!ob.gender){ showError('Выбери пол'); return; } obGo(2); return; }
+  if(s === 2){
+    const v = obNum('obAge');
+    if(!v || v < 10 || v > 100){ obNumErr('obAge', 'Возраст: от 10 до 100'); return; }
+    ob.age = Math.round(v); obGo(3); return;
+  }
+  if(s === 3){
+    const v = obNum('obHeight');
+    if(!v || v < 120 || v > 230){ obNumErr('obHeight', 'Рост: от 120 до 230 см'); return; }
+    ob.height = Math.round(v); obGo(4); return;
+  }
+  if(s === 4){
+    const v = obNum('obWeight');
+    if(!v || v < 20 || v > 400){ obNumErr('obWeight', 'Вес: от 20 до 400 кг'); return; }
+    ob.weight = v; obGo(5); return;
+  }
+  if(s === 5){
+    const v = obNum('obTarget');
+    if(!v || v < 20 || v > 400){ obNumErr('obTarget', 'Вес: от 20 до 400 кг'); return; }
+    ob.target = v; obGo(6); return;
+  }
+  if(s === 6){ if(!ob.activity){ showError('Выбери уровень активности'); return; } obGo(7); return; }
+  if(s === 7){ if(!ob.goal){ showError('Выбери цель'); return; } obGo(8); return; }
+  if(s === 8){ obGo(9); return; }
+}
+async function obFinish(){
+  const data = { tg_id: myTgId(), name: ob.name, gender: ob.gender, age: ob.age, height: ob.height,
+    current_weight: ob.weight, target_weight: ob.target, goal: ob.goal, activity_level: ob.activity,
+    meal_count: ob.meal_count || 3 };
   try{
     const r = await api('/api/user/init', { method:'POST', body:data });
-    currentUser = { ...data, calorie_norm: r.calorie_norm, meal_count: 4 };
+    currentUser = { ...data, calorie_norm: r.calorie_norm, meal_count: data.meal_count };
     renderAvatar(data.name);
     $('bottomNav').style.display = 'flex';
     navigate('home');
-    showSuccess('Профиль создан!');
+    showSuccess('Готово! Профиль создан');
   }catch(e){ showError(e.message); }
-});
+}
+function obRender(){
+  const box = document.getElementById('onboardBox');
+  if(!box || !ob) return;
+  const s = ob.step, T = ob.total;
+  let h = '<div class="ob-progress"><div class="flex between items-center"><span class="subtle" style="font-size:11.5px;font-weight:800">шаг ' + (s+1) + ' из ' + T + '</span></div>' +
+    '<div class="ob-dots">' + Array.from({length:T}, (_, i) => '<span class="ob-dot' + (i<=s?' on':'') + '"></span>').join('') + '</div></div>';
+  if(s === 0){
+    h += '<div class="badge badge-accent mb2">GuideFit</div><h1 style="margin-bottom:6px">Привет! Я GuideFit</h1>' +
+      '<p class="muted" style="font-size:14px;margin:10px 0 24px;line-height:1.55">Рассчитаем калории, БЖУ и подберём программу под твою цель</p>' +
+      '<div class="input-wrap"><label class="input-label">Как тебя зовут?</label><input type="text" class="input" id="obName" maxlength="30" value="' + esc(ob.name || '') + '"></div>';
+  } else if(s === 1){
+    h += '<h1 style="margin-bottom:18px">Твой пол</h1><div class="sel-row">' + obCard('male','Мужчина','','gender') + obCard('female','Женщина','','gender') + '</div>';
+  } else if(s === 2){
+    h += '<h1 style="margin-bottom:18px">Сколько тебе лет?</h1>' + obField('obAge','Возраст','10–100', ob.age || '');
+  } else if(s === 3){
+    h += '<h1 style="margin-bottom:18px">Твой рост</h1>' + obField('obHeight','Рост, см','120–230', ob.height || '');
+  } else if(s === 4){
+    h += '<h1 style="margin-bottom:18px">Текущий вес</h1>' + obField('obWeight','Вес, кг','20–400', ob.weight || '');
+  } else if(s === 5){
+    h += '<h1 style="margin-bottom:18px">Целевой вес</h1>' + obField('obTarget','Вес, кг','20–400', ob.target || '');
+  } else if(s === 6){
+    h += '<h1 style="margin-bottom:18px">Уровень активности</h1><div class="sel-row">' +
+      obCard('sedentary','Малая','Сидячая','activity') + obCard('light','Лёгкая','1–3 раза','activity') +
+      obCard('moderate','Средняя','3–5 раз','activity') + obCard('very_active','Высокая','Почти каждый день','activity') + '</div>';
+  } else if(s === 7){
+    h += '<h1 style="margin-bottom:18px">Твоя цель</h1><div class="sel-row">' +
+      obCard('lose','Похудеть','−500 ккал','goal') + obCard('gain','Набрать','+500 ккал','goal') + obCard('maintain','Поддержать','Баланс','goal') + '</div>';
+  } else if(s === 8){
+    h += '<h1 style="margin-bottom:18px">Приёмов пищи в день</h1><div class="ob-chips">' +
+      [2,3,4,5,6].map(n => '<button type="button" class="chip pressable' + ((ob.meal_count||3)===n?' active':'') + '" onclick="obPick(\'meal_count\',\'' + n + '\')">' + n + '</button>').join('') + '</div>' +
+      '<p class="subtle mt2" style="font-size:11.5px">Можно изменить позже в настройках</p>';
+  } else if(s === 9){
+    const gl = { lose:'Похудение', gain:'Набор', maintain:'Поддержание' }[ob.goal] || '';
+    h += '<div class="text-center" style="padding-top:14px"><div style="width:84px;height:84px;border-radius:28px;background:var(--accent-dim);color:var(--accent);display:flex;align-items:center;justify-content:center;margin:0 auto 16px">' + ic('check',40) + '</div>' +
+      '<h1 style="margin-bottom:10px">Готово!</h1>' +
+      '<p class="muted" style="font-size:14px;line-height:1.6">' + esc(ob.name) + ', ' + gl + ': ' + ob.weight + ' → ' + ob.target + ' кг. Рассчитаем норму и подберём программу.</p></div>';
+  }
+  h += '<div class="flex gap2" style="margin-top:26px">' +
+    (s > 0 && s < 9 ? '<button class="btn btn-ghost pressable" style="flex:1" onclick="obBack()">Назад</button>' : '') +
+    (s < 9 ? '<button class="btn btn-primary pressable" style="flex:2" onclick="obNext()">' + (s === 0 ? 'Начать' : 'Далее') + '</button>'
+           : '<button class="btn btn-primary btn-block pressable" onclick="obFinish()">Начинаем!</button>') +
+    '</div>';
+  box.innerHTML = h;
+  obHydrate(box);
+}
 
 /* ============ дашборд ============ */
 async function loadDashboard(){
@@ -1323,10 +1370,25 @@ function woFinishFlow(){
 .wz-set{width:52px;height:52px;border-radius:16px;border:2px solid var(--border);background:var(--surface);display:flex;align-items:center;justify-content:center;font-family:'Bebas Neue';font-size:20px;color:var(--text3)}
 .wz-set.done{background:var(--green);border-color:var(--green);color:#fff}
 .wz-main{min-height:60px;font-size:17px;border-radius:20px}
-.tour-overlay{position:fixed;inset:0;background:rgba(12,34,51,.84);z-index:200;display:flex;align-items:flex-end;justify-content:center;padding:18px}
-.tour-card{background:var(--surface);border-radius:26px;padding:24px 20px;width:100%;max-width:440px;animation:fadeUp .3s ease}
 .tour-ic{width:64px;height:64px;border-radius:20px;background:var(--accent-dim);color:var(--accent);display:flex;align-items:center;justify-content:center;margin:0 auto 14px}
 .tour-dots{display:flex;gap:6px;justify-content:center;margin:14px 0}
+/* v22: спотлайт-обучение */
+.spot-overlay{position:fixed;inset:0;background:rgba(9,20,32,.6);z-index:220}
+.spot-hole{position:absolute;border-radius:22px;box-shadow:0 0 0 200vmax rgba(9,20,32,.78);pointer-events:none;z-index:221;transition:all .2s ease}
+.spot-hint{position:absolute;z-index:222;background:var(--surface);border-radius:18px;padding:16px;box-shadow:var(--sh);max-width:300px;animation:fadeUp .25s ease}
+.spot-hint:after{content:'';position:absolute;width:14px;height:14px;background:var(--surface);transform:rotate(45deg);left:var(--ax,24px)}
+.spot-hint.above:after{bottom:-7px}
+.spot-hint.below:after{top:-7px}
+.spot-nav{position:absolute;left:0;right:0;bottom:calc(20px + env(safe-area-inset-bottom,0px));display:flex;flex-direction:column;gap:8px;padding:0 22px;z-index:222}
+/* v21: пошаговый онбординг */
+.ob-progress{margin-bottom:20px}
+.ob-dots{display:flex;gap:5px;margin-top:8px}
+.ob-dot{height:4px;flex:1;border-radius:99px;background:var(--border);transition:background .2s}
+.ob-dot.on{background:var(--accent)}
+.ob-err{display:none;color:var(--red);font-size:11.5px;font-weight:700;margin-top:6px}
+.input-error{border-color:var(--red)!important}
+.ob-chips{display:flex;gap:8px;flex-wrap:wrap}
+.ob-chips .chip{min-width:44px}
 </style>
 <script>
 let wzEx = 0, wzDone = [];
@@ -1581,32 +1643,87 @@ try{
 <script>
 try{
 }catch(e){}
-const TOUR2 = [
-  {icn:'flame', t:'Главная', d:'Кольцо вверху — твои калории на день: записывай еду, и оно заполняется. Ниже шкала воды: каждое нажатие — один стакан (250 мл). Когда шкала полностью заполнена — дневная норма воды выпита. Огонёк — твоя серия тренировок.'},
-  {icn:'dumbbell', t:'Тренировки', d:'Программы для жиросжигания, силовые и йога. Выбери программу и нажми «Начать» — приложение само проведёт по шагам: упражнение, подходы, отдых.'},
-  {icn:'bowl', t:'Еда', d:'Рецепты под твою норму калорий: завтраки, обеды, ужины и перекусы с КБЖУ и пошаговым приготовлением. Нажми «Записать в дневник» — калории сами попадут в кольцо.'},
-  {icn:'person', t:'Настройки', d:'Здесь можно поменять имя, вес, цель и тему оформления. Взвешивайся и записывай вес — увидишь график прогресса и достижения.'}
+/* ============ обучение: полноэкранный спотлайт ============ */
+const TOUR_STEPS = [
+  { sel:'.hero-card', screen:'home', t:'Калории и БЖУ', d:'Кольцо — сколько калорий осталось на сегодня. Записывай еду — кольцо заполнится. Тапни «БЖУ ▸», чтобы раскрыть белки, жиры и углеводы.' },
+  { sel:'#homeMealsList', screen:'home', t:'Приёмы пищи', d:'Жми «+» у приёма пищи и выбирай блюдо — калории и БЖУ посчитаются сами и попадут в дневник.' },
+  { sel:'#waterCard', screen:'home', t:'Вода', d:'Каждое нажатие «+» — один стакан (250 мл). Шкала заполнилась — дневная норма выпита. «−» отменяет последний стакан.' },
+  { sel:'#streakPlate', screen:'home', t:'Серия и программа', d:'Огонёк — твоя серия тренировок. Нажми на плашку: если программа начата — откроется она, иначе — список тренировок.' },
+  { sel:'.nav-item[data-tab="workouts"]', screen:'home', t:'Тренировки', d:'Программы «Лёгкие» и «Средние», силовые, йога и библиотека упражнений. Активная программа — всегда первой, с меткой «Твоя программа».' },
+  { sel:'.nav-item[data-tab="nutrition"]', screen:'home', t:'Еда', d:'Рецепты под твою норму калорий, список покупок за неделю и БЖУ дня.' },
+  { sel:'.nav-item[data-tab="stats"]', screen:'home', t:'Статистика', d:'Калории по дням и график веса: взвешивайся и отмечай вес — прогресс видно на графике.' },
+  { sel:'.nav-item[data-tab="profile"]', screen:'home', t:'Профиль и настройки', d:'Достижения и вес — в профиле; тема, уведомления, данные и поддержка — в настройках.' }
 ];
+function tourEl(step){
+  if(!step || !step.sel) return null;
+  const active = document.querySelector('.screen.active');
+  if(!active || active.id !== 'screen-' + step.screen) return null;
+  return active.querySelector(step.sel);
+}
+function tourDots(){
+  return '<div class="tour-dots">' + TOUR_STEPS.concat([{}]).map(function(_, i){ return '<span class="wz-dot" style="background:' + (i === tourIdx ? 'var(--accent)' : 'var(--border2)') + '"></span>'; }).join('') + '</div>';
+}
 function tourShow(){
   const old = document.getElementById('tourOverlay');
   if(old) old.remove();
-  const s = TOUR2[tourIdx];
+  while(tourIdx < TOUR_STEPS.length && !tourEl(TOUR_STEPS[tourIdx])) tourIdx++;
+  if(tourIdx >= TOUR_STEPS.length){ tourFinal(); return; }
+  const step = TOUR_STEPS[tourIdx];
   const ov = document.createElement('div');
-  ov.className = 'tour-overlay'; ov.id = 'tourOverlay';
-  ov.innerHTML = '<div class="tour-card">' +
-    '<div class="tour-ic">' + ic(s.icn,30) + '</div>' +
-    '<h2 class="text-center" style="font-size:24px">' + s.t + '</h2>' +
-    '<p class="muted text-center mt2" style="font-size:13.5px;line-height:1.65">' + s.d + '</p>' +
-    '<div class="tour-dots">' + TOUR2.map(function(_, i){ return '<span class="wz-dot" style="background:' + (i === tourIdx ? 'var(--accent)' : 'var(--border2)') + '"></span>'; }).join('') + '</div>' +
-    '<button class="btn btn-primary btn-block pressable" onclick="tourNext()">' + (tourIdx === TOUR2.length - 1 ? 'Понятно, начнём!' : 'Далее') + '</button>' +
-    '<button class="btn btn-ghost btn-block pressable mt2" onclick="tourSkip()" style="font-size:13px">Пропустить</button>' +
-    '</div>';
+  ov.className = 'spot-overlay'; ov.id = 'tourOverlay';
+  ov.innerHTML = '<div class="spot-nav">' +
+    '<button class="btn btn-primary btn-block pressable" onclick="tourNext()">Далее</button>' +
+    '<button class="btn btn-ghost btn-block pressable" onclick="tourSkip()" style="font-size:13px">Пропустить обучение</button></div>';
+  document.body.appendChild(ov);
+  try{ tourEl(step).scrollIntoView({ block: 'center' }); }catch(e){}
+  setTimeout(function(){ tourPosition(step); }, 80);
+}
+function tourPosition(step){
+  const ov = document.getElementById('tourOverlay');
+  const el = tourEl(step);
+  if(!ov) return;
+  if(!el || !el.isConnected){ tourShow(); return; }
+  const r = el.getBoundingClientRect(), pad = 6;
+  const cut = document.createElement('div');
+  cut.className = 'spot-hole';
+  cut.style.top = Math.max(r.top - pad, 0) + 'px';
+  cut.style.left = Math.max(r.left - pad, 0) + 'px';
+  cut.style.width = Math.min(r.width + pad*2, window.innerWidth) + 'px';
+  cut.style.height = (r.height + pad*2) + 'px';
+  ov.appendChild(cut);
+  const hint = document.createElement('div');
+  hint.className = 'spot-hint ' + (r.top > window.innerHeight * 0.45 ? 'above' : 'below');
+  hint.innerHTML = '<h3 style="font-size:15.5px;margin-bottom:6px">' + step.t + '</h3>' +
+    '<p class="muted" style="font-size:12.5px;line-height:1.55">' + step.d + '</p>' + tourDots();
+  ov.appendChild(hint);
+  const hw = Math.min(hint.offsetWidth || 290, 300);
+  const hl = Math.min(Math.max(r.left + r.width/2 - hw/2, 12), Math.max(window.innerWidth - hw - 12, 12));
+  hint.style.left = hl + 'px'; hint.style.right = 'auto'; hint.style.maxWidth = hw + 'px';
+  if(r.top > window.innerHeight * 0.45){ hint.style.bottom = (window.innerHeight - r.top + 14) + 'px'; hint.style.top = 'auto'; }
+  else { hint.style.top = (r.bottom + 14) + 'px'; hint.style.bottom = 'auto'; }
+  const hr = hint.getBoundingClientRect();
+  if(hr.top < 10){ hint.style.top = '10px'; hint.style.bottom = 'auto'; }
+  if(hr.bottom > window.innerHeight - 150){ hint.style.top = Math.max(window.innerHeight - 240, 10) + 'px'; hint.style.bottom = 'auto'; }
+  hint.style.setProperty('--ax', Math.max(Math.min(r.left + r.width/2 - hl - 7, hw - 26), 12) + 'px');
+  if(typeof haptic === 'function') haptic();
+}
+function tourFinal(){
+  const old = document.getElementById('tourOverlay');
+  if(old) old.remove();
+  const ov = document.createElement('div');
+  ov.className = 'spot-overlay'; ov.id = 'tourOverlay';
+  ov.innerHTML = '<div class="spot-hint" style="left:50%;top:50%;transform:translate(-50%,-50%);max-width:320px;text-align:center">' +
+    '<div class="tour-ic">' + ic('sparkles',30) + '</div>' +
+    '<h2 style="font-size:22px">Начинаем!</h2>' +
+    '<p class="muted mt2" style="font-size:13.5px;line-height:1.6">Ты готова. GuideFit всё посчитает — просто пользуйся.</p>' + tourDots() +
+    '<button class="btn btn-primary btn-block pressable mt3" onclick="tourSkip()">Начинаем!</button></div>';
   document.body.appendChild(ov);
 }
 function tourNext(){
   if(typeof haptic === 'function') haptic();
   tourIdx++;
-  if(tourIdx >= TOUR2.length) tourSkip(); else tourShow();
+  if(tourIdx > TOUR_STEPS.length){ tourSkip(); return; }
+  tourShow();
 }
 </script>
 <style>
@@ -1784,11 +1901,11 @@ function renderHomeDonuts(){
   const pct = Math.min(waterMl / norm, 1);
   const full = waterMl >= norm;
   grid.innerHTML =
-    '<div style="grid-column:1/-1;display:flex;align-items:center;gap:10px;background:var(--surface);border:1px solid var(--border);border-radius:18px;padding:11px 14px;box-shadow:var(--sh-sm)">' +
+    '<div id="streakPlate" style="grid-column:1/-1;display:flex;align-items:center;gap:10px;background:var(--surface);border:1px solid var(--border);border-radius:18px;padding:11px 14px;box-shadow:var(--sh-sm)">' +
       '<div style="width:38px;height:38px;border-radius:13px;background:var(--amber-dim);color:var(--amber);display:flex;align-items:center;justify-content:center;flex-shrink:0">' + ic('flame',20) + '</div>' +
       '<div style="flex:1;min-width:0"><div style="font-weight:800;font-size:13.5px">' + (streak > 0 ? 'Серия: ' + streak + ' ' + plural(streak,'день','дня','дней') : 'Серия: начни сегодня') + '</div>' +
       '<div class="subtle" style="font-size:11px">Тренируйся каждый день — огонёк растёт</div></div></div>' +
-    '<div class="card" style="grid-column:1/-1;padding:16px;margin-bottom:0">' +
+    '<div class="card" id="waterCard" style="grid-column:1/-1;padding:16px;margin-bottom:0">' +
       '<div class="flex between items-center mb2">' +
         '<div style="font-weight:800;font-size:14px;display:flex;align-items:center;gap:7px;color:var(--blue)">' + ic('droplet',17) + ' Вода' + (full ? ' · норма выпита!' : '') + '</div>' +
         '<div class="subtle" style="font-size:12.5px;font-weight:700">' + waterMl + ' / ' + norm + ' мл</div></div>' +
