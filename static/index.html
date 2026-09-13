@@ -90,7 +90,7 @@ select.input{appearance:none}
 .kpi .l{font-size:9.5px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:var(--text3)}
 .track{background:var(--solid);border-radius:99px;height:8px;overflow:hidden}
 .fill{height:100%;border-radius:99px;transition:width .5s ease}
-.fill-primary,.fill-accent{background:linear-gradient(90deg,#0D9BE8,#06B6D4)}
+.fill-primary,.fill-accent{background:var(--accent)}
 .fill-warn,.fill-amber{background:var(--amber)}
 .fill-violet{background:var(--violet)}
 .fill-blue{background:var(--cyan)}
@@ -99,8 +99,8 @@ select.input{appearance:none}
 .bar-chart{display:flex;align-items:flex-end;gap:6px;height:150px;padding:16px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);margin-bottom:12px;box-shadow:var(--sh-sm)}
 .bar-col{flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;height:100%;justify-content:flex-end}
 .bar-track{flex:1;width:100%;max-width:26px;display:flex;align-items:flex-end;background:var(--solid);border-radius:9px;overflow:hidden}
-.bar-in{width:100%;border-radius:9px;background:linear-gradient(180deg,#17A9F0,#0D9BE8);min-height:4px;transition:height .4s ease}
-.bar-col.active .bar-in{background:linear-gradient(180deg,#FBBF24,#F59E0B)}
+.bar-in{width:100%;border-radius:9px;background:var(--accent);min-height:4px;transition:height .4s ease}
+.bar-col.active .bar-in{background:var(--amber)}
 .pct{font-family:'Bebas Neue';font-size:11px;color:var(--text3)}
 .dl{font-size:10px;font-weight:800;color:var(--text3);text-transform:uppercase}
 .day-card{background:var(--surface);border:1px solid var(--border);border-radius:18px;padding:15px;margin-bottom:10px;cursor:pointer;box-shadow:var(--sh-sm)}
@@ -132,7 +132,7 @@ select.input{appearance:none}
 .set-check.done svg{display:block}
 .set-check svg{display:none;margin:6px}
 .timer-big{font-family:'Bebas Neue';font-size:60px;text-align:center;color:var(--text);letter-spacing:.03em}
-.rest-overlay{position:fixed;inset:0;background:rgba(242,247,252,.96);backdrop-filter:blur(8px);display:none;flex-direction:column;align-items:center;justify-content:center;gap:22px;z-index:60;padding:24px}
+.rest-overlay{position:fixed;inset:0;background:rgba(242,247,252,.985);display:none;flex-direction:column;align-items:center;justify-content:center;gap:22px;z-index:60;padding:24px}
 .rest-overlay.show{display:flex}
 .rest-circle{width:160px;height:160px;border-radius:50%;border:7px solid var(--accent-dim);display:flex;align-items:center;justify-content:center;background:var(--surface);box-shadow:var(--sh)}
 .rest-circle .t{font-family:'Bebas Neue';font-size:58px;color:var(--accent)}
@@ -201,7 +201,7 @@ body{touch-action:manipulation}
 <div class="app">
 <div class="toast" id="toast"></div>
 <div class="rest-overlay" id="restOverlay">
-  <p class="subtle" style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.1em">Отдых между подходами</p>
+  <p class="subtle" style="font-size:12px;font-weight:700;">Отдых между подходами</p>
   <div class="rest-circle"><div class="t" id="restTime">60</div></div>
   <button class="btn btn-primary" onclick="skipRest()">Пропустить</button>
 </div>
@@ -547,7 +547,7 @@ $('registerForm').addEventListener('submit', async e => {
     renderAvatar(data.name);
     $('bottomNav').style.display = 'flex';
     navigate('home');
-    showSuccess('Профиль создан! 🎉');
+    showSuccess('Профиль создан!');
   }catch(e){ showError(e.message); }
 });
 
@@ -678,7 +678,7 @@ async function addWater(){
   if(!currentUser) return;
   try{
     const r = await api('/api/water', { method:'POST', body:{ tg_id: currentUser.tg_id, amount:250 } });
-    showSuccess('+250 мл 💧 Всего: ' + r.total);
+    showSuccess('Вода: +250 мл. Всего: ' + r.total);
     loadDashboard();
   }catch(e){ showError(e.message); }
 }
@@ -780,7 +780,7 @@ async function openProgram(id){
 async function startProgram(pid){
   try{
     await api('/api/user/program/start', { method:'POST', body:{ tg_id: currentUser.tg_id, program_id: pid } });
-    showSuccess('Программа начата! 🚀');
+    showSuccess('Программа начата!');
     loadDashboard();
   }catch(e){ showError(e.message); }
 }
@@ -819,7 +819,7 @@ function renderActiveWorkout(isProgram){
   currentExerciseMeta = currentExercises.map(() => ({ doneSets: 0 }));
   c.innerHTML =
     '<div class="card mb4 text-center" style="padding:24px">' +
-    '<p class="subtle" style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.09em;margin-bottom:6px">Время</p>' +
+    '<p class="subtle" style="font-size:11px;font-weight:700;margin-bottom:6px">Время</p>' +
     '<div class="timer-big" id="workoutTimer">00:00</div>' +
     '<button class="btn btn-ghost mt3" onclick="toggleTimer()" id="timerBtn">Пауза</button></div>' +
     '<h3 class="mb3">Упражнения</h3>' +
@@ -868,7 +868,7 @@ function startRest(seconds){
       $('restOverlay').classList.remove('show');
       try{ if(tg && tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success'); }catch(e){}
       if(navigator.vibrate) navigator.vibrate([120, 60, 120]);
-      showSuccess('Отдых окончен! Следующий подход 💪');
+      showSuccess('Отдых окончен. Следующий подход');
     } else $('restTime').textContent = restRemaining;
   }, 1000);
 }
@@ -923,11 +923,11 @@ async function finishWorkout(isProgram){
         duration_minutes: duration, total_volume: totalVolume, notes: '', sets
       }
     });
-    showSuccess('Тренировка завершена! 🔥 ' + duration + ' мин');
+    showSuccess('Тренировка завершена: ' + duration + ' мин');
     if(isProgram && currentProgramId){
       try{
         const p = await api('/api/user/program/progress', { method:'POST', body:{ tg_id: currentUser.tg_id } });
-        if(p.completed) setTimeout(() => showSuccess('Программа завершена! 🎉'), 1200);
+        if(p.completed) setTimeout(() => showSuccess('Программа завершена!'), 1200);
       }catch(e2){ /* день программы без активной программы — тренировка сохранена, это ок */ }
     }
     isProgramWorkout = false; currentProgramDay = null;
@@ -1102,15 +1102,15 @@ async function toggleExInfo(i){
     const tips = Array.isArray(d.tips) ? d.tips : [];
     let guideHtml = '';
     if(g){
-      guideHtml = '<p class="subtle" style="font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.07em;margin-bottom:8px">Техника выполнения</p>' +
+      guideHtml = '<p class="subtle" style="font-size:10.5px;font-weight:800;margin-bottom:8px">Техника выполнения</p>' +
         '<ol class="ex-steps">' + g.steps.map(st => '<li>' + st + '</li>').join('') + '</ol>';
       if(g.mistakes && g.mistakes.length){
-        guideHtml += '<p class="subtle" style="font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.07em;margin:12px 0 8px">Частые ошибки</p><ul class="ex-tips">' + g.mistakes.map(m => '<li>' + m + '</li>').join('') + '</ul>';
+        guideHtml += '<p class="subtle" style="font-size:10.5px;font-weight:800;margin:12px 0 8px">Частые ошибки</p><ul class="ex-tips">' + g.mistakes.map(m => '<li>' + m + '</li>').join('') + '</ul>';
       }
     }
     box.innerHTML = guideHtml +
       (d.description ? '<p class="muted" style="font-size:12.5px;line-height:1.65;margin-top:10px">' + (d.description || '') + '</p>' : '') +
-      (tips.length ? '<p class="subtle" style="font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.07em;margin:12px 0 6px">Советы</p><ul class="ex-tips">' + tips.map(t => '<li>' + t + '</li>').join('') + '</ul>' : '');
+      (tips.length ? '<p class="subtle" style="font-size:10.5px;font-weight:800;margin:12px 0 6px">Советы</p><ul class="ex-tips">' + tips.map(t => '<li>' + t + '</li>').join('') + '</ul>' : '');
     box.dataset.loaded = '1';
   }catch(e){ box.innerHTML = '<div class="empty">Не удалось загрузить</div>'; }
 }
@@ -1165,7 +1165,7 @@ async function loadNextMeal(){
       '<div class="c"><div class="v">' + Math.round(r.protein) + '</div><div class="l">Белки</div></div>' +
       '<div class="c"><div class="v">' + Math.round(r.fat) + '</div><div class="l">Жиры</div></div>' +
       '<div class="c"><div class="v">' + Math.round(r.carbs) + '</div><div class="l">Углев.</div></div></div>' +
-      '<p class="subtle" style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px">Ингредиенты</p>' +
+      '<p class="subtle" style="font-size:11px;font-weight:700;margin-bottom:8px">Ингредиенты</p>' +
       '<p class="muted" style="font-size:13px;line-height:1.7;margin-bottom:16px">' + ings.map(fmtIng).join(' • ') + '</p>' +
       '<div class="flex gap2"><button class="btn btn-ghost" style="flex:1" onclick="loadNextMeal()">' + ic('refresh',15) + ' Другое</button>' +
       '<button class="btn btn-primary" style="flex:1" onclick="showRecipeDetail()">' + ic('chef',15) + ' Готовить</button></div></div>';
@@ -1185,7 +1185,7 @@ function showRecipeDetail(){
     '<div class="card mb4">' +
     '<div class="recipe-hero" id="mealHero2"><span style="color:var(--accent);display:flex">' + ic('bowl',42) + '</span></div>' +
     '<h3 style="font-size:19px;margin-bottom:14px">' + esc(r.title) + '</h3>' +
-    '<p class="subtle" style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px">Приготовление</p>' +
+    '<p class="subtle" style="font-size:11px;font-weight:700;margin-bottom:10px">Приготовление</p>' +
     steps.map((s, i) => '<div class="step"><span class="step-n">' + (i+1) + '</span><span class="muted" style="font-size:13px;line-height:1.6">' + esc(s) + '</span></div>').join('') +
     '<div class="flex gap2 mt4"><button class="btn btn-ghost" style="flex:1" onclick="openMealSelector(currentMealCategory)">← Назад</button>' +
     '<button class="btn btn-primary" style="flex:1" onclick="logCurrentMeal()">' + ic('pen',15) + ' Записать в дневник</button></div></div>';
@@ -1247,7 +1247,7 @@ async function loadProfile(){
     if(document.getElementById('achCount')) document.getElementById('achCount').textContent = unlockedCount + ' / ' + (ach.achievements || []).length;
     const seenKey = 'gf_ach_' + tgId;
     const seen = parseInt(localStorage.getItem(seenKey) || '0');
-    if(unlockedCount > seen && seen > 0) setTimeout(() => showSuccess('Новое достижение разблокировано! 🏅'), 600);
+    if(unlockedCount > seen && seen > 0) setTimeout(() => showSuccess('Новое достижение разблокировано!'), 600);
     localStorage.setItem(seenKey, String(unlockedCount));
 
     $('achList').innerHTML = (ach.achievements || []).map(a =>
@@ -1326,7 +1326,7 @@ initApp();
 .yp-player{background:var(--surface);border:1px solid var(--border);border-radius:22px;padding:20px;box-shadow:var(--sh-sm);text-align:center}
 .yp-timer{font-family:'Bebas Neue';font-size:44px;color:var(--accent)}
 .yp-bar{height:6px;border-radius:99px;background:var(--solid);overflow:hidden;margin:12px 0}
-.yp-bar-in{height:100%;background:linear-gradient(90deg,#0D9BE8,#06B6D4);transition:width 1s linear}
+.yp-bar-in{height:100%;background:var(--accent);transition:width 1s linear}
 .exlib-item{display:flex;align-items:center;gap:11px;background:var(--surface);border:1px solid var(--border);border-radius:15px;padding:9px 11px;margin-bottom:7px;cursor:pointer}
 .exlib-thumb{width:46px;height:46px;border-radius:13px;background:var(--accent-dim);color:var(--accent);display:flex;align-items:center;justify-content:center;flex-shrink:0;overflow:hidden}
 .exlib-thumb img{width:100%;height:100%;object-fit:cover}
@@ -1414,15 +1414,15 @@ async function woLibDetail(i){
   const g = (typeof EXG !== 'undefined' && EXG[x.name]) || null;
   let html = (WHY[x.muscle_group] ? '<p class="ex-why" style="margin:0 0 10px">' + WHY[x.muscle_group] + '</p>' : '');
   if(g){
-    html += '<p class="subtle" style="font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.07em;margin-bottom:8px">Техника выполнения</p>' +
+    html += '<p class="subtle" style="font-size:10.5px;font-weight:800;margin-bottom:8px">Техника выполнения</p>' +
       '<ol class="ex-steps">' + g.steps.map(st => '<li>' + st + '</li>').join('') + '</ol>';
     if(g.mistakes && g.mistakes.length){
-      html += '<p class="subtle" style="font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.07em;margin:12px 0 8px">Частые ошибки</p><ul class="ex-tips">' + g.mistakes.map(m => '<li>' + m + '</li>').join('') + '</ul>';
+      html += '<p class="subtle" style="font-size:10.5px;font-weight:800;margin:12px 0 8px">Частые ошибки</p><ul class="ex-tips">' + g.mistakes.map(m => '<li>' + m + '</li>').join('') + '</ul>';
     }
   }
   if(x.description) html += '<p class="muted" style="font-size:12.5px;line-height:1.6;margin-top:10px">' + esc(x.description) + '</p>';
   const tips = Array.isArray(x.tips) ? x.tips : (x.tips ? [x.tips] : []);
-  if(tips.length) html += '<p class="subtle" style="font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.07em;margin:12px 0 6px">Советы</p><ul class="ex-tips">' + tips.map(t => '<li>' + esc(t) + '</li>').join('') + '</ul>';
+  if(tips.length) html += '<p class="subtle" style="font-size:10.5px;font-weight:800;margin:12px 0 6px">Советы</p><ul class="ex-tips">' + tips.map(t => '<li>' + esc(t) + '</li>').join('') + '</ul>';
   box.innerHTML = html;
   box.dataset.loaded = '1';
 }
@@ -1502,7 +1502,7 @@ function woFinishFlow(){
 .wz-set{width:52px;height:52px;border-radius:16px;border:2px solid var(--border);background:var(--surface);display:flex;align-items:center;justify-content:center;font-family:'Bebas Neue';font-size:20px;color:var(--text3)}
 .wz-set.done{background:var(--green);border-color:var(--green);color:#fff}
 .wz-main{min-height:60px;font-size:17px;border-radius:20px}
-.tour-overlay{position:fixed;inset:0;background:rgba(12,34,51,.72);backdrop-filter:blur(6px);z-index:200;display:flex;align-items:flex-end;justify-content:center;padding:18px}
+.tour-overlay{position:fixed;inset:0;background:rgba(12,34,51,.84);z-index:200;display:flex;align-items:flex-end;justify-content:center;padding:18px}
 .tour-card{background:var(--surface);border-radius:26px;padding:24px 20px;width:100%;max-width:440px;animation:fadeUp .3s ease}
 .tour-ic{width:64px;height:64px;border-radius:20px;background:var(--accent-dim);color:var(--accent);display:flex;align-items:center;justify-content:center;margin:0 auto 14px}
 .tour-dots{display:flex;gap:6px;justify-content:center;margin:14px 0}
@@ -1751,7 +1751,7 @@ try{
 .hsd-bg{fill:none;stroke:var(--solid);stroke-width:6}
 .hsd-fg{fill:none;stroke-width:6;stroke-linecap:round;transition:stroke-dashoffset .7s ease}
 .hsd-num{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-family:'Bebas Neue';font-size:16px;color:var(--text)}
-.hsd-lbl{font-size:10.5px;font-weight:800;color:var(--text3);text-transform:uppercase;letter-spacing:.04em;text-align:center}
+.hsd-lbl{font-size:10.5px;font-weight:800;color:var(--text3);;text-align:center}
 .hsd-sub{font-size:10px;font-weight:700;color:var(--text3);text-align:center;margin-top:-3px}
 </style>
 <script>
@@ -1806,7 +1806,7 @@ try{
 <style>
 .wtr-track{display:flex;gap:4px}
 .wtr-seg{flex:1;height:26px;border-radius:7px;transition:background .3s ease}
-.wtr-seg.full{background:linear-gradient(180deg,#22C7EE,#06B6D4)}
+.wtr-seg.full{background:var(--cyan)}
 .wtr-seg.empty{background:var(--solid)}
 .wtr-done{display:inline-flex;align-items:center;gap:5px;background:var(--green-dim);color:var(--green);padding:4px 10px;border-radius:99px;font-size:11px;font-weight:800}
 </style>
@@ -1876,7 +1876,7 @@ function tourNext(){
 </script>
 <style>
 .wtr2-bar{position:relative;height:34px;border-radius:12px;background:var(--solid);overflow:hidden}
-.wtr2-fill{height:100%;border-radius:12px;background:linear-gradient(90deg,#25C9EF,#0899C7);transition:width .5s ease}
+.wtr2-fill{height:100%;border-radius:12px;background:#0899C7;transition:width .5s ease}
 .wtr2-pct{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-family:'Bebas Neue';font-size:17px;color:#fff;text-shadow:0 1px 3px rgba(0,60,90,.5);letter-spacing:.04em}
 .wtr2-add{width:54px;height:54px;border-radius:50%;background:var(--accent);color:#fff;border:none;display:flex;align-items:center;justify-content:center;box-shadow:0 8px 18px rgba(13,155,232,.4);flex-shrink:0}
 .shop-item{display:flex;align-items:center;gap:11px;padding:11px 4px;border-bottom:1px solid var(--border);cursor:pointer}
@@ -2053,7 +2053,7 @@ async function toggleNotifyUI(){
 </script>
 <style>
 .pg-bar{height:10px;border-radius:99px;background:var(--solid);overflow:hidden;margin-top:8px}
-.pg-bar-in{height:100%;border-radius:99px;background:linear-gradient(90deg,#0D9BE8,#06B6D4);transition:width .5s ease}
+.pg-bar-in{height:100%;border-radius:99px;background:var(--accent);transition:width .5s ease}
 .lvl-chip{padding:8px 14px;border-radius:99px;background:var(--surface);border:1.5px solid var(--border);font-size:12px;font-weight:800;color:var(--text2);flex-shrink:0}
 .lvl-chip.active{background:var(--accent);border-color:var(--accent);color:#fff}
 </style>
