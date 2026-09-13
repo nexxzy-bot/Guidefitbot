@@ -273,7 +273,6 @@ body{touch-action:manipulation}
     <div class="subtle" style="font-size:12px;font-weight:600;margin-top:4px">потреблено сегодня</div>
   </div>
   <div class="bar-chart" id="barChart"></div>
-  </div>
   <div class="card mb4" style="margin-top:14px"><h3 class="mb3">Вес</h3><div id="weightChart" style="height:170px"></div>
     <div class="flex gap2 mt3"><input type="number" step="0.1" class="input" id="newWeight" placeholder="Вес, кг" style="flex:1"><button class="btn btn-primary" onclick="saveWeight()">Сохранить</button></div></div>
 </div>
@@ -633,6 +632,12 @@ function obRender(){
 async function loadDashboard(){
   if(!currentUser) return;
   const tgId = currentUser.tg_id;
+  try{
+    const st = await api('/api/user/program/' + encodeURIComponent(tgId));
+    const ap = st && st.program;
+    _apId = (ap && ap.program_id) || null;
+    _apDay = ap ? (((ap.current_week || 1) - 1) * 7 + (ap.current_day || 1)) : 1;
+  }catch(e){ _apId = null; }
   try{
     const data = await api('/api/dashboard', { method:'POST', body:{ tg_id: tgId } });
     const hour = new Date().getHours();
@@ -1143,7 +1148,8 @@ async function logCurrentMeal(){
   try{
     await api('/api/log-meal', { method:'POST', body:{ tg_id: currentUser.tg_id, recipe_id: currentMealRecipe.id } });
     showSuccess('«' + currentMealRecipe.title + '» записано! 🍽️');
-    navigate('nutrition');
+    navigate('home');
+    loadDashboard();
   }catch(e){ showError(e.message); }
 }
 
@@ -1616,11 +1622,9 @@ function loadSettings(){
       '<p class="subtle mt2" style="font-size:11.5px">После сохранения норма калорий пересчитается автоматически.</p></div>' +
     '<div class="card mb4"><h3 class="mb3">Приёмы пищи в день</h3><div class="flex gap2">' +
       [2,3,4,5,6].map(n => '<button class="chip pressable' + (u.meal_count===n?' active':'') + '" id="mc' + n + '" onclick="setMealCount(' + n + ')">' + n + '</button>').join('') + '</div></div>' +
-    '<div class="card mb4"><h3 class="mb3">Нормы БЖУ</h3><div id="macroBars"></div></div>' +
     '<div class="card mb4"><h3 class="mb3">Уведомления</h3><button class="btn btn-ghost btn-block pressable" onclick="toggleNotifyUI()" style="display:flex;align-items:center;justify-content:center;gap:8px">' + ic('sparkles',16) + ' <span id="notifyLbl">Уведомления: …</span></button></div>' +
     '<a href="https://t.me/nexxdsgn" target="_blank" rel="noopener" class="btn btn-ghost btn-block pressable" style="text-decoration:none;display:flex;align-items:center;justify-content:center;gap:8px">' + ic('person',16) + ' Написать в поддержку · t.me/nexxdsgn</a>' +
     '<button class="btn btn-ghost btn-block pressable mt2" onclick="doLogout()" style="display:flex;align-items:center;justify-content:center;gap:8px;color:#e0504b"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg> Выйти</button>';
-  try{ renderNormBars(u); }catch(e){}
   const nl = document.getElementById('notifyLbl');
   if(nl) nl.textContent = 'Уведомления: ' + ((u.notify_enabled) ? 'включены' : 'выключены');
 }
@@ -1901,10 +1905,10 @@ function renderHomeDonuts(){
   const pct = Math.min(waterMl / norm, 1);
   const full = waterMl >= norm;
   grid.innerHTML =
-    '<div id="streakPlate" style="grid-column:1/-1;display:flex;align-items:center;gap:10px;background:var(--surface);border:1px solid var(--border);border-radius:18px;padding:11px 14px;box-shadow:var(--sh-sm)">' +
+    '<div id="streakPlate" class="pressable" onclick="goStreak()" style="grid-column:1/-1;display:flex;align-items:center;gap:10px;background:var(--surface);border:1px solid var(--border);border-radius:18px;padding:11px 14px;box-shadow:var(--sh-sm);cursor:pointer">' +
       '<div style="width:38px;height:38px;border-radius:13px;background:var(--amber-dim);color:var(--amber);display:flex;align-items:center;justify-content:center;flex-shrink:0">' + ic('flame',20) + '</div>' +
       '<div style="flex:1;min-width:0"><div style="font-weight:800;font-size:13.5px">' + (streak > 0 ? 'Серия: ' + streak + ' ' + plural(streak,'день','дня','дней') : 'Серия: начни сегодня') + '</div>' +
-      '<div class="subtle" style="font-size:11px">Тренируйся каждый день — огонёк растёт</div></div></div>' +
+      '<div class="subtle" style="font-size:11px">' + (_apId ? 'Продолжай программу — серия растёт' : 'Тренируйся каждый день — огонёк растёт') + '</div></div></div>' +
     '<div class="card" id="waterCard" style="grid-column:1/-1;padding:16px;margin-bottom:0">' +
       '<div class="flex between items-center mb2">' +
         '<div style="font-weight:800;font-size:14px;display:flex;align-items:center;gap:7px;color:var(--blue)">' + ic('droplet',17) + ' Вода' + (full ? ' · норма выпита!' : '') + '</div>' +
@@ -1969,24 +1973,6 @@ async function undoWater(){
   }catch(e){ showToast('Ошибка', 'err'); }
 }
 
-try{
-  const _ldOrig = loadDashboard;
-  loadDashboard = async function(){
-    const r = _ldOrig.apply(this, arguments);
-    try{
-      const st = await api('/api/user/program/' + ((currentUser && currentUser.tg_id) || ''));
-      const ap = st && st.program;
-      _apId = (ap && ap.program_id) || null;
-      _apDay = ap ? (((ap.current_week || 1) - 1) * 7 + (ap.current_day || 1)) : 1;
-      const plate = document.getElementById('streakPlate');
-      if(plate){
-        const sub = plate.querySelector('.subtle');
-        if(sub && _apId){ sub.textContent = 'Продолжай программу — серия растёт'; }
-      }
-    }catch(e){ _apId = null; }
-    return r;
-  };
-}catch(e){}
 try{
   const _op16 = openProgram;
   openProgram = async function(id){
