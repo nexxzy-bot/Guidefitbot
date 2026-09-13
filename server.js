@@ -261,6 +261,25 @@ app.post('/api/user/update', (req, res) => {
   });
 });
 
+/* ================= удаление всех данных пользователя (152-ФЗ, ст. 21) ================= */
+app.post('/api/user/delete', (req, res) => {
+  const tgId = resolveTgId(req);
+  if (!tgId) return res.status(401).json({ error: 'Unauthorized' });
+  db.serialize(() => {
+    db.run("DELETE FROM workout_sets WHERE log_id IN (SELECT id FROM workout_logs WHERE tg_id = ?)", [tgId]);
+    db.run("DELETE FROM workout_logs WHERE tg_id = ?", [tgId]);
+    db.run("DELETE FROM food_logs WHERE tg_id = ?", [tgId]);
+    db.run("DELETE FROM water_logs WHERE tg_id = ?", [tgId]);
+    db.run("DELETE FROM weight_logs WHERE tg_id = ?", [tgId]);
+    db.run("DELETE FROM user_programs WHERE tg_id = ?", [tgId]);
+    db.run("DELETE FROM notification_log WHERE tg_id = ?", [tgId]);
+    db.run("DELETE FROM users WHERE tg_id = ?", [tgId], (err) => {
+      if (err) return res.status(500).json({ error: err.message });
+      res.json({ status: 'ok' });
+    });
+  });
+});
+
 /* ================= Pexels фото ================= */
 async function fetchPexelsPhoto(query) {
   const key = process.env.PEXELS_API_KEY;

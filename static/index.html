@@ -570,6 +570,7 @@ function obNext(){
   if(s === 8){ obGo(9); return; }
 }
 async function obFinish(){
+  if(!ob || !ob.consent){ showError('Подтверди согласие с политикой и соглашением'); return; }
   const data = { tg_id: myTgId(), name: ob.name, gender: ob.gender, age: ob.age, height: ob.height,
     current_weight: ob.weight, target_weight: ob.target, goal: ob.goal, activity_level: ob.activity,
     meal_count: ob.meal_count || 3 };
@@ -581,6 +582,13 @@ async function obFinish(){
     navigate('home');
     showSuccess('Готово! Профиль создан');
   }catch(e){ showError(e.message); }
+}
+function obConsent(v){
+  if(!ob) return;
+  ob.consent = v === true;
+  const b = document.getElementById('obStartBtn');
+  if(b){ b.style.opacity = ob.consent ? '' : '.45'; b.style.pointerEvents = ob.consent ? '' : 'none'; }
+  if(typeof haptic === 'function') haptic();
 }
 function obRender(){
   const box = document.getElementById('onboardBox');
@@ -617,12 +625,15 @@ function obRender(){
     const gl = { lose:'Похудение', gain:'Набор', maintain:'Поддержание' }[ob.goal] || '';
     h += '<div class="text-center" style="padding-top:14px"><div style="width:84px;height:84px;border-radius:28px;background:var(--accent-dim);color:var(--accent);display:flex;align-items:center;justify-content:center;margin:0 auto 16px">' + ic('check',40) + '</div>' +
       '<h1 style="margin-bottom:10px">Готово!</h1>' +
-      '<p class="muted" style="font-size:14px;line-height:1.6">' + esc(ob.name) + ', ' + gl + ': ' + ob.weight + ' → ' + ob.target + ' кг. Рассчитаем норму и подберём программу.</p></div>';
+      '<p class="muted" style="font-size:14px;line-height:1.6">' + esc(ob.name) + ', ' + gl + ': ' + ob.weight + ' → ' + ob.target + ' кг. Рассчитаем норму и подберём программу.</p></div>' +
+      '<label class="pressable" style="display:flex;gap:10px;align-items:flex-start;margin-top:18px;text-align:left;cursor:pointer">' +
+      '<input type="checkbox" id="obConsent"' + (ob.consent ? ' checked' : '') + ' onchange="obConsent(this.checked)" style="width:20px;height:20px;margin-top:2px;accent-color:var(--accent);flex-shrink:0">' +
+      '<span style="font-size:12.5px;line-height:1.55">Я соглашаюсь с <a href="/privacy.html" target="_blank" onclick="event.stopPropagation()">Политикой обработки персональных данных</a> и <a href="/terms.html" target="_blank" onclick="event.stopPropagation()">Пользовательским соглашением</a><br><span class="subtle" style="font-size:11.5px">включая данные о весе, росте и пищевых привычках</span></span></label>';
   }
   h += '<div class="flex gap2" style="margin-top:26px">' +
     (s > 0 && s < 9 ? '<button class="btn btn-ghost pressable" style="flex:1" onclick="obBack()">Назад</button>' : '') +
     (s < 9 ? '<button class="btn btn-primary pressable" style="flex:2" onclick="obNext()">' + (s === 0 ? 'Начать' : 'Далее') + '</button>'
-           : '<button class="btn btn-primary btn-block pressable" onclick="obFinish()">Начинаем!</button>') +
+           : '<button id="obStartBtn" class="btn btn-primary btn-block pressable" onclick="obFinish()" style="' + (ob.consent ? '' : 'opacity:.45;pointer-events:none') + '">Начинаем!</button>') +
     '</div>';
   box.innerHTML = h;
   obHydrate(box);
@@ -1624,7 +1635,9 @@ function loadSettings(){
       [2,3,4,5,6].map(n => '<button class="chip pressable' + (u.meal_count===n?' active':'') + '" id="mc' + n + '" onclick="setMealCount(' + n + ')">' + n + '</button>').join('') + '</div></div>' +
     '<div class="card mb4"><h3 class="mb3">Уведомления</h3><button class="btn btn-ghost btn-block pressable" onclick="toggleNotifyUI()" style="display:flex;align-items:center;justify-content:center;gap:8px">' + ic('sparkles',16) + ' <span id="notifyLbl">Уведомления: …</span></button></div>' +
     '<a href="https://t.me/nexxdsgn" target="_blank" rel="noopener" class="btn btn-ghost btn-block pressable" style="text-decoration:none;display:flex;align-items:center;justify-content:center;gap:8px">' + ic('person',16) + ' Написать в поддержку · t.me/nexxdsgn</a>' +
-    '<button class="btn btn-ghost btn-block pressable mt2" onclick="doLogout()" style="display:flex;align-items:center;justify-content:center;gap:8px;color:#e0504b"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg> Выйти</button>';
+    '<a href="/privacy.html" target="_blank" rel="noopener" class="btn btn-ghost btn-block pressable mt2" style="text-decoration:none;display:flex;align-items:center;justify-content:center;gap:8px">Политика конфиденциальности</a>' +
+    '<button class="btn btn-ghost btn-block pressable mt2" onclick="doLogout()" style="display:flex;align-items:center;justify-content:center;gap:8px;color:#e0504b"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg> Выйти</button>' +
+    '<button class="btn btn-danger btn-block pressable mt2" onclick="doDeleteData()" style="display:flex;align-items:center;justify-content:center;gap:8px">Удалить мои данные</button>';
   const nl = document.getElementById('notifyLbl');
   if(nl) nl.textContent = 'Уведомления: ' + ((u.notify_enabled) ? 'включены' : 'выключены');
 }
@@ -1633,6 +1646,16 @@ function doLogout(){
   try{ localStorage.clear(); }catch(e){}
   try{ if(sessionStorage) sessionStorage.clear(); }catch(e){}
   location.reload();
+}
+async function doDeleteData(){
+  if(!currentUser) return;
+  if(!confirm('Все ваши данные будут удалены безвозвратно. Продолжить?')) return;
+  try{
+    await api('/api/user/delete', { method:'POST', body:{ tg_id: currentUser.tg_id } });
+    try{ localStorage.clear(); }catch(e){}
+    try{ if(sessionStorage) sessionStorage.clear(); }catch(e){}
+    location.reload();
+  }catch(e){ showError(e.message); }
 }
 try{
   document.addEventListener('change', function(e){
