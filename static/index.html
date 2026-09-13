@@ -347,8 +347,14 @@ body{touch-action:manipulation}
 
 <!-- ПРОФИЛЬ -->
 <div class="screen" id="screen-profile">
-  <div style="padding:8px 0 18px"><h2>Настройки</h2></div>
+  <div style="padding:8px 0 18px"><h2>Профиль</h2></div>
   <div id="profileContent"></div>
+</div>
+
+<!-- НАСТРОЙКИ -->
+<div class="screen" id="screen-settings">
+  <div class="flex items-center gap2" style="padding:8px 0 18px"><button class="icon-btn pressable" aria-label="Назад" onclick="navigate('profile')"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg></button><h2 style="font-size:19px">Настройки</h2></div>
+  <div id="settingsContent"></div>
 </div>
 
 <nav class="bottom-nav" id="bottomNav" style="display:none">
@@ -356,7 +362,7 @@ body{touch-action:manipulation}
   <button class="nav-item" data-tab="stats" onclick="navigate('stats')"><div class="pill"><svg viewBox="0 0 24 24"><path d="M18 20V10"/><path d="M12 20V4"/><path d="M6 20v-6"/></svg><span>Стат.</span></div></button>
   <button class="nav-item" data-tab="workouts" onclick="navigate('workouts')"><div class="pill"><svg viewBox="0 0 24 24"><path d="M6.5 6.5h11"/><path d="M6.5 17.5h11"/><path d="M6 20v-6a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v6"/><path d="M6 10V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v6"/></svg><span>Тренировки</span></div></button>
   <button class="nav-item" data-tab="nutrition" onclick="navigate('nutrition')"><div class="pill"><svg viewBox="0 0 24 24"><path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0L12 2.69z"/><path d="M12 22v-8"/></svg><span>Еда</span></div></button>
-  <button class="nav-item" data-tab="profile" onclick="navigate('profile')"><div class="pill"><svg viewBox="0 0 24 24"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg><span>Настройки</span></div></button>
+  <button class="nav-item" data-tab="profile" onclick="navigate('profile')"><div class="pill"><svg viewBox="0 0 24 24"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg><span>Профиль</span></div></button>
 </nav>
 </div>
 
@@ -472,6 +478,7 @@ function navigate(screen){
   if(screen==='workouts') loadWorkouts();
   if(screen==='nutrition') loadNutrition();
   if(screen==='profile') loadProfile();
+  if(screen==='settings') loadSettings();
 }
 if(tg && tg.BackButton){
   tg.BackButton.onClick(()=>{
@@ -1495,31 +1502,20 @@ async function loadProfile(){
       api('/api/user/' + tgId), api('/api/weight/' + tgId), api('/api/achievements/' + tgId)
     ]);
     currentUser = user;
-    const goalChips = [['lose','Похудение'],['maintain','Поддержание'],['gain','Набор массы']].map(g =>
-      '<label class="chip pressable' + (user.goal===g[0]?' active':'') + '" style="cursor:pointer"><input type="radio" name="setGoal" value="' + g[0] + '"' + (user.goal===g[0]?' checked':'') + ' style="display:none">' + g[1] + '</label>').join('');
+    const gt = user.goal === 'lose' ? 'Похудение' : user.goal === 'gain' ? 'Набор' : 'Поддержание';
     c.innerHTML =
       '<div class="card mb4" style="text-align:center;padding:22px 18px">' +
         '<div class="avatar" style="width:84px;height:84px;font-size:32px;margin:0 auto 12px" id="profAvatar">' + esc(user.name.charAt(0).toUpperCase()) + '</div>' +
         '<h2 style="font-size:26px">' + esc(user.name) + '</h2>' +
         '<p class="muted" style="font-size:13px;margin:4px 0 12px">' + user.calorie_norm + ' ккал в день · ' + user.meal_count + ' ' + plural(user.meal_count,'приём','приёма','приёмов') + ' пищи</p>' +
-        '<span class="badge badge-violet">' + (user.gender==='male'?'Мужчина':'Женщина') + '</span></div>' +
-      themeBlock() +
-      '<div class="card mb4"><h3 class="mb3">Мои данные</h3>' +
-        '<div class="set-field"><label class="input-label">Имя</label><input class="input" id="setName" value="' + esc(user.name) + '"></div>' +
-        '<div class="grid2">' +
-          '<div class="set-field"><label class="input-label">Возраст</label><input class="input" type="number" id="setAge" value="' + user.age + '"></div>' +
-          '<div class="set-field"><label class="input-label">Рост, см</label><input class="input" type="number" id="setHeight" value="' + user.height + '"></div>' +
-          '<div class="set-field"><label class="input-label">Вес, кг</label><input class="input" type="number" step="0.1" id="setWeight" value="' + user.current_weight + '"></div>' +
-          '<div class="set-field"><label class="input-label">Целевой вес</label><input class="input" type="number" step="0.1" id="setTarget" value="' + user.target_weight + '"></div>' +
-        '</div>' +
-        '<label class="input-label">Цель</label><div class="flex gap2 mb3" style="flex-wrap:wrap">' + goalChips + '</div>' +
-        '<button class="btn btn-primary btn-block pressable" onclick="saveProfileSettings()">Сохранить</button>' +
-        '<p class="subtle mt2" style="font-size:11.5px">После сохранения норма калорий пересчитается автоматически.</p></div>' +
-      '<div class="card mb4"><h3 class="mb3">Приёмы пищи в день</h3><div class="flex gap2">' +
-        [2,3,4,5,6].map(n => '<button class="chip pressable' + (user.meal_count===n?' active':'') + '" id="mc' + n + '" onclick="setMealCount(' + n + ')">' + n + '</button>').join('') + '</div></div>' +
-      '<div class="card mb4"><h3 class="mb3">Нормы БЖУ</h3><div id="macroBars"></div></div>' +
-      '<div class="flex between items-center mb3"><h3>Достижения</h3><span class="badge badge-amber" id="achCount"></span></div><div id="achList"></div>';
-    try{ renderNormBars(user); }catch(e){}
+        '<div class="flex gap2" style="flex-wrap:wrap;justify-content:center"><span class="badge badge-accent">' + gt + '</span><span class="badge badge-violet">' + (user.gender==='male'?'Мужчина':'Женщина') + '</span></div></div>' +
+      '<div class="card mb4"><div class="flex between items-center"><div>' +
+        '<h3 style="font-size:14px" class="mb2">Текущий вес</h3>' +
+        '<div style="font-family:\'Bebas Neue\';font-size:36px;line-height:1">' + user.current_weight + ' <span class="muted" style="font-family:Manrope;font-size:12px;font-weight:700">кг</span></div>' +
+        '<p class="subtle" style="font-size:11px;margin-top:3px">цель: ' + user.target_weight + ' кг</p></div>' +
+        '<button class="btn btn-primary pressable" style="font-size:12.5px;padding:10px 14px" onclick="navigate(\'stats\')">Добавить взвешивание</button></div></div>' +
+      '<div class="flex between items-center mb3"><h3>Достижения</h3><span class="badge badge-amber" id="achCount"></span></div><div id="achList"></div>' +
+      '<button class="btn btn-ghost btn-block pressable mb4" onclick="navigate(\'settings\')" style="display:flex;align-items:center;justify-content:center;gap:8px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 1v4m0 14v4M4.2 4.2l2.8 2.8m10 10 2.8 2.8M1 12h4m14 0h4M4.2 19.8l2.8-2.8m10-10 2.8-2.8"/></svg> Настройки</button>';
     try{
       const tgu = (typeof tg !== 'undefined' && tg && tg.initDataUnsafe && tg.initDataUnsafe.user) ? tg.initDataUnsafe.user : null;
       if(tgu && tgu.photo_url){ const av = document.getElementById('profAvatar'); if(av) av.innerHTML = '<img src="' + tgu.photo_url + '" referrerpolicy="no-referrer" loading="lazy" decoding="async" alt="">'; }
@@ -1536,6 +1532,41 @@ async function loadProfile(){
       (a.unlocked ? '' : ic('lock',16)) + '</div>').join('') || '<div class="empty">Пока нет достижений</div>';
   }catch(e){ c.innerHTML = '<div class="empty">Не удалось загрузить</div>'; }
   _profileLoading = false;
+}
+function loadSettings(){
+  const c = $('settingsContent');
+  if(!c || !currentUser) return;
+  const u = currentUser;
+  const goalChips = [['lose','Похудение'],['maintain','Поддержание'],['gain','Набор массы']].map(g =>
+    '<label class="chip pressable' + (u.goal===g[0]?' active':'') + '" style="cursor:pointer"><input type="radio" name="setGoal" value="' + g[0] + '"' + (u.goal===g[0]?' checked':'') + ' style="display:none">' + g[1] + '</label>').join('');
+  c.innerHTML =
+    themeBlock() +
+    '<div class="card mb4"><h3 class="mb3">Мои данные</h3>' +
+      '<div class="set-field"><label class="input-label">Имя</label><input class="input" id="setName" value="' + esc(u.name) + '"></div>' +
+      '<div class="grid2">' +
+        '<div class="set-field"><label class="input-label">Возраст</label><input class="input" type="number" id="setAge" value="' + u.age + '"></div>' +
+        '<div class="set-field"><label class="input-label">Рост, см</label><input class="input" type="number" id="setHeight" value="' + u.height + '"></div>' +
+        '<div class="set-field"><label class="input-label">Вес, кг</label><input class="input" type="number" step="0.1" id="setWeight" value="' + u.current_weight + '"></div>' +
+        '<div class="set-field"><label class="input-label">Целевой вес</label><input class="input" type="number" step="0.1" id="setTarget" value="' + u.target_weight + '"></div>' +
+      '</div>' +
+      '<label class="input-label">Цель</label><div class="flex gap2 mb3" style="flex-wrap:wrap">' + goalChips + '</div>' +
+      '<button class="btn btn-primary btn-block pressable" onclick="saveProfileSettings()">Сохранить</button>' +
+      '<p class="subtle mt2" style="font-size:11.5px">После сохранения норма калорий пересчитается автоматически.</p></div>' +
+    '<div class="card mb4"><h3 class="mb3">Приёмы пищи в день</h3><div class="flex gap2">' +
+      [2,3,4,5,6].map(n => '<button class="chip pressable' + (u.meal_count===n?' active':'') + '" id="mc' + n + '" onclick="setMealCount(' + n + ')">' + n + '</button>').join('') + '</div></div>' +
+    '<div class="card mb4"><h3 class="mb3">Нормы БЖУ</h3><div id="macroBars"></div></div>' +
+    '<div class="card mb4"><h3 class="mb3">Уведомления</h3><button class="btn btn-ghost btn-block pressable" onclick="toggleNotifyUI()" style="display:flex;align-items:center;justify-content:center;gap:8px">' + ic('sparkles',16) + ' <span id="notifyLbl">Уведомления: …</span></button></div>' +
+    '<a href="https://t.me/nexxdsgn" target="_blank" rel="noopener" class="btn btn-ghost btn-block pressable" style="text-decoration:none;display:flex;align-items:center;justify-content:center;gap:8px">' + ic('person',16) + ' Написать в поддержку · t.me/nexxdsgn</a>' +
+    '<button class="btn btn-ghost btn-block pressable mt2" onclick="doLogout()" style="display:flex;align-items:center;justify-content:center;gap:8px;color:#e0504b"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg> Выйти</button>';
+  try{ renderNormBars(u); }catch(e){}
+  const nl = document.getElementById('notifyLbl');
+  if(nl) nl.textContent = 'Уведомления: ' + ((u.notify_enabled) ? 'включены' : 'выключены');
+}
+function doLogout(){
+  if(typeof haptic === 'function') haptic();
+  try{ localStorage.clear(); }catch(e){}
+  try{ if(sessionStorage) sessionStorage.clear(); }catch(e){}
+  location.reload();
 }
 try{
   document.addEventListener('change', function(e){
@@ -1820,28 +1851,7 @@ async function undoWater(){
     setTimeout(renderHomeDonuts, 600);
   }catch(e){ showToast('Ошибка', 'err'); }
 }
-try{
-  const _lp16 = loadProfile;
-  loadProfile = function(){
-    const r = _lp16.apply(this, arguments);
-    const attach = function(){
-      const c = document.getElementById('profileContent');
-      if(!c || document.getElementById('supportCard')) return;
-      const card = document.createElement('div');
-      card.className = 'card mb4'; card.id = 'supportCard';
-      card.innerHTML = '<h3 class="mb3">Помощь</h3>' +
-        '<a href="https://t.me/nexxdsgn" target="_blank" rel="noopener" class="btn btn-ghost btn-block pressable" style="text-decoration:none;display:flex;align-items:center;gap:8px">' + ic('person',16) + ' Написать в поддержку · t.me/nexxdsgn</a>' +
-        '<button class="btn btn-ghost btn-block pressable mt2" onclick="toggleNotifyUI()" style="display:flex;align-items:center;gap:8px">' + ic('sparkles',16) + ' <span id="notifyLbl">Уведомления: …</span></button>' +
-        '<p class="subtle mt2" style="font-size:11px">Напоминания о приёмах пищи, взвешивании и недельный отчёт по понедельникам.</p>';
-      c.appendChild(card);
-      const l = document.getElementById('notifyLbl');
-      if(l) l.textContent = 'Уведомления: ' + ((currentUser && currentUser.notify_enabled) ? 'включены' : 'выключены');
-    };
-    if(r && typeof r.then === 'function') r.then(function(){ setTimeout(attach, 100); });
-    else setTimeout(attach, 500);
-    return r;
-  };
-}catch(e){}
+
 try{
   const _ldOrig = loadDashboard;
   loadDashboard = async function(){
