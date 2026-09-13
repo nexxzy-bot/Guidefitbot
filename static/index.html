@@ -1978,10 +1978,12 @@ async function loadWorkouts(){
     const types = woGoal === 'fat' ? ['hiit','cardio','mix'] : ['strength'];
     let list = (d.programms || d.programs || []).filter(p => types.includes(p.type) && p.location !== 'gym');
     let active = null;
+    let apTotal = 0;
     try{
       const st = await api('/api/user/program/' + ((currentUser && currentUser.tg_id) || ''));
       const ap = st && st.program;
       if(ap && ap.program_id){
+        apTotal = ap.total_days || 0;
         const all = d.programms || d.programs || [];
         active = list.find(p => p.id === ap.program_id) || all.find(p => p.id === ap.program_id) || null;
         if(active) list = list.filter(p => p.id !== ap.program_id);
@@ -1994,7 +1996,7 @@ async function loadWorkouts(){
       : 'Силовые тренировки на тонус. Мышцы — главный расходник калорий в покое.') + '</p>';
     if(!list.length && !active) html += '<div class="empty">Ничего не найдено</div>';
     if(active){
-      const apd = active.total_days || (active.days && active.days.length) || 1;
+      const apd = apTotal || active.total_days || (active.days && active.days.length) || 0;
       html += '<div class="prog-card pressable" style="border:1.5px solid var(--accent)" onclick="openProgram(' + active.id + ')">' +
         '<div class="flex between items-center"><h3 style="font-size:17px">' + esc(active.name) + '</h3>' +
         '<span class="badge badge-accent">Твоя программа</span></div>' +
@@ -2002,7 +2004,7 @@ async function loadWorkouts(){
         '<span class="badge badge-blue">' + esc(active.location==='home'?'Дома':active.location==='gym'?'В зале':'На улице') + '</span>' +
         '<span class="badge badge-violet">' + (active.type==='hiit'?'HIIT':active.type==='cardio'?'Кардио':active.type==='strength'?'Силовая':'Микс') + '</span></div>' +
         '<p class="muted" style="font-size:12.5px;line-height:1.6">' + esc(active.description) + '</p>' +
-        '<div class="subtle" style="font-size:11.5px;font-weight:800;margin-top:8px">день ' + (_apDay || 1) + ' из ' + apd + '</div>' +
+        '<div class="subtle" style="font-size:11.5px;font-weight:800;margin-top:8px">' + (apd ? ('день ' + (_apDay || 1) + ' из ' + apd) : ('день ' + (_apDay || 1))) + '</div>' +
         '<div class="track" style="margin-top:6px"><div class="fill fill-accent" style="width:' + (apd ? Math.min((_apDay - 1) / apd * 100, 100) : 0) + '%"></div></div></div>';
     }
     if(woLevel === 'all'){
