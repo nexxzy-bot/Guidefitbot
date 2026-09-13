@@ -59,8 +59,8 @@ select.input{appearance:none}
 .sel-btn .ic{display:flex;background:var(--solid);border-radius:13px;padding:9px;color:var(--accent);transition:all .15s ease}
 .sel-btn .tx{color:var(--text)}
 .sel-btn .sb{font-size:10.5px;font-weight:700;color:var(--text3)}
-.sel-btn.active{border-color:var(--accent);background:var(--accent-dim);color:var(--accent-dark)}
-.sel-btn.active .ic{background:var(--accent);color:#fff}
+.sel-btn.active{border-color:var(--accent);background:var(--accent-dim)}
+.sel-btn.active .ic{background:var(--solid);color:var(--accent)}
 .sel-btn.active .tx,.sel-btn.active .sb{color:var(--accent-dark)}
 .icon-btn{width:42px;height:42px;border-radius:50%;background:var(--surface);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;color:var(--text2);flex-shrink:0;box-shadow:var(--sh-sm)}
 .hero-card{background:linear-gradient(135deg,#17A9F0 0%,#0D9BE8 45%,#0768B4 100%);border-radius:26px;padding:22px;margin-bottom:12px;color:#fff;display:flex;align-items:center;justify-content:space-between;gap:14px;box-shadow:0 16px 36px rgba(13,140,220,.38)}
@@ -169,8 +169,6 @@ select.input{appearance:none}
 .ex-info{margin-top:10px;background:var(--solid);border-radius:14px;padding:12px}
 .ex-tips{margin:0 0 0 16px}
 .ex-tips li{font-size:12.5px;color:var(--text2);line-height:1.6;margin-bottom:4px}
-.legend-row{display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--text2);margin-bottom:8px}
-.legend-dot{width:10px;height:10px;border-radius:4px;flex-shrink:0}
 
 .ex-steps{margin:0 0 0 18px}
 .ex-steps li{font-size:12.5px;color:var(--text);line-height:1.6;margin-bottom:7px;font-weight:600}
@@ -200,8 +198,7 @@ body{touch-action:manipulation}
 *{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}
 }
 
-@keyframes cardIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
-.prog-card,.meal-item,.exlib-item,.shop-item{animation:cardIn .3s ease both}
+/* v21: cardIn убран — один плавный fadeUp экрана .25s; наложение двух анимаций давало рывки на Йоге/Профиле */
 .prog-card:nth-child(2),.meal-item:nth-child(2),.exlib-item:nth-child(2){animation-delay:.04s}
 .prog-card:nth-child(3),.meal-item:nth-child(3),.exlib-item:nth-child(3){animation-delay:.08s}
 .prog-card:nth-child(4),.meal-item:nth-child(4),.exlib-item:nth-child(4){animation-delay:.12s}
@@ -314,10 +311,9 @@ body{touch-action:manipulation}
     <div class="subtle" style="font-size:12px;font-weight:600;margin-top:4px">потреблено сегодня</div>
   </div>
   <div class="bar-chart" id="barChart"></div>
-  <div class="stat-grid">
-    <div class="stat-box"><div class="v" id="statsWorkout">—</div><div class="l">Тренировка, мин</div></div>
-    <div class="stat-box"><div class="v" id="statsWeight">—</div><div class="l">Вес / Вода</div></div>
   </div>
+  <div class="card mb4" style="margin-top:14px"><h3 class="mb3">Вес</h3><div id="weightChart" style="height:170px"></div>
+    <div class="flex gap2 mt3"><input type="number" step="0.1" class="input" id="newWeight" placeholder="Вес, кг" style="flex:1"><button class="btn btn-primary" onclick="saveWeight()">Сохранить</button></div></div>
 </div>
 
 <!-- ТРЕНИРОВКИ -->
@@ -329,7 +325,7 @@ body{touch-action:manipulation}
 
 <!-- ПРОГРАММА -->
 <div class="screen" id="screen-program">
-  <div style="padding:8px 0 18px"><h2 style="font-size:19px">Программа</h2></div>
+  <div class="flex items-center gap2" style="padding:8px 0 18px"><button class="icon-btn pressable" aria-label="Назад" onclick="navigate('workouts')"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg></button><h2 style="font-size:19px">Программа</h2></div>
   <div id="programContent"></div>
 </div>
 
@@ -456,16 +452,19 @@ function applyTelegramTheme(){
 
 /* ============ навигация ============ */
 const TABS = ['home','stats','workouts','nutrition','profile'];
+const SCREEN_PARENT = {program:'workouts', 'active-workout':'workouts', settings:'profile', shopping:'nutrition', mealcard:'nutrition'};
 function navigate(screen){
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
   const t = $('screen-'+screen); if(t) t.classList.add('active');
-  const b = document.querySelector('.nav-item[data-tab="'+screen+'"]'); if(b) b.classList.add('active');
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  const parent = SCREEN_PARENT[screen] || screen;
+  const b = document.querySelector('.nav-item[data-tab="'+parent+'"]'); if(b) b.classList.add('active');
   window.scrollTo(0,0);
   backTarget = null;
   if(tg && tg.BackButton){
     if(screen==='program'){ backTarget='workouts'; tg.BackButton.show(); }
     else if(screen==='active-workout'){ tg.BackButton.show(); }
+    else if(SCREEN_PARENT[screen]){ backTarget = SCREEN_PARENT[screen]; tg.BackButton.show(); }
     else tg.BackButton.hide();
   }
   if(screen==='home') loadDashboard();
@@ -684,7 +683,11 @@ async function loadMealImage(recipeId, thumbId){
 async function loadStats(){
   if(!currentUser) return;
   try{
-    const data = await api('/api/stats/' + currentUser.tg_id);
+    const [data, wl] = await Promise.all([
+      api('/api/stats/' + currentUser.tg_id),
+      api('/api/weight/' + currentUser.tg_id).catch(() => ({ history: [] }))
+    ]);
+    renderWeightChart(wl.history || []);
     $('statsCals').textContent = Math.round(data.todayCalories);
     $('statsTarget').textContent = data.targetCalories;
     const chart = $('barChart');
@@ -708,12 +711,19 @@ async function openProgram(id){
     const d = await api('/api/program/' + id);
     currentProgramId = id;  // ← фикс бага №2: id сохраняется ДО выбора дня
     const p = d.program, days = d.days || [];
+    let apW = 0, apD = 0;
+    try{
+      const st = await api('/api/user/program/' + ((currentUser && currentUser.tg_id) || ''));
+      const ap = st && st.program;
+      if(ap && ap.program_id === p.id){ apW = ap.current_week || 1; apD = ap.current_day || 1; }
+    }catch(e){}
+    const contDay = apW ? days.find(x => x.week === apW && x.day === apD) : null;
     const goalNames = {lose:'Похудение', gain:'Набор', maintain:'Поддержание'};
     $('programContent').innerHTML =
       '<div class="card mb4"><h2 style="margin-bottom:4px">' + esc(p.name) + '</h2>' +
       '<p class="muted" style="font-size:13px;line-height:1.5">' + esc(p.description) + '</p>' +
       '<div class="flex gap2 mt3" style="flex-wrap:wrap"><span class="badge badge-violet">' + p.duration_weeks + ' недель</span><span class="badge badge-amber">' + esc(goalNames[p.goal] || p.goal) + '</span><span class="badge badge-green">' + (p.difficulty==='beginner' ? 'Новичок' : 'Средний') + '</span></div></div>' +
-      '<button class="btn btn-primary btn-block mb4" onclick="startProgram(' + p.id + ')">Начать программу</button>' +
+      (contDay ? '<button class="btn btn-primary btn-block mb4" onclick="startProgramDay(' + contDay.id + ')">Продолжить: неделя ' + apW + ', день ' + apD + '</button>' : '<button class="btn btn-primary btn-block mb4" onclick="startProgram(' + p.id + ')">Начать программу</button>') +
       '<h3 class="mb3">Расписание (' + days.length + ' дней)</h3>' +
       days.map(day =>
         '<div class="day-card pressable" onclick="startProgramDay(' + day.id + ')">' +
@@ -1026,28 +1036,6 @@ async function toggleExInfo(i){
     box.dataset.loaded = '1';
   }catch(e){ box.innerHTML = '<div class="empty">Не удалось загрузить</div>'; }
 }
-function renderMacroDonut(user){
-  const box = document.getElementById('macroDonut');
-  if(!box) return;
-  const p = (user.protein_norm || 0) * 4, f = (user.fat_norm || 0) * 9, c = (user.carbs_norm || 0) * 4;
-  const total = p + f + c;
-  if(!total){ box.innerHTML = '<div class="empty">Нормы БЖУ не заданы</div>'; return; }
-  const R = 34, CIRC = 2 * Math.PI * R;
-  const pLen = p/total*CIRC, fLen = f/total*CIRC, cLen = CIRC - pLen - fLen;
-  const pct = v => Math.round(v*100/total);
-  box.innerHTML = '<div class="flex items-center gap2"><div style="position:relative;width:110px;height:110px;flex-shrink:0">' +
-    '<svg width="110" height="110" viewBox="0 0 110 110" style="transform:rotate(-90deg)">' +
-    '<circle cx="55" cy="55" r="' + R + '" fill="none" stroke="var(--solid)" stroke-width="13"/>' +
-    '<circle cx="55" cy="55" r="' + R + '" fill="none" stroke="#0D9BE8" stroke-width="13" stroke-dasharray="' + pLen + ' ' + (CIRC-pLen) + '" stroke-dashoffset="0"/>' +
-    '<circle cx="55" cy="55" r="' + R + '" fill="none" stroke="#F59E0B" stroke-width="13" stroke-dasharray="' + fLen + ' ' + (CIRC-fLen) + '" stroke-dashoffset="' + (-pLen) + '"/>' +
-    '<circle cx="55" cy="55" r="' + R + '" fill="none" stroke="#10B981" stroke-width="13" stroke-dasharray="' + cLen + ' ' + (CIRC-cLen) + '" stroke-dashoffset="' + (-(pLen+fLen)) + '"/>' +
-    '</svg><div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center"><span style="font-family:\'Bebas Neue\';font-size:20px">' + user.calorie_norm + '</span><span class="subtle" style="font-size:9.5px">ккал/день</span></div></div>' +
-    '<div style="flex:1">' +
-    '<div class="legend-row"><span class="legend-dot" style="background:#0D9BE8"></span>Белки <b>' + (user.protein_norm||0) + ' г</b> · ' + pct(p) + '%</div>' +
-    '<div class="legend-row"><span class="legend-dot" style="background:#F59E0B"></span>Жиры <b>' + (user.fat_norm||0) + ' г</b> · ' + pct(f) + '%</div>' +
-    '<div class="legend-row"><span class="legend-dot" style="background:#10B981"></span>Углеводы <b>' + (user.carbs_norm||0) + ' г</b> · ' + pct(c) + '%</div>' +
-    '</div></div>';
-}
 async function loadNextMeal(){
   const area = $('mealCardArea');
   area.innerHTML = '<div class="shimmer" style="height:220px"></div>';
@@ -1115,52 +1103,6 @@ async function deleteMeal(logId){
 }
 
 /* ============ профиль ============ */
-async function loadProfile(){
-  const c = $('profileContent'); const tgId = currentUser && currentUser.tg_id; if(!tgId) return;
-  c.innerHTML = '<div class="shimmer"></div>';
-  try{
-    const [user, weight, ach] = await Promise.all([
-      api('/api/user/' + tgId), api('/api/weight/' + tgId), api('/api/achievements/' + tgId)
-    ]);
-    currentUser = user;
-    const gt = user.goal === 'lose' ? 'Похудение' : user.goal === 'gain' ? 'Набор массы' : 'Поддержание';
-    c.innerHTML =
-      '<div class="card mb4"><div class="flex between items-center"><div>' +
-      '<h2 style="font-size:21px">' + esc(user.name) + '</h2>' +
-      '<p class="muted" style="font-size:13px;margin-top:4px">' + user.age + ' ' + plural(user.age,'год','года','лет') + ' • ' + user.height + ' см • ' + user.current_weight + ' → ' + user.target_weight + ' кг</p></div>' +
-      '<div class="avatar" style="width:84px;height:84px;font-size:32px" id="profAvatar">' + esc(user.name.charAt(0).toUpperCase()) + '</div></div>' +
-      '<div class="flex gap2 mt3" style="flex-wrap:wrap;justify-content:center"><span class="badge badge-accent">' + gt + '</span><span class="badge badge-violet">' + (user.gender==='male'?'Мужчина':'Женщина') + '</span><span class="badge badge-blue">' + user.calorie_norm + ' ккал</span></div></div>' +
-      '<div class="card mb4"><h3 class="mb3">Вес</h3><div id="weightChart" style="height:170px"></div>' +
-      '<div class="flex gap2 mt3"><input type="number" step="0.1" class="input" id="newWeight" placeholder="Вес, кг" style="flex:1"><button class="btn btn-primary" onclick="saveWeight()">Сохранить</button></div></div>' +
-      '<div class="card mb4"><h3 class="mb3">Приёмы пищи в день</h3><div class="flex gap2">' +
-      [2,3,4,5,6].map(n => '<button class="chip' + (user.meal_count===n?' active':'') + '" id="mc' + n + '" onclick="setMealCount(' + n + ')">' + n + '</button>').join('') + '</div></div>' +
-      '<div id="weeklyReport"></div>' +
-      '<div class="flex between items-center mb3"><h3>Достижения</h3><span class="badge badge-amber" id="achCount"></span></div><div id="achList"></div>';
-
-    renderWeightChart(weight.history || []);
-    try{ renderMacroDonut(user.user || user); }catch(e){}
-    try{
-      const tgu = (typeof tg !== 'undefined' && tg && tg.initDataUnsafe && tg.initDataUnsafe.user) ? tg.initDataUnsafe.user : null;
-      if(tgu && tgu.photo_url){ const av = document.getElementById('profAvatar'); if(av) av.innerHTML = '<img src="' + tgu.photo_url + '" referrerpolicy="no-referrer" loading="lazy" decoding="async" alt="">'; }
-    }catch(e){}
-
-    const unlockedCount = (ach.achievements || []).filter(a => a.unlocked).length;
-    if(document.getElementById('achCount')) document.getElementById('achCount').textContent = unlockedCount + ' / ' + (ach.achievements || []).length;
-    if(document.getElementById('achCount')) document.getElementById('achCount').textContent = unlockedCount + ' / ' + (ach.achievements || []).length;
-    const seenKey = 'gf_ach_' + tgId;
-    const seen = parseInt(localStorage.getItem(seenKey) || '0');
-    if(unlockedCount > seen && seen > 0) setTimeout(() => showSuccess('Новое достижение разблокировано!'), 600);
-    localStorage.setItem(seenKey, String(unlockedCount));
-
-    $('achList').innerHTML = (ach.achievements || []).map(a =>
-      '<div class="ach' + (a.unlocked ? '' : ' locked') + '"><div class="ach-ic">' + ic(a.icon || 'trophy', 20) + '</div>' +
-      '<div style="flex:1"><h3 style="font-size:14px">' + esc(a.title) + '</h3><p class="muted" style="font-size:11px">' + esc(a.description) + '</p></div>' +
-      (a.unlocked ? '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>' : '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="2"><path d="M12 2v20M5 12h14"/></svg>') + '</div>'
-    ).join('');
-
-    loadWeeklyReport();
-  }catch(e){}
-}
 
 function renderWeightChart(history){
   const chart = $('weightChart');
@@ -1187,17 +1129,6 @@ function renderWeightChart(history){
   } else chart.innerHTML = '<div class="empty" style="padding:16px">Записывай вес — здесь появится график</div>';
 }
 
-async function loadWeeklyReport(){
-  try{
-    const r = await api('/api/weekly-report/' + currentUser.tg_id);
-    $('weeklyReport').innerHTML = '<div class="card mb4"><h3 class="mb3">Неделя</h3><div class="kpi">' +
-      '<div class="c"><div class="v">' + r.totalWorkouts + '</div><div class="l">Трени</div></div>' +
-      '<div class="c"><div class="v">' + r.totalMinutes + '</div><div class="l">Минут</div></div>' +
-      '<div class="c"><div class="v">' + r.avgCalories + '</div><div class="l">Ккал/д</div></div>' +
-      '<div class="c"><div class="v">' + (r.weightChange > 0 ? '+' : '') + r.weightChange + '</div><div class="l">Кг</div></div></div></div>';
-  }catch(e){}
-}
-
 async function setMealCount(n){
   try{
     await api('/api/user/update', { method:'POST', body:{ tg_id: currentUser.tg_id, meal_count: n } });
@@ -1213,7 +1144,8 @@ async function saveWeight(){
   try{
     await api('/api/weight', { method:'POST', body:{ tg_id: currentUser.tg_id, weight: w } });
     showSuccess('Вес сохранён! ⚖️');
-    loadProfile();
+    if($('screen-stats').classList.contains('active')) loadStats();
+    if($('screen-profile').classList.contains('active')) loadProfile();
   }catch(e){ showError(e.message); }
 }
 
@@ -1305,7 +1237,6 @@ async function woRenderYoga(c){
         '<span class="badge badge-amber">' + esc(f.level) + '</span></div>' +
         '<p class="muted" style="font-size:12.5px;line-height:1.6">' + esc(f.description) + '</p></div>';
     });
-    c.style.animation = 'none'; /* v20: без cardIn на первом экране вкладки — один плавный fade, без наслоения анимаций */
     c.innerHTML = html;
   }catch(e){ c.innerHTML = '<div class="empty">Не удалось загрузить йогу</div>'; }
 }
@@ -1320,6 +1251,21 @@ async function woOpenFlow(id){
     woRenderPose();
   }catch(e){ c.innerHTML = '<div class="empty">Ошибка загрузки</div>'; }
 }
+const YP_EN = {'гора':'mountain pose','предклон':'standing forward bend','планка':'plank pose','чатуранга':'chaturanga','собака мордой вверх':'upward facing dog','собака мордой вниз':'downward facing dog','воин i':'warrior 1 pose','воин ii':'warrior 2 pose','воин 1':'warrior 1 pose','воин 2':'warrior 2 pose','треугольник':'triangle pose','стул':'chair pose','лодка':'boat pose','поза ребёнка':'child pose','ребёнка':'child pose','скрутка лёжа':'supine twist','шавасана':'corpse pose savasana'};
+const _ypUrl = {};
+function ypPhotoFor(name){
+  const n = String(name || '').toLowerCase();
+  for(const k in YP_EN){ if(n.indexOf(k) !== -1) return YP_EN[k]; }
+  return 'yoga pose';
+}
+function loadYpPhoto(name){
+  const el = document.getElementById('ypPhoto'); if(!el) return;
+  const key = ypPhotoFor(name);
+  if(_ypUrl[key]){ el.innerHTML = '<img src="' + _ypUrl[key] + '" alt="" loading="lazy">'; return; }
+  api('/api/ex-photo?q=' + encodeURIComponent(key)).then(d => {
+    if(d && d.url){ _ypUrl[key] = d.url.replace(/"/g, ''); const e2 = document.getElementById('ypPhoto'); if(e2) e2.innerHTML = '<img src="' + _ypUrl[key] + '" alt="" loading="lazy">'; }
+  }).catch(() => {});
+}
 function woRenderPose(){
   const c = document.getElementById('workoutContent');
   const p = yfPoses[yfPoseIdx];
@@ -1333,12 +1279,14 @@ function woRenderPose(){
     '<div class="yp-player">' +
     '<div class="yp-timer" id="ypTime">' + yfLeft + '</div>' +
     '<div class="yp-bar"><div class="yp-bar-in" id="ypBar" style="width:100%"></div></div>' +
+    '<div class="wz-photo yp-photo" id="ypPhoto">' + ic('person',30) + '</div>' +
     '<h2 style="font-size:24px;margin:8px 0 4px">' + esc(p.name) + '</h2>' +
     '<p class="muted" style="font-size:13px;line-height:1.65;text-align:left;margin-top:12px">' + esc(p.how) + '</p>' +
     '<p class="ex-why" style="text-align:left;margin-top:10px"><b>Зачем:</b> ' + esc(p.why) + '</p></div>' +
     '<div class="flex gap2 mt3">' +
     '<button class="btn btn-ghost pressable" style="flex:1" onclick="woPrevPose()">Назад</button>' +
     '<button class="btn btn-primary pressable" style="flex:2" onclick="woNextPose()">' + (yfPoseIdx === total-1 ? 'Завершить' : 'Следующая') + '</button></div>';
+  loadYpPhoto(p.name);
   yfTimer = setInterval(() => {
     yfLeft--;
     const t = document.getElementById('ypTime');
@@ -1567,13 +1515,10 @@ async function loadProfile(){
         '<label class="input-label">Цель</label><div class="flex gap2 mb3" style="flex-wrap:wrap">' + goalChips + '</div>' +
         '<button class="btn btn-primary btn-block pressable" onclick="saveProfileSettings()">Сохранить</button>' +
         '<p class="subtle mt2" style="font-size:11.5px">После сохранения норма калорий пересчитается автоматически.</p></div>' +
-      '<div class="card mb4"><h3 class="mb3">Вес</h3><div id="weightChart" style="height:170px"></div>' +
-        '<div class="flex gap2 mt3"><input type="number" step="0.1" class="input" id="newWeight" placeholder="Вес, кг" style="flex:1"><button class="btn btn-primary" onclick="saveWeight()">Сохранить</button></div></div>' +
       '<div class="card mb4"><h3 class="mb3">Приёмы пищи в день</h3><div class="flex gap2">' +
         [2,3,4,5,6].map(n => '<button class="chip pressable' + (user.meal_count===n?' active':'') + '" id="mc' + n + '" onclick="setMealCount(' + n + ')">' + n + '</button>').join('') + '</div></div>' +
       '<div class="card mb4"><h3 class="mb3">Нормы БЖУ</h3><div id="macroBars"></div></div>' +
       '<div class="flex between items-center mb3"><h3>Достижения</h3><span class="badge badge-amber" id="achCount"></span></div><div id="achList"></div>';
-    renderWeightChart(weight.history || []);
     try{ renderNormBars(user); }catch(e){}
     try{
       const tgu = (typeof tg !== 'undefined' && tg && tg.initDataUnsafe && tg.initDataUnsafe.user) ? tg.initDataUnsafe.user : null;
@@ -1794,6 +1739,7 @@ async function toggleNotifyUI(){
 .bju-val{opacity:.92;font-size:11.5px}
 .bju-track{height:5px;border-radius:99px;background:rgba(255,255,255,.28);overflow:hidden}
 .bju-fill{height:100%;border-radius:99px;transition:width .5s ease}
+.yp-photo{height:180px;margin-bottom:10px}
 </style>
 <script>
 function renderHomeDonuts(){
