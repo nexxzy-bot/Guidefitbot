@@ -15,6 +15,7 @@ Node.js >= 18, Express, SQLite. Фронтенд — один файл static/in
 
 ## .env
 - MINIAPP_PORT — порт (default 3000)
+- MINIAPP_URL — публичный https-адрес мини-аппа (нужен bot.js для кнопки «Открыть GuideFit»)
 - TELEGRAM_TOKEN — токен бота: валидация initData + уведомления
 - PEXELS_API_KEY — фото блюд
 - GEMINI_API_KEY — генерация блюд

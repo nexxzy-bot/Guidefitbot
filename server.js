@@ -939,7 +939,7 @@ app.get('/api/yoga/flow/:id', (req, res) => {
 /* ================= 404 и ошибки ================= */
 app.use('/api', (req, res) => res.status(404).json({ error: 'Not found' }));
 
-const PORT = Number(process.env.MINIAPP_PORT) || 3000;
+const PORT = Number(process.env.PORT || process.env.MINIAPP_PORT) || 3000;
 const server = app.listen(PORT, () => {
   console.log(`GuideFit server started on port ${PORT}`);
 });

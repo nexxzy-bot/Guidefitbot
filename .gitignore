@@ -6,7 +6,5 @@ server.log
 *.bak-*
 static/*.bak*
 nohup.out
-*.bak-*
 sync.log
 sync2.log
-nohup.out

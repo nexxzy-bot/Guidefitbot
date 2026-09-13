@@ -1805,7 +1805,7 @@ async function renderHomeDonuts(){
   ];
   grid.innerHTML = cells.map(c =>
     '<div class="hsd-cell pressable" onclick="' + c.fn + '">' +
-    '<div class="hsd-num-slot">' + hsdRing(c.pct, c.color).replace('</div>', '<span class="hsd-num">' + c.num + '</span></div>') + '</div>' +
+    '<div class="hsd-num-slot">' + hsdRing(c.pct, c.color).replace('</svg></div>', '</svg><span class="hsd-num">' + c.num + '</span></div>') + '</div>' +
     '<div class="hsd-lbl">' + c.lbl + '</div><div class="hsd-sub">' + c.sub + '</div></div>').join('');
 }
 try{
@@ -1832,7 +1832,7 @@ function renderHomeDonuts(){
   if(!grid || !currentUser) return;
   const waterMl = parseInt((document.getElementById('homeWater')||{}).textContent) || 0;
   const streak = parseInt((document.getElementById('homeStreakVal')||{}).textContent) || 0;
-  const norm = currentUser.water_norm || 2000;
+  const norm = currentUser.water_norm || Math.round((parseFloat(currentUser.current_weight) || 70) * 30);
   const glasses = Math.max(4, Math.round(norm / 250));
   const filled = Math.min(glasses, Math.round(waterMl / 250));
   const full = waterMl >= norm;
@@ -1931,7 +1931,7 @@ function renderHomeDonuts(){
   if(!grid || !currentUser) return;
   const waterMl = parseInt((document.getElementById('homeWater')||{}).textContent) || 0;
   const streak = parseInt((document.getElementById('homeStreakVal')||{}).textContent) || 0;
-  const norm = currentUser.water_norm || 2000;
+  const norm = currentUser.water_norm || Math.round((parseFloat(currentUser.current_weight) || 70) * 30);
   const glasses = Math.max(4, Math.round(norm / 250));
   const filled = Math.min(glasses, Math.round(waterMl / 250));
   const pct = Math.min(waterMl / norm, 1);
@@ -1994,11 +1994,13 @@ function renderNormBars(u){
   if(!box) return;
   const kcal = u.calorie_norm || 2000;
   const w = parseFloat(u.current_weight) || 70;
-  const p = Math.round(w * (u.goal === 'gain' ? 2 : 1.6));
+  /* v19: как в calcNorms на сервере — белок 1.8 г/кг (набор 2.0), вода 30 мл/кг */
+  const p = Math.round(w * (u.goal === 'gain' ? 2 : 1.8));
+  const waterNorm = Math.round(w * 30);
   const f = Math.round(w * 1);
   let c = Math.round((kcal - p * 4 - f * 9) / 4);
   if (c < 50) c = 50;
-  const rows = [['Белки', p, 'г', '#0D9BE8'], ['Жиры', f, 'г', '#F59E0B'], ['Углеводы', c, 'г', '#10B981']];
+  const rows = [['Белки', p, 'г', '#0D9BE8'], ['Жиры', f, 'г', '#F59E0B'], ['Углеводы', c, 'г', '#10B981'], ['Вода', waterNorm, 'мл', '#06B6D4']];
   const maxV = Math.max(p, f, c);
   box.innerHTML = rows.map(r =>
     '<div style="margin-bottom:12px"><div class="flex between" style="font-size:12.5px;font-weight:700;margin-bottom:5px"><span>' + r[0] + '</span><span>' + r[1] + ' ' + r[2] + '</span></div>' +
@@ -2079,7 +2081,7 @@ function renderHomeDonuts(){
   if(!grid || !currentUser) return;
   const waterMl = parseInt((document.getElementById('homeWater')||{}).textContent) || 0;
   const streak = parseInt((document.getElementById('homeStreakVal')||{}).textContent) || 0;
-  const norm = currentUser.water_norm || 2000;
+  const norm = currentUser.water_norm || Math.round((parseFloat(currentUser.current_weight) || 70) * 30);
   const glasses = Math.max(4, Math.round(norm / 250));
   const filled = Math.min(glasses, Math.round(waterMl / 250));
   const pct = Math.min(waterMl / norm, 1);
@@ -2148,19 +2150,24 @@ try{
   const _op16 = openProgram;
   openProgram = async function(id){
     await _op16(id);
+    /* v19: был POST /progress — он СДВИГАЛ день программы при каждом открытии. Теперь только читаем статус. */
     try{
-      const p = await api('/api/user/program/progress', { method: 'POST', body: { tg_id: (typeof currentUser !== 'undefined' && currentUser) ? currentUser.tg_id : null } });
+      const tgId = (typeof currentUser !== 'undefined' && currentUser) ? currentUser.tg_id : null;
+      if(!tgId) return;
+      const st = await api('/api/user/program/' + encodeURIComponent(tgId));
+      const p = st && st.program;
       const c = document.getElementById('programContent');
-      if(!c || !p) return;
+      if(!c || !p || !p.program_id) return;
       const total = p.total_days || 0;
-      const done = p.completed_days || p.current_day - 1 || 0;
+      const perWeek = Math.max(Math.round(total / (p.duration_weeks || 1)), 1);
+      const done = Math.min(Math.max(((p.current_week || 1) - 1) * perWeek + (p.current_day || 1) - 1, 0), total);
       const pct = total > 0 ? Math.min(done / total, 1) : 0;
       const card = document.createElement('div');
       card.className = 'card mb4';
       card.innerHTML = '<div class="flex between items-center"><h3 style="font-size:16px">Твой прогресс</h3>' +
         '<span class="badge badge-accent">' + Math.round(pct*100) + '%</span></div>' +
         '<div class="pg-bar"><div class="pg-bar-in" style="width:' + Math.round(pct*100) + '%"></div></div>' +
-        '<p class="subtle mt2" style="font-size:11.5px">Выполнено ' + done + ' из ' + total + ' тренировок' + (p.current_day ? (' · следующая: день ' + p.current_day) : '') + '</p>';
+        '<p class="subtle mt2" style="font-size:11.5px">Выполнено ' + done + ' из ' + total + ' тренировок' + (p.current_day ? (' · следующая: неделя ' + p.current_week + ', день ' + p.current_day) : '') + '</p>';
       c.insertBefore(card, c.firstChild);
     }catch(e){}
   };
