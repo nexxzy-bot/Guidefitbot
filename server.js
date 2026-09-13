@@ -481,18 +481,43 @@ app.get('/api/food-log/today/:tgId', (req, res) => {
 app.get('/api/shopping-list/:tgId', (req, res) => {
   const tgId = resolveTgId(req);
   if (!tgId) return res.status(401).json({ error: 'Unauthorized' });
-  db.all(`SELECT r.ingredients FROM food_logs fl
-      JOIN recipes r ON fl.recipe_id = r.id
-      WHERE fl.tg_id = ? AND date(fl.timestamp) >= ?`, [tgId, localDate(-7)], (err, rows) => {
-    if (err) return res.status(500).json({ error: err.message });
-    const items = new Set();
-    (rows || []).forEach(r => {
-      let ings = [];
-      try { ings = JSON.parse(r.ingredients); } catch (e) {}
-      ings.forEach(i => items.add(typeof i === 'string' ? i : (i.name + (i.amount ? ' — ' + i.amount + (i.unit || '') : ''))));
+  db.all(`SELECT r.ingredients FROM food_logs f JOIN recipes r ON f.recipe_id = r.id
+      WHERE f.tg_id = ? AND f.date >= date('now', '-7 days')`,
+    [tgId], (err, rows) => {
+      if (err) return res.status(500).json({ error: err.message });
+      const SMALL = /(ст\.?\s*л|столов|ч\.?\s*л|чайн|щепот|по вкусу|зубч|пуч|доль|ломт|лист|веточ|горсть)/i;
+      const reAmt = /^(.*?)[\s\u2014\u2013-]+(\d+(?:[.,]\d+)?)\s*(г|гр|грамм(?:а|ов)?|мл|кг|л|шт|штук(?:и|а)?|стакан(?:а)?|чашк(?:а|и)|банк(?:а|и)|упаковк(?:а|и)|пакет(?:а)?|кус(?:ок|ка)|порци(?:я|и))\.?$/i;
+      const agg = new Map();
+      rows.forEach(r => {
+        let ings = r.ingredients;
+        if (!ings) return;
+        try { ings = JSON.parse(ings); } catch (e) {}
+        [].concat(ings).forEach(raw => {
+          const str = String(raw).trim();
+          if (!str) return;
+          const mm = str.match(reAmt);
+          if (mm && !SMALL.test(mm[3])) {
+            const name = mm[1].trim();
+            const qty = parseFloat(mm[2].replace(',', '.'));
+            if (!name || !isFinite(qty)) return;
+            let unit = mm[3].toLowerCase().replace(/\.$/, '');
+            if (/^(гр|грамм.*)$/.test(unit)) unit = 'г';
+            if (/^штук/.test(unit)) unit = 'шт';
+            const key = name + '|' + unit;
+            const cur = agg.get(key) || { name, qty: 0, unit };
+            cur.qty += qty;
+            agg.set(key, cur);
+          } else {
+            const name = (mm ? mm[1] : str.replace(/\s+\d+(?:[.,]\d+)?[\s\S]*$/, '')).trim();
+            if (name) agg.set('n:' + name, { name, qty: 0, unit: null });
+          }
+        });
+      });
+      const items = Array.from(agg.values())
+        .sort((a, b) => a.name.localeCompare(b.name, 'ru'))
+        .map(v => v.unit ? (v.name + ' — ' + (v.qty >= 10 ? Math.round(v.qty) : Math.round(v.qty * 10) / 10) + ' ' + v.unit) : v.name);
+      res.json({ items });
     });
-    res.json({ items: Array.from(items) });
-  });
 });
 
 app.get('/api/weekly-report/:tgId', (req, res) => {
