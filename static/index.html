@@ -321,6 +321,7 @@ body{touch-action:manipulation}
 <!-- ТРЕНИРОВКИ -->
 <div class="screen" id="screen-workouts">
   <div style="padding:8px 0 18px"><h2>Тренировки</h2></div>
+  <div id="woChips" style="display:flex;gap:8px;overflow-x:auto;margin-bottom:14px;padding-bottom:2px;scrollbar-width:none"></div>
   <div id="workoutContent"></div>
 </div>
 
@@ -646,7 +647,7 @@ function renderHomeMeals(data){
       html += '<div class="meal-item"><div class="meal-thumb" id="thumb-' + logged.id + '" style="color:var(--accent)">' + ic('bowl',22) + '</div>' +
         '<div class="meal-info"><div class="meal-title">' + esc(logged.title) + '</div><div class="meal-cal">' + Math.round(logged.calories) + ' ккал • записано</div></div>' +
         '<button class="meal-add" style="background:var(--green-dim);color:var(--green)" onclick="navigate(\'nutrition\')">✓</button></div>';
-      if(logged.image_url) setTimeout(()=>{ const el=$('thumb-'+logged.id); if(el) el.innerHTML='<img src="'+esc(logged.image_url)+'" alt="">'; }, 0);
+      if(logged.image_url) setTimeout(()=>{ const el=$('thumb-'+logged.id); if(el) el.innerHTML='<img src="'+esc(logged.image_url)+'" loading="lazy" decoding="async" alt="">'; }, 0);
       else loadMealImage(logged.id, 'thumb-'+logged.id);
     } else {
       const target = Math.round(norm * slot[3]);
@@ -662,7 +663,7 @@ function renderHomeMeals(data){
 async function loadMealImage(recipeId, thumbId){
   try{
     const d = await api('/api/recipe-image/' + recipeId);
-    if(d.image_url){ const el = $(thumbId); if(el) el.innerHTML = '<img src="' + esc(d.image_url) + '" alt="">'; }
+    if(d.image_url){ const el = $(thumbId); if(el) el.innerHTML = '<img src="' + esc(d.image_url) + '" loading="lazy" decoding="async" alt="">'; }
   }catch(e){}
 }
 
@@ -1058,7 +1059,7 @@ async function loadNextMeal(){
       '<div class="flex gap2"><button class="btn btn-ghost" style="flex:1" onclick="loadNextMeal()">' + ic('refresh',15) + ' Другое</button>' +
       '<button class="btn btn-primary" style="flex:1" onclick="showRecipeDetail()">' + ic('chef',15) + ' Готовить</button></div></div>';
     api('/api/recipe-image/' + r.id).then(img => {
-      if(img.image_url){ const el = $('mealHero'); if(el) el.innerHTML = '<img src="' + esc(img.image_url) + '" alt="">'; }
+      if(img.image_url){ const el = $('mealHero'); if(el) el.innerHTML = '<img src="' + esc(img.image_url) + '" loading="lazy" decoding="async" alt="">'; }
     }).catch(()=>{});
   }catch(e){ area.innerHTML = '<div class="empty">Ошибка загрузки</div>'; }
 }
@@ -1078,7 +1079,7 @@ function showRecipeDetail(){
     '<div class="flex gap2 mt4"><button class="btn btn-ghost" style="flex:1" onclick="openMealSelector(currentMealCategory)">← Назад</button>' +
     '<button class="btn btn-primary" style="flex:1" onclick="logCurrentMeal()">' + ic('pen',15) + ' Записать в дневник</button></div></div>';
   api('/api/recipe-image/' + r.id).then(img => {
-    if(img.image_url){ const el = $('mealHero2'); if(el) el.innerHTML = '<img src="' + esc(img.image_url) + '" alt="">'; }
+    if(img.image_url){ const el = $('mealHero2'); if(el) el.innerHTML = '<img src="' + esc(img.image_url) + '" loading="lazy" decoding="async" alt="">'; }
   }).catch(()=>{});
 }
 
@@ -1127,7 +1128,7 @@ async function loadProfile(){
     try{ renderMacroDonut(user.user || user); }catch(e){}
     try{
       const tgu = (typeof tg !== 'undefined' && tg && tg.initDataUnsafe && tg.initDataUnsafe.user) ? tg.initDataUnsafe.user : null;
-      if(tgu && tgu.photo_url){ const av = document.getElementById('profAvatar'); if(av) av.innerHTML = '<img src="' + tgu.photo_url + '" referrerpolicy="no-referrer" alt="">'; }
+      if(tgu && tgu.photo_url){ const av = document.getElementById('profAvatar'); if(av) av.innerHTML = '<img src="' + tgu.photo_url + '" referrerpolicy="no-referrer" loading="lazy" decoding="async" alt="">'; }
     }catch(e){}
 
     const unlockedCount = (ach.achievements || []).filter(a => a.unlocked).length;
@@ -1231,7 +1232,7 @@ const WHY = {
   full_body:'Задействует всё тело за один подход — максимум калорий за минимум времени.',
   cardio:'Чистое жиросжигание: разгоняет пульс в зону, где организм берёт энергию из жировых запасов.'
 };
-let woGoal = 'fat';
+let woGoal = null;
 function woSetGoal(g){ woGoal = g; if(typeof haptic === 'function') haptic(); loadWorkouts(); }
 
 async function woRenderLib(c){
@@ -1552,7 +1553,7 @@ async function loadProfile(){
     try{ renderNormBars(user); }catch(e){}
     try{
       const tgu = (typeof tg !== 'undefined' && tg && tg.initDataUnsafe && tg.initDataUnsafe.user) ? tg.initDataUnsafe.user : null;
-      if(tgu && tgu.photo_url){ const av = document.getElementById('profAvatar'); if(av) av.innerHTML = '<img src="' + tgu.photo_url + '" referrerpolicy="no-referrer" alt="">'; }
+      if(tgu && tgu.photo_url){ const av = document.getElementById('profAvatar'); if(av) av.innerHTML = '<img src="' + tgu.photo_url + '" referrerpolicy="no-referrer" loading="lazy" decoding="async" alt="">'; }
     }catch(e){}
     const list = (ach.achievements || []);
     const unlocked = list.filter(a => a.unlocked).length;
@@ -1610,7 +1611,7 @@ function tourNext(){
 <style>
 .wtr2-bar{position:relative;height:34px;border-radius:12px;background:var(--solid);overflow:hidden}
 .wtr2-fill{height:100%;border-radius:12px;background:#0899C7;transition:width .5s ease}
-.wtr2-pct{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-family:'Bebas Neue';font-size:17px;color:#fff;text-shadow:0 1px 3px rgba(0,60,90,.5);letter-spacing:.04em}
+.wtr2-pct{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-family:'Bebas Neue';font-size:17px;color:#fff;text-shadow:0 1px 2px rgba(0,45,75,.9),0 0 10px rgba(0,45,75,.55);letter-spacing:.04em}
 .wtr2-add{width:54px;height:54px;border-radius:50%;background:var(--accent);color:#fff;border:none;display:flex;align-items:center;justify-content:center;box-shadow:0 8px 18px rgba(13,155,232,.4);flex-shrink:0}
 .shop-item{display:flex;align-items:center;gap:11px;padding:11px 4px;border-bottom:1px solid var(--border);cursor:pointer}
 .shop-item:last-child{border-bottom:none}

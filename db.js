@@ -95,6 +95,10 @@ db.serialize(() => {
   )`);
   db.run(`CREATE INDEX IF NOT EXISTS idx_user_programs_tg ON user_programs(tg_id)`);
   db.run(`CREATE INDEX IF NOT EXISTS idx_workout_sets_log ON workout_sets(log_id)`);
+  db.run(`CREATE INDEX IF NOT EXISTS idx_workout_logs_tg_date ON workout_logs(tg_id, date)`);
+  db.run(`CREATE INDEX IF NOT EXISTS idx_water_logs_tg_date ON water_logs(tg_id, date)`);
+  db.run(`CREATE INDEX IF NOT EXISTS idx_weight_logs_tg_date ON weight_logs(tg_id, date)`);
+  db.run(`CREATE INDEX IF NOT EXISTS idx_food_logs_tg_ts ON food_logs(tg_id, timestamp)`);
 
   // v9: каталог рецептов пересобирается при каждом старте
   db.run("CREATE TABLE IF NOT EXISTS image_store (recipe_id INTEGER PRIMARY KEY, url TEXT)");
