@@ -168,12 +168,12 @@ db.serialize(() => {
     console.log('Йога загружена: ' + yg.flows.length + ' практик');
   }
   const achievements = [
-    {id:1, title:'Первый шаг', description:'Завершена первая тренировка', icon:'🏃', condition_type:'workouts', condition_value:1},
-    {id:2, title:'Неделя без пропусков', description:'7 дней тренировок подряд', icon:'🔥', condition_type:'workout_streak', condition_value:7},
-    {id:3, title:'Марафонец', description:'30 завершённых тренировок', icon:'🏆', condition_type:'workouts', condition_value:30},
-    {id:4, title:'Водный баланс', description:'7 дней нормы воды подряд', icon:'💧', condition_type:'water_streak', condition_value:7},
-    {id:5, title:'Кулинар', description:'Записано 50 блюд в дневник', icon:'🍳', condition_type:'meals', condition_value:50},
-    {id:6, title:'Силач', description:'Общий объём тренировок 10000 кг', icon:'💪', condition_type:'volume', condition_value:10000}
+    {id:1, title:'Первый шаг', description:'Завершена первая тренировка', icon:'run', condition_type:'workouts', condition_value:1},
+    {id:2, title:'Неделя без пропусков', description:'7 дней тренировок подряд', icon:'flame', condition_type:'workout_streak', condition_value:7},
+    {id:3, title:'Марафонец', description:'30 завершённых тренировок', icon:'trophy', condition_type:'workouts', condition_value:30},
+    {id:4, title:'Водный баланс', description:'7 дней нормы воды подряд', icon:'droplet', condition_type:'water_streak', condition_value:7},
+    {id:5, title:'Кулинар', description:'Записано 50 блюд в дневник', icon:'chef', condition_type:'meals', condition_value:50},
+    {id:6, title:'Силач', description:'Общий объём тренировок 10000 кг', icon:'dumbbell', condition_type:'volume', condition_value:10000}
   ];
   const as = db.prepare(`INSERT OR IGNORE INTO achievements (id, title, description, icon, condition_type, condition_value) VALUES (?, ?, ?, ?, ?, ?)`);
   achievements.forEach(a => as.run(a.id, a.title, a.description, a.icon, a.condition_type, a.condition_value));

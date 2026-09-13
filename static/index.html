@@ -195,6 +195,19 @@ body{overscroll-behavior-y:none}
 .pressable{transition:transform .12s ease,opacity .12s ease}
 .pressable:active{opacity:.85}
 body{touch-action:manipulation}
+
+@media (prefers-reduced-motion:reduce){
+*{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}
+}
+
+@keyframes cardIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+.prog-card,.meal-item,.exlib-item,.shop-item{animation:cardIn .3s ease both}
+.prog-card:nth-child(2),.meal-item:nth-child(2),.exlib-item:nth-child(2){animation-delay:.04s}
+.prog-card:nth-child(3),.meal-item:nth-child(3),.exlib-item:nth-child(3){animation-delay:.08s}
+.prog-card:nth-child(4),.meal-item:nth-child(4),.exlib-item:nth-child(4){animation-delay:.12s}
+.prog-card:nth-child(5),.meal-item:nth-child(5),.exlib-item:nth-child(5){animation-delay:.16s}
+.prog-card:nth-child(6),.meal-item:nth-child(6),.exlib-item:nth-child(6){animation-delay:.2s}
+.prog-card:nth-child(n+7),.meal-item:nth-child(n+7),.exlib-item:nth-child(n+7){animation-delay:.24s}
 </style>
 </head>
 <body>
@@ -395,6 +408,7 @@ const ICONS = {
   pen:'<path d="M17 3l4 4L8 20l-5 1 1-5L17 3z"/>',
   chevron:'<polyline points="9 6 15 12 9 18"/>',
   chevronL:'<polyline points="15 6 9 12 15 18"/>',
+  trophy:'<path d="M8 21h8M12 17v4M7 4h10v6a5 5 0 0 1-10 0V4z"/><path d="M7 6H4a2 2 0 0 0 2 4h1M17 6h3a2 2 0 0 1-2 4h-1"/>',
   sparkles:'<path d="M12 4l1.7 4.3L18 10l-4.3 1.7L12 16l-1.7-4.3L6 10l4.3-1.7L12 4z"/><path d="M18.5 15.5l.8 2.2 2.2.8-2.2.8-.8 2.2-.8-2.2-2.2-.8 2.2-.8.8-2.2z"/>'
 };
 function ic(name, size){
@@ -1251,7 +1265,7 @@ async function loadProfile(){
     localStorage.setItem(seenKey, String(unlockedCount));
 
     $('achList').innerHTML = (ach.achievements || []).map(a =>
-      '<div class="ach' + (a.unlocked ? '' : ' locked') + '"><div class="ach-ic">' + a.icon + '</div>' +
+      '<div class="ach' + (a.unlocked ? '' : ' locked') + '"><div class="ach-ic">' + ic(a.icon || 'trophy', 20) + '</div>' +
       '<div style="flex:1"><h3 style="font-size:14px">' + esc(a.title) + '</h3><p class="muted" style="font-size:11px">' + esc(a.description) + '</p></div>' +
       (a.unlocked ? '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>' : '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="2"><path d="M12 2v20M5 12h14"/></svg>') + '</div>'
     ).join('');
@@ -1461,7 +1475,7 @@ function woRenderPose(){
   if(!p){ woFinishFlow(); return; }
   clearInterval(yfTimer); yfLeft = p.seconds;
   c.innerHTML = '<div class="flex between items-center mb3">' +
-    '<button class="icon-btn pressable" onclick="woBackToFlows()">' + ic('chevronL',18) + '</button>' +
+    '<button class="icon-btn pressable" aria-label="Назад" onclick="woBackToFlows()">' + ic('chevronL',18) + '</button>' +
     '<div class="text-center"><h3 style="font-size:16px">' + esc(yfFlow.title) + '</h3><span class="subtle">Поза ' + (yfPoseIdx+1) + ' из ' + total + '</span></div>' +
     '<div style="width:44px"></div></div>' +
     '<div class="yp-player">' +
@@ -1676,6 +1690,8 @@ async function saveProfileSettings(){
   if(goal && ['lose','maintain','gain'].includes(goal)) body.goal = goal;
   if(Object.keys(body).length < 2){ showToast('Ничего не изменено', 'err'); return; }
   try{
+    const btn = document.querySelector('#profileContent .btn-primary');
+    if(btn){ btn.disabled = true; btn.textContent = 'Сохранение…'; }
     const r = await api('/api/user/update', { method: 'POST', body: body });
     showSuccess('Настройки сохранены! Калории пересчитаны: ' + r.calorie_norm + ' ккал');
     if(typeof haptic === 'function') haptic('ok');
@@ -1728,7 +1744,7 @@ async function loadProfile(){
     if(ac) ac.textContent = unlocked + ' / ' + list.length;
     document.getElementById('achList').innerHTML = list.map(a =>
       '<div class="ach' + (a.unlocked ? '' : ' locked') + '">' +
-      '<div class="ach-ic">' + esc(a.icon || '🏅') + '</div>' +
+      '<div class="ach-ic">' + ic(a.icon || 'trophy', 20) + '</div>' +
       '<div style="flex:1"><div style="font-weight:800;font-size:13.5px">' + esc(a.name) + '</div>' +
       '<div class="subtle" style="font-size:11.5px;margin-top:2px">' + esc(a.description || '') + '</div></div>' +
       (a.unlocked ? '' : ic('lock',16)) + '</div>').join('') || '<div class="empty">Пока нет достижений</div>';
