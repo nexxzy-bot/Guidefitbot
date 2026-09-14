@@ -211,6 +211,17 @@ body{touch-action:manipulation}
 <!-- ОНБОРДИНГ (пошаговый мастер) -->
 <div class="screen active" id="screen-onboard"><div id="onboardBox" style="padding-top:28px"></div></div>
 
+<!-- ВХОД (standalone-режим без Telegram: VK ID + Одноклассники) -->
+<div class="screen" id="screen-login">
+  <div style="padding-top:48px;text-align:center">
+    <div class="badge badge-accent mb2">GuideFit</div>
+    <h1 style="margin-bottom:8px">С возвращением!</h1>
+    <p class="muted" style="font-size:14px;margin-bottom:24px;line-height:1.55">Войди, чтобы сохранять прогресс</p>
+    <div id="vkLoginBox" style="display:flex;flex-direction:column;gap:10px"></div>
+    <p class="subtle mt3" id="vkLoginMsg" style="display:none"></p>
+  </div>
+</div>
+
 <!-- ГЛАВНАЯ -->
 <div class="screen" id="screen-home">
   <div class="home-head">
@@ -400,6 +411,7 @@ function showSuccess(m){ showToast(m,'success'); haptic('ok'); }
 async function api(endpoint, opts = {}){
   const headers = { 'Content-Type':'application/json' };
   if(tg && tg.initData) headers['X-Telegram-Init-Data'] = tg.initData;
+  try{ const s = localStorage.getItem('gf_session'); if(s) headers['X-Session-Token'] = s; }catch(e){}
   const res = await fetch(API + endpoint, { ...opts, headers, body: opts.body ? JSON.stringify(opts.body) : undefined });
   if(!res.ok){
     const err = await res.json().catch(()=>({}));
@@ -408,6 +420,102 @@ async function api(endpoint, opts = {}){
     throw e;
   }
   return res.json();
+}
+
+/* ============ вход: Telegram либо сессия VK (standalone/APK) ============ */
+function tgUid(){
+  try{
+    if(tg && tg.initDataUnsafe && tg.initDataUnsafe.user && tg.initDataUnsafe.user.id) return String(tg.initDataUnsafe.user.id);
+  }catch(e){}
+  return null;
+}
+
+async function enterWithSession(tgId){
+  try{
+    if(!tgId){ const me = await api('/api/auth/me'); tgId = me.tg_id; }
+    const user = await api('/api/user/' + encodeURIComponent(tgId));
+    currentUser = user;
+    renderAvatar(user.name);
+    $('bottomNav').style.display = 'flex';
+    navigate('home');
+  }catch(e){
+    if(e && e.status === 404){ ob = { step: 0, total: 10, meal_count: 3 }; obRender(); }
+    else showLoginScreen();
+  }
+}
+
+function showLoginScreen(){
+  try{ $('bottomNav').style.display = 'none'; }catch(e){}
+  navigate('login');
+  initVkLogin();
+}
+
+const VK_APP_ID = 54770382;
+const VK_REDIRECT = 'https://app.xn--80aag3axnld9b.xn--p1ai/api/auth/vk/callback';
+let _vkVerifier = null;
+function vkFail(t){
+  const box = document.getElementById('vkLoginBox');
+  const msg = document.getElementById('vkLoginMsg');
+  if(box) box.innerHTML = '';
+  if(msg){ msg.style.display = ''; msg.textContent = t; }
+}
+function b64urlBytes(arr){
+  let s = '';
+  for(let i = 0; i < arr.length; i++) s += String.fromCharCode(arr[i]);
+  return btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+async function initVkLogin(){
+  let providers = {};
+  try{ providers = await api('/api/auth/providers'); }
+  catch(e){ return vkFail('Вход временно недоступен, откройте приложение через Telegram'); }
+  if(!providers.vk) return vkFail('Вход временно недоступен, откройте приложение через Telegram');
+  if(typeof VKID === 'undefined'){
+    const s = document.createElement('script');
+    s.src = 'https://unpkg.com/@vkid/sdk@3/dist-sdk/umd/index.js';
+    s.onload = function(){ renderVkWidget(); };
+    s.onerror = function(){ vkFail('Вход временно недоступен, откройте приложение через Telegram'); };
+    document.head.appendChild(s);
+  } else renderVkWidget();
+}
+async function renderVkWidget(){
+  try{
+    if(typeof VKID === 'undefined' || !VKID.Config || !VKID.OAuthList) return vkFail('Вход временно недоступен, откройте приложение через Telegram');
+    if(!window.crypto || !crypto.subtle) return vkFail('Вход временно недоступен, откройте приложение через Telegram');
+    const raw = new Uint8Array(64);
+    crypto.getRandomValues(raw);
+    _vkVerifier = b64urlBytes(raw);
+    const dig = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(_vkVerifier));
+    const challenge = b64urlBytes(new Uint8Array(dig));
+    const stateRaw = new Uint8Array(16);
+    crypto.getRandomValues(stateRaw);
+    VKID.Config.init({
+      app: VK_APP_ID, redirectUrl: VK_REDIRECT,
+      responseMode: VKID.ConfigResponseMode.Callback, source: VKID.ConfigSource.LOWCODE,
+      scope: '', codeChallenge: challenge, codeChallengeMethod: 'S256', state: b64urlBytes(stateRaw)
+    });
+    const names = (VKID.OAuthName && VKID.OAuthName.VK && VKID.OAuthName.OK) ? [VKID.OAuthName.VK, VKID.OAuthName.OK] : ['vkid', 'ok_ru'];
+    const box = document.getElementById('vkLoginBox');
+    if(!box) return;
+    const w = new VKID.OAuthList();
+    const r = w.render({ container: box, oauthList: names, styles: { borderRadius: 10, height: 56 } });
+    const emitter = (r && typeof r.on === 'function') ? r : ((typeof w.on === 'function') ? w : null);
+    if(!emitter || !VKID.WidgetEvents || !VKID.WidgetEvents.LOGIN_SUCCESS) return vkFail('Вход временно недоступен, откройте приложение через Telegram');
+    emitter.on(VKID.WidgetEvents.LOGIN_SUCCESS, onVkLogin);
+    emitter.on(VKID.WidgetEvents.ERROR, function(e){ try{ console.error('VK widget:', e); }catch(_){} });
+  }catch(e){ vkFail('Вход временно недоступен, откройте приложение через Telegram'); }
+}
+async function onVkLogin(payload){
+  try{
+    const p = payload || {};
+    const code = p.code, device_id = p.device_id || p.deviceId;
+    if(!code || !device_id || !_vkVerifier){ showError('Не удалось войти через VK'); return; }
+    const d = await api('/api/auth/vk/exchange', { method:'POST', body:{ code, device_id, code_verifier: _vkVerifier } });
+    if(!d || !d.session) throw new Error('Нет сессии');
+    try{ localStorage.setItem('gf_session', d.session); }catch(e){}
+    const box = document.getElementById('vkLoginBox');
+    if(box) box.innerHTML = '';
+    await enterWithSession();
+  }catch(e){ showError((e && e.message) || 'Не удалось войти через VK'); }
 }
 
 /* ============ тема Telegram ============ */
@@ -499,17 +607,27 @@ async function initApp(){
     haptic();
   }
   if('serviceWorker' in navigator){ navigator.serviceWorker.register('/sw.js').catch(()=>{}); }
-  const tgId = myTgId();
   try{
-    const user = await api('/api/user/' + tgId);
-    currentUser = user;
-    renderAvatar(user.name);
-    $('bottomNav').style.display = 'flex';
-    navigate('home');
-  }catch(e){
-    ob = { step: 0, total: 10, meal_count: 3 };
-    obRender();
+    const sq = new URLSearchParams(window.location.search).get('session');
+    if(sq){ try{ localStorage.setItem('gf_session', sq); }catch(e){} try{ history.replaceState(null, '', location.pathname); }catch(e){} }
+  }catch(e){}
+  if(tgUid()){
+    // штатный вход через Telegram — без изменений
+    const tgId = myTgId();
+    try{
+      const user = await api('/api/user/' + tgId);
+      currentUser = user;
+      renderAvatar(user.name);
+      $('bottomNav').style.display = 'flex';
+      navigate('home');
+    }catch(e){
+      ob = { step: 0, total: 10, meal_count: 3 };
+      obRender();
+    }
+    return;
   }
+  // standalone/APK: вход по сохранённой сессии, иначе экран входа
+  await enterWithSession();
 }
 
 function renderAvatar(name){
@@ -580,7 +698,9 @@ async function obFinish(){
     meal_count: ob.meal_count || 3 };
   try{
     const r = await api('/api/user/init', { method:'POST', body:data });
-    currentUser = { ...data, calorie_norm: r.calorie_norm, meal_count: data.meal_count };
+    let myId = data.tg_id;
+    if(!tgUid()){ try{ const me = await api('/api/auth/me'); if(me && me.tg_id) myId = me.tg_id; }catch(e){} }
+    currentUser = { ...data, tg_id: myId, calorie_norm: r.calorie_norm, meal_count: data.meal_count };
     renderAvatar(data.name);
     $('bottomNav').style.display = 'flex';
     navigate('home');

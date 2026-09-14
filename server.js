@@ -46,8 +46,14 @@ function validateInitData(initData) {
 
 app.use('/api', (req, res, next) => {
   const check = validateInitData(req.headers['x-telegram-init-data']);
-  if (check.valid) req.tgUserId = check.id;
-  next();
+  if (check.valid) { req.tgUserId = check.id; return next(); }
+  // standalone/APK: сессия VK-входа (Telegram initData в приоритете и не тронут)
+  const sess = String(req.headers['x-session-token'] || '');
+  if (!sess) return next();
+  db.get("SELECT tg_id FROM sessions WHERE token = ?", [sess], (err, row) => {
+    if (!err && row && row.tg_id) req.tgUserId = row.tg_id;
+    next();
+  });
 });
 
 // Какому tg_id разрешено работать с запросом
@@ -303,6 +309,84 @@ app.post('/api/user/delete', (req, res) => {
       res.json({ status: 'ok' });
     });
   });
+});
+
+/* ================= авторизация: VK ID + сессии (standalone/APK) ================= */
+const VK_REDIRECT_URI = 'https://app.xn--80aag3axnld9b.xn--p1ai/api/auth/vk/callback';
+
+app.get('/api/auth/providers', (req, res) => {
+  res.json({ vk: !!process.env.VK_CLIENT_ID });
+});
+
+app.get('/api/auth/me', (req, res) => {
+  if (!req.tgUserId) return res.status(401).json({ error: 'Unauthorized' });
+  res.json({ tg_id: req.tgUserId });
+});
+
+function vkForm(params) {
+  return Object.entries(params).map(([k, v]) => encodeURIComponent(k) + '=' + encodeURIComponent(String(v))).join('&');
+}
+
+app.post('/api/auth/vk/exchange', async (req, res) => {
+  try {
+    const { code, device_id, code_verifier } = req.body || {};
+    if (!code || !device_id || !code_verifier) return res.status(400).json({ error: 'Missing fields' });
+    const client_id = process.env.VK_CLIENT_ID, client_secret = process.env.VK_CLIENT_SECRET;
+    if (!client_id || !client_secret) { console.error('VK exchange: нет VK_CLIENT_ID/SECRET в .env'); return res.status(502).json({ error: 'VK auth not configured' }); }
+    let ex, exRes;
+    try {
+      exRes = await fetch('https://id.vk.ru/oauth2/auth', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: vkForm({ grant_type: 'authorization_code', code, client_id, client_secret, device_id, redirect_uri: VK_REDIRECT_URI, code_verifier }),
+        signal: AbortSignal.timeout(15000)
+      });
+      ex = await exRes.json().catch(() => ({}));
+    } catch (e) { console.error('VK exchange fetch:', e.message); return res.status(502).json({ error: 'VK exchange failed' }); }
+    if (!exRes.ok || !ex.access_token) { console.error('VK exchange failed:', exRes.status, JSON.stringify(ex).slice(0, 300)); return res.status(502).json({ error: 'VK exchange failed' }); }
+    // имя: сначала user_info (немаскированное), затем payload id_token, затем fallback
+    let vkId = ex.user_id ? String(ex.user_id) : null;
+    let vkName = null;
+    try {
+      const uiRes = await fetch('https://id.vk.ru/oauth2/user_info', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: vkForm({ client_id, access_token: ex.access_token }),
+        signal: AbortSignal.timeout(15000)
+      });
+      const ui = await uiRes.json().catch(() => ({}));
+      if (ui && ui.user) {
+        if (ui.user.user_id) vkId = String(ui.user.user_id);
+        const fn = [ui.user.first_name, ui.user.last_name].filter(Boolean).join(' ').trim();
+        if (fn) vkName = fn.slice(0, 100);
+      }
+    } catch (e) { console.error('VK user_info:', e.message); }
+    if (!vkName && ex.id_token) {
+      try {
+        const payload = JSON.parse(Buffer.from(String(ex.id_token).split('.')[1], 'base64').toString('utf8'));
+        if (payload && payload.user_id) vkId = String(payload.user_id);
+        const nm = payload.user_name || payload.name || [payload.first_name, payload.last_name].filter(Boolean).join(' ').trim();
+        if (nm) vkName = String(nm).slice(0, 100);
+      } catch (e) { console.error('VK id_token decode:', e.message); }
+    }
+    if (!vkId) { console.error('VK exchange: нет user_id'); return res.status(502).json({ error: 'VK exchange failed' }); }
+    const tgId = 'vk:' + vkId;
+    const now = Math.floor(Date.now() / 1000);
+    await new Promise((resolve, reject) => {
+      db.run(`INSERT INTO users (tg_id, name, provider, created_at, notify_enabled)
+        VALUES (?, ?, 'vk', datetime('now','localtime'), 1)
+        ON CONFLICT(tg_id) DO UPDATE SET
+          name = CASE WHEN users.name IS NULL OR users.name = '' THEN excluded.name ELSE users.name END,
+          last_seen = datetime('now','localtime')`,
+        [tgId, vkName || ('VK ' + vkId)], (e) => e ? reject(e) : resolve());
+    });
+    const session = crypto.randomBytes(32).toString('hex');
+    await new Promise((resolve, reject) => {
+      db.run("INSERT INTO sessions (token, tg_id, created_at) VALUES (?, ?, ?)",
+        [session, tgId, now], (e) => e ? reject(e) : resolve());
+    });
+    res.json({ session });
+  } catch (e) { console.error('VK exchange:', e.message); return res.status(502).json({ error: 'VK exchange failed' }); }
 });
 
 /* ================= админка (ADMIN_TOKEN в .env) ================= */

@@ -9,6 +9,9 @@ db.serialize(() => {
     calorie_norm INTEGER, activity_level TEXT DEFAULT 'moderate',
     meal_count INTEGER DEFAULT 4, created_at DATETIME DEFAULT CURRENT_TIMESTAMP
   )`);
+  db.run(`CREATE TABLE IF NOT EXISTS sessions (
+    token TEXT PRIMARY KEY, tg_id TEXT, created_at INTEGER
+  )`);
   db.all("PRAGMA table_info(users)", [], (e2, cols2) => {
     if (!e2 && cols2 && !cols2.some(c => c.name === 'notify_enabled')) db.run("ALTER TABLE users ADD COLUMN notify_enabled INTEGER DEFAULT 1");
   });
