@@ -471,7 +471,7 @@ async function initVkLogin(){
   if(!providers.vk) return vkFail('Вход временно недоступен, откройте приложение через Telegram');
   if(typeof VKID === 'undefined'){
     const s = document.createElement('script');
-    s.src = 'https://unpkg.com/@vkid/sdk@3/dist-sdk/umd/index.js';
+    s.src = '/vkid-sdk.js';
     s.onload = function(){ renderVkWidget(); };
     s.onerror = function(){ vkFail('Вход временно недоступен, откройте приложение через Telegram'); };
     document.head.appendChild(s);
