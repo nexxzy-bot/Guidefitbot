@@ -67,8 +67,8 @@ select.input{appearance:none}
 .hero-unit{font-family:'Manrope';font-size:12.5px;font-weight:700;opacity:.85;margin-left:6px;letter-spacing:0}
 .ring{position:relative;width:96px;height:96px;flex-shrink:0}
 .ring svg{width:100%;height:100%;transform:rotate(-90deg)}
-.ring .bg{fill:none;stroke:rgba(255,255,255,.25);stroke-width:8}
-.ring .fg{fill:none;stroke:#fff;stroke-width:8;stroke-linecap:round;transition:stroke-dashoffset .6s ease}
+.ring .bg{fill:none;stroke:#E5E9EF;stroke-width:8}
+.ring .fg{fill:none;stroke:#fff;stroke-width:8;stroke-linecap:round;transition:stroke-dashoffset .6s ease,opacity .3s ease}
 .ring span{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-family:'Bebas Neue';font-size:20px}
 .hero-stats{display:flex;gap:8px;margin-top:16px}
 .hero-stat{flex:1;background:rgba(255,255,255,.16);border-radius:15px;padding:9px 12px;min-width:0}
@@ -267,7 +267,7 @@ body{touch-action:manipulation}
   <div class="bar-chart" id="barChart"></div>
   <div class="grid2 mt3">
     <div class="card text-center" style="margin-bottom:0"><div class="subtle" style="font-size:11px;font-weight:700">Тренировка, мин</div><div style="font-weight:800;font-size:17px" id="statsWorkout">—</div></div>
-    <div class="card text-center" style="margin-bottom:0"><div class="subtle" style="font-size:11px;font-weight:700">Вес / вода</div><div style="font-weight:800;font-size:17px" id="statsWeight">—</div></div>
+    <div class="card" style="margin-bottom:0"><div class="flex items-center gap2"><div style="width:38px;height:38px;border-radius:13px;background:var(--violet-dim);color:var(--violet);display:flex;align-items:center;justify-content:center;flex-shrink:0"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="M6 13h12v6a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2v-6z"/><path d="M9 13V7h6v6"/><path d="M12 15.5h.01"/></svg></div><div style="flex:1;min-width:0"><div class="subtle" style="font-size:11px;font-weight:700">Вес</div><div style="font-weight:800;font-size:17px" id="statsWeightW">—</div></div></div><div class="flex items-center gap2 mt2"><div style="width:38px;height:38px;border-radius:13px;background:var(--blue-dim);color:var(--blue);display:flex;align-items:center;justify-content:center;flex-shrink:0"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="M12 2.5s6.5 7 6.5 11.5a6.5 6.5 0 0 1-13 0C5.5 9.5 12 2.5 12 2.5z"/></svg></div><div style="flex:1;min-width:0"><div class="subtle" style="font-size:11px;font-weight:700">Вода</div><div style="font-weight:800;font-size:17px" id="statsWeightH">—</div></div></div></div>
   </div>
   <div class="card mb4" style="margin-top:14px"><h3 class="mb3">Вес</h3><div id="weightChart" style="height:170px"></div>
     <div class="flex gap2 mt3"><input type="number" inputmode="decimal" step="0.1" class="input" id="newWeight" placeholder="Вес, кг" style="flex:1" onkeydown="if(event.key==='Enter')saveWeight()"><button class="btn btn-primary" onclick="saveWeight()">Сохранить</button></div></div>
@@ -367,6 +367,8 @@ const ICONS = {
   nut:'<circle cx="12" cy="12" r="9"/><path d="M9 9h.01M15 10h.01M10 15h.01M15 15h.01"/>',
   milk:'<path d="M9 2h6M9 2v3l-2 3v11a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2V8l-2-3V2"/><path d="M7 13h10"/>',
   droplet:'<path d="M12 2.5s6.5 7 6.5 11.5a6.5 6.5 0 0 1-13 0C5.5 9.5 12 2.5 12 2.5z"/>',
+  glass:'<path d="M6 3h12l-1.6 17.2a1 1 0 0 1-1 .8H8.6a1 1 0 0 1-1-.8L6 3z"/><path d="M6.7 9.5h10.6"/>',
+  scale:'<path d="M6 13h12v6a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2v-6z"/><path d="M9 13V7h6v6"/><path d="M12 15.5h.01"/>',
   bowl:'<path d="M4 12h16a8 8 0 0 1-16 0z"/><path d="M9 12V8M12 12V6M15 12V8"/>',
   cart:'<circle cx="9" cy="20" r="1.6"/><circle cx="17" cy="20" r="1.6"/><path d="M2.5 4h2.5l2.5 11h10l2.5-7H6"/>',
   refresh:'<path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/>',
@@ -665,6 +667,7 @@ async function loadDashboard(){
     const pctC = normC > 0 ? Math.min(eatenC / normC, 1) : 0;
     $('weekRing').style.strokeDasharray = C;
     $('weekRing').style.strokeDashoffset = C - pctC * C;
+    $('weekRing').style.opacity = pctC > 0 ? '1' : '0';
     $('ringText').textContent = Math.round(pctC * 100) + '%';
     $('homeStreakVal').textContent = streak + ' ' + plural(streak, 'день', 'дня', 'дней');
 
@@ -766,14 +769,13 @@ async function loadStats(){
     const chart = $('barChart');
     const maxPercent = Math.max(...data.week.map(d => d.percent), 100);
     chart.innerHTML = data.week.map(d => {
-      const h = Math.max(d.percent / maxPercent * 100, 4);
+      const h = d.percent > 0 ? Math.max(d.percent / maxPercent * 100, 4) : 0;
       return '<div class="bar-col' + (d.isToday ? ' active' : '') + '"><span class="pct">' + d.percent + '%</span>' +
-        '<div class="bar-track"><div class="bar-in" style="height:' + h + '%"></div></div><span class="dl">' + d.dayShort + '</span></div>';
+        '<div class="bar-track"><div class="bar-in" style="height:' + h + '%;' + (d.percent > 0 ? '' : 'background:transparent') + '"></div></div><span class="dl">' + d.dayShort + '</span></div>';
     }).join('');
     $('statsWorkout').textContent = data.hasWorkoutToday ? data.workoutMinutes : '—';
-    const wStr = data.currentWeight ? data.currentWeight + ' кг' : '—';
-    const waterStr = data.waterToday ? (Math.round(data.waterToday / 100) / 10) + ' л' : '—';
-    $('statsWeight').textContent = data.currentWeight ? wStr + ' / ' + waterStr : waterStr;
+    $('statsWeightW').textContent = data.currentWeight ? data.currentWeight + ' кг' : '—';
+    $('statsWeightH').textContent = data.waterToday ? (Math.round(data.waterToday / 100) / 10) + ' л' : '—';
   }catch(e){}
 }
 
@@ -960,7 +962,7 @@ async function loadNutrition(){
     const names = { breakfast:['Завтрак','sunrise'], lunch:['Обед','utensils'], snack:['Перекус','apple'], dinner:['Ужин','moon'] };
     c.innerHTML =
       '<div class="stat-grid">' +
-      '<div class="card text-center pressable" style="cursor:pointer" onclick="addWater()"><div style="color:var(--blue)">' + ic('droplet',22) + '</div><div style="font-size:19px;font-weight:800" id="nutWater">' + (dash.water || 0) + ' мл</div><p class="subtle" style="font-size:11px;font-weight:600">из ' + n.water + ' мл • +250</p></div>' +
+      '<div class="card text-center pressable" style="cursor:pointer" onclick="addWater()"><div style="color:var(--blue)">' + ic('droplet',22) + '</div><div style="font-size:19px;font-weight:800" id="nutWater">' + (dash.water || 0) + ' мл</div><p class="subtle" style="font-size:11px;font-weight:600">из ' + (Math.round(n.water / 250) * 250) + ' мл • +250</p></div>' +
       '<div class="card text-center"><div style="color:var(--amber)">' + ic('flame',22) + '</div><div style="font-size:19px;font-weight:800" id="nutCals">' + Math.round(cons.calories) + '</div><p class="subtle" style="font-size:11px;font-weight:600">из ' + n.calories + ' ккал</p></div></div>' +
       '<div class="card mb4"><h3 class="mb3">БЖУ сегодня</h3>' +
       macroRow('Белки', cons.protein, n.protein, 'fill-accent') +
@@ -1217,6 +1219,7 @@ async function saveWeight(){
   const w = parseFloat($('newWeight').value);
   if(!w){ showError('Введи вес'); return; }
   if(!(w >= 20 && w <= 400)){ showError('Вес: от 20 до 400 кг'); return; }
+  if(typeof haptic === 'function') haptic();
   try{
     await api('/api/weight', { method:'POST', body:{ tg_id: currentUser.tg_id, weight: w } });
     showSuccess('Вес сохранён! ⚖️');
@@ -1779,6 +1782,14 @@ function tourNext(){
 .wtr2-bar{position:relative;height:34px;border-radius:12px;background:var(--solid);overflow:hidden}
 .wtr2-fill{height:100%;border-radius:12px;background:#0899C7;transition:width .5s ease}
 .wtr2-pct{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-family:'Bebas Neue';font-size:17px;color:#fff;text-shadow:0 1px 2px rgba(0,45,75,.9),0 0 10px rgba(0,45,75,.55);letter-spacing:.04em}
+.wtr2-glasses{display:flex;gap:6px;flex-wrap:wrap;margin:12px 0 4px}
+.wtr2-glass{display:flex;color:var(--blue);opacity:.22}
+.wtr2-glass.on{opacity:1}
+.wtr2-glass svg{width:20px;height:20px}
+@keyframes streakPulse{0%{box-shadow:0 0 0 0 rgba(245,158,11,.55)}60%{box-shadow:0 0 0 14px rgba(245,158,11,0)}100%{box-shadow:0 0 0 0 rgba(245,158,11,0)}}
+.streak-fire{animation:streakPulse 1.6s ease;border-radius:18px}
+@keyframes flamePop{0%,100%{transform:scale(1)}30%{transform:scale(1.25) rotate(-8deg)}55%{transform:scale(1.1) rotate(6deg)}75%{transform:scale(1.18)}}
+.streak-fire > div:first-child{animation:flamePop 1.6s ease}
 .wtr2-add{width:54px;height:54px;border-radius:50%;background:var(--accent);color:#fff;border:none;display:flex;align-items:center;justify-content:center;box-shadow:0 8px 18px rgba(13,155,232,.4);flex-shrink:0}
 .shop-item{display:flex;align-items:center;gap:11px;padding:11px 4px;border-bottom:1px solid var(--border);cursor:pointer}
 .shop-item:last-child{border-bottom:none}
@@ -1946,10 +1957,10 @@ function renderHomeDonuts(){
   if(!grid || !currentUser) return;
   const waterMl = parseInt((document.getElementById('homeWater')||{}).textContent) || 0;
   const streak = parseInt((document.getElementById('homeStreakVal')||{}).textContent) || 0;
-  const norm = currentUser.water_norm || Math.round((parseFloat(currentUser.current_weight) || 70) * 30);
+  const normRaw = currentUser.water_norm || Math.round((parseFloat(currentUser.current_weight) || 70) * 30);
+  const norm = Math.round(normRaw / 250) * 250;
   const glasses = Math.max(4, Math.round(norm / 250));
-  const filled = Math.min(glasses, Math.round(waterMl / 250));
-  const pct = Math.min(waterMl / norm, 1);
+  const filled = Math.min(glasses, Math.floor(waterMl / 250));
   const full = waterMl >= norm;
   grid.innerHTML =
     '<div id="streakPlate" class="pressable" onclick="goStreak()" style="grid-column:1/-1;display:flex;align-items:center;gap:10px;background:var(--surface);border:1px solid var(--border);border-radius:18px;padding:11px 14px;box-shadow:var(--sh-sm);cursor:pointer">' +
@@ -1960,7 +1971,9 @@ function renderHomeDonuts(){
       '<div class="flex between items-center mb2">' +
         '<div style="font-weight:800;font-size:14px;display:flex;align-items:center;gap:7px;color:var(--blue)">' + ic('droplet',17) + ' Вода' + (full ? ' · норма выпита!' : '') + '</div>' +
         '<div class="subtle" style="font-size:12.5px;font-weight:700">' + waterMl + ' / ' + norm + ' мл</div></div>' +
-      '<div class="wtr2-bar"><div class="wtr2-fill" style="width:' + Math.round(pct*100) + '%"></div><div class="wtr2-pct">' + Math.round(pct*100) + '%</div></div>' +
+      '<div class="wtr2-glasses">' + Array.from({length: glasses}, function(_, i){
+        return '<span class="wtr2-glass' + (i < filled ? ' on' : '') + '">' + ic('glass', 20) + '</span>';
+      }).join('') + '</div>' +
       '<div class="flex between items-center mt3">' +
         '<div><div style="font-weight:800;font-size:13px">' + filled + ' из ' + glasses + ' стаканов</div>' +
         '<div class="subtle" style="font-size:11px">1 стакан = 250 мл</div></div>' +
@@ -1968,6 +1981,21 @@ function renderHomeDonuts(){
           '<button class="pressable" style="width:44px;height:44px;border-radius:50%;background:var(--solid);color:var(--text2);border:1.5px solid var(--border);font-size:20px;font-weight:800" onclick="undoWater()">−</button>' +
           '<button class="wtr2-add pressable" style="width:44px;height:44px" onclick="addWater()">' + ic('plus',22) + '</button>' +
         '</div></div></div>';
+  try{
+    const key = 'gf_streak_seen';
+    const prev = localStorage.getItem(key);
+    if(prev === null){ localStorage.setItem(key, String(streak)); }
+    else{
+      const s = parseInt(prev) || 0;
+      const hit = [7, 30, 90].filter(function(m){ return s < m && streak >= m; }).pop();
+      localStorage.setItem(key, String(streak));
+      if(hit){
+        const plate = document.getElementById('streakPlate');
+        if(plate){ plate.classList.remove('streak-fire'); void plate.offsetWidth; plate.classList.add('streak-fire'); setTimeout(function(){ plate.classList.remove('streak-fire'); }, 1800); }
+        if(typeof haptic === 'function') haptic('ok');
+      }
+    }
+  }catch(e){}
 }
 let _lastCons = {};
 function renderMacrosPlate(cons){
@@ -2001,6 +2029,7 @@ function toggleBju(ev){
 }
 async function addWater(){
   if(!currentUser) return;
+  if(typeof haptic === 'function') haptic();
   try{
     await api('/api/water', { method: 'POST', body: { tg_id: currentUser.tg_id, amount: 250 } });
     if(typeof haptic === 'function') haptic();
