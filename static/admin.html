@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>GuideFit — Админка</title>
+<style>
+:root{--bg:#F2F7FC;--surface:#fff;--border:#E1EBF5;--text:#0C2233;--text2:#4A617A;--text3:#5E7386;--accent:#0D9BE8;--green:#10B981;--amber:#F59E0B;--red:#EF4444}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,'Segoe UI',Roboto,sans-serif;background:var(--bg);color:var(--text);padding:20px;line-height:1.5}
+.m{max-width:1020px;margin:0 auto}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:18px;padding:20px;margin-bottom:14px;box-shadow:0 4px 14px rgba(12,60,100,.06)}
+h1{font-size:22px;margin-bottom:2px}h2{font-size:16px;margin-bottom:12px}
+.sub{color:var(--text3);font-size:12.5px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
+.stat .v{font-size:28px;font-weight:800}.stat .l{font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.05em}
+input,button{font-family:inherit;font-size:14px}
+input{background:var(--surface);border:1.5px solid var(--border);border-radius:12px;padding:11px 13px;outline:none;width:100%}
+input:focus{border-color:var(--accent)}
+.btn{background:var(--accent);color:#fff;border:none;border-radius:12px;padding:11px 18px;font-weight:700;cursor:pointer}
+.btn:active{opacity:.85}
+.row{display:flex;gap:10px;flex-wrap:wrap}.row input{flex:1;min-width:200px}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{text-align:left;font-size:10.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--text3);padding:8px 10px;border-bottom:2px solid var(--border);white-space:nowrap}
+td{padding:9px 10px;border-bottom:1px solid var(--border);vertical-align:top}
+tr.u:hover td{background:#F6FAFE;cursor:pointer}
+.badge{display:inline-block;padding:3px 9px;border-radius:8px;font-size:10.5px;font-weight:800;background:#E1F2FC;color:#0A7FC4}
+.badge.tg{background:#E1F2FC;color:#0A7FC4}.badge.vk{background:#E3E9FF;color:#3066BE}.badge.yandex{background:#FFF1CC;color:#B8860B}.badge.max{background:#DFF7EC;color:#0B8A5B}
+.pill-on{color:var(--green);font-weight:800}.pill-off{color:var(--text3)}
+.pager{display:flex;gap:10px;align-items:center;justify-content:flex-end;margin-top:12px;font-size:13px}
+.pager button{background:var(--surface);border:1.5px solid var(--border);border-radius:10px;padding:8px 14px;font-weight:700;cursor:pointer}
+#detail{display:none}
+.cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px}
+.kv{font-size:13px;margin-bottom:5px}.kv b{display:inline-block;min-width:130px;color:var(--text3);font-weight:700}
+ul.log{list-style:none;font-size:12.5px}ul.log li{padding:5px 0;border-bottom:1px dashed var(--border)}
+.err{color:var(--red);font-weight:700;font-size:13px;margin-top:8px}
+@media(max-width:640px){table{font-size:12px}td:nth-child(6),th:nth-child(6),td:nth-child(7),th:nth-child(7){display:none}}
+</style>
+</head>
+<body>
+<div class="m">
+  <div class="card" id="gate">
+    <h1>GuideFit · Админка</h1>
+    <p class="sub">Введите ADMIN_TOKEN из .env сервера</p>
+    <div class="row" style="margin-top:12px">
+      <input type="password" id="token" placeholder="admin token" onkeydown="if(event.key==='Enter')login()">
+      <button class="btn" onclick="login()">Войти</button>
+    </div>
+    <div class="err" id="gateErr"></div>
+  </div>
+  <div id="app" style="display:none">
+    <div class="card"><h1>Пользователи</h1><p class="sub" id="totLine"></p></div>
+    <div class="card"><div class="grid" id="stats"></div></div>
+    <div class="card">
+      <div class="row"><input id="q" placeholder="Поиск по имени или id…" onkeydown="if(event.key==='Enter')loadUsers(0)"><button class="btn" onclick="loadUsers(0)">Найти</button></div>
+    </div>
+    <div class="card" id="detail"><h2 id="dTitle"></h2><div id="dBody"></div></div>
+    <div class="card">
+      <table><thead><tr><th>ID</th><th>Имя</th><th>Провайдер</th><th>Регистрация</th><th>Последний вход</th><th>Тренировок</th><th>Блюд</th><th>Ккал</th></tr></thead>
+      <tbody id="rows"></tbody></table>
+      <div class="pager"><button onclick="page(-1)">← Назад</button><span id="pgInfo"></span><button onclick="page(1)">Вперёд →</button></div>
+    </div>
+  </div>
+</div>
+<script>
+let TOK = sessionStorage.getItem('gf_admin') || '';
+let offset = 0; const LIMIT = 50; let total = 0;
+const PROVIDERS = { tg:'Telegram', vk:'VK', yandex:'Яндекс', max:'Max' };
+function esc(s){ return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function dt(s){ if(!s) return '—'; const d = new Date(String(s).replace(' ', 'T') + (String(s).indexOf('Z') < 0 && String(s).indexOf('+') < 0 ? 'Z' : '')); return isNaN(d) ? esc(String(s).slice(0,16).replace('T',' ')) : d.toLocaleString('ru-RU',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}); }
+async function call(path){
+  const r = await fetch(path, { headers:{ 'X-Admin-Token': TOK } });
+  if(r.status === 403) throw new Error('Нет доступа: неверный токен (или ADMIN_TOKEN не задан на сервере)');
+  if(!r.ok) throw new Error('Ошибка ' + r.status);
+  return r.json();
+}
+async function login(){
+  TOK = document.getElementById('token').value.trim();
+  if(!TOK) return;
+  try{
+    await call('/api/admin/stats');
+    sessionStorage.setItem('gf_admin', TOK);
+    document.getElementById('gate').style.display = 'none';
+    document.getElementById('app').style.display = '';
+    loadStats(); loadUsers(0);
+  }catch(e){ document.getElementById('gateErr').textContent = e.message; }
+}
+async function loadStats(){
+  try{
+    const s = await call('/api/admin/stats');
+    document.getElementById('totLine').textContent = 'Всего: ' + s.users + ' · активных сегодня: ' + s.activeToday;
+    document.getElementById('stats').innerHTML =
+      stat(s.users,'всего') + stat(s.activeToday,'активны сегодня') + stat(s.active7d,'активны 7 дней') + stat(s.new7d,'новых за 7 дней');
+  }catch(e){}
+  function stat(v,l){ return '<div class="stat"><div class="v">' + v + '</div><div class="l">' + l + '</div></div>'; }
+}
+async function loadUsers(off){
+  offset = Math.max(off, 0);
+  const q = document.getElementById('q').value.trim();
+  try{
+    const d = await call('/api/admin/users?limit=' + LIMIT + '&offset=' + offset + '&search=' + encodeURIComponent(q));
+    total = d.total;
+    document.getElementById('rows').innerHTML = d.users.map(u =>
+      '<tr class="u" onclick="detail(\'' + esc(u.tg_id).replace(/'/g,'') + '\')">' +
+      '<td><span class="badge ' + esc(u.provider || 'tg') + '">' + esc(PROVIDERS[u.provider] || u.provider || '?') + '</span><br><span class="sub">' + esc(u.tg_id) + '</span></td>' +
+      '<td><b>' + esc(u.name) + '</b></td>' +
+      '<td class="sub">' + esc(u.goal || '—') + ' · ' + esc(u.gender || '—') + '</td>' +
+      '<td>' + dt(u.created_at) + '</td>' +
+      '<td>' + (u.last_seen ? '<span class="pill-on">' + dt(u.last_seen) + '</span>' : '<span class="pill-off">—</span>') + '</td>' +
+      '<td>' + u.workouts + '</td><td>' + u.meals + '</td><td>' + (u.calorie_norm || '—') + '</td></tr>'
+    ).join('') || '<tr><td colspan="8" class="sub" style="text-align:center;padding:20px">Ничего не найдено</td></tr>';
+    document.getElementById('pgInfo').textContent = (total ? (offset + 1) + '–' + Math.min(offset + LIMIT, total) : '0') + ' из ' + total;
+  }catch(e){ if(e.message.indexOf('Нет доступа') === 0){ sessionStorage.removeItem('gf_admin'); location.reload(); } }
+}
+function page(d){ const n = offset + d * LIMIT; if(n < 0 || (d > 0 && n >= total)) return; loadUsers(n); }
+async function detail(id){
+  try{
+    const d = await call('/api/admin/user/' + encodeURIComponent(id));
+    const u = d.user;
+    document.getElementById('dTitle').textContent = u.name + ' · ' + u.tg_id;
+    document.getElementById('dBody').innerHTML = '<div class="cols"><div>' +
+      '<div class="kv"><b>Провайдер</b>' + esc(PROVIDERS[u.provider] || u.provider || 'tg') + '</div>' +
+      '<div class="kv"><b>Регистрация</b>' + dt(u.created_at) + '</div>' +
+      '<div class="kv"><b>Последний вход</b>' + dt(u.last_seen) + '</div>' +
+      '<div class="kv"><b>Пол / возраст</b>' + esc(u.gender || '—') + ' / ' + esc(u.age || '—') + '</div>' +
+      '<div class="kv"><b>Рост / вес</b>' + esc(u.height || '—') + ' / ' + esc(u.current_weight || '—') + ' → ' + esc(u.target_weight || '—') + '</div>' +
+      '<div class="kv"><b>Цель</b>' + esc(u.goal || '—') + ' · ' + (u.calorie_norm || '—') + ' ккал</div></div>' +
+      '<div><b>Еда (10)</b><ul class="log">' + (d.meals.map(m => '<li>' + esc(String(m.timestamp).slice(0,16).replace('T',' ')) + ' · рецепт #' + m.recipe_id + '</li>').join('') || '<li class="sub">—</li>') + '</ul></div>' +
+      '<div><b>Тренировки (10)</b><ul class="log">' + (d.workouts.map(w => '<li>' + esc(w.date) + ' · ' + w.duration_minutes + ' мин · ' + Math.round(w.total_volume || 0) + ' кг</li>').join('') || '<li class="sub">—</li>') + '</ul></div>' +
+      '<div><b>Вес (10)</b><ul class="log">' + (d.weights.map(w => '<li>' + esc(w.date) + ' · ' + w.weight + ' кг</li>').join('') || '<li class="sub">—</li>') + '</ul></div></div>';
+    document.getElementById('detail').style.display = '';
+    document.getElementById('detail').scrollIntoView({ block:'nearest' });
+  }catch(e){}
+}
+if(TOK){ document.getElementById('token').value = TOK; login(); }
+</script>
+</body>
+</html>

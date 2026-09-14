@@ -12,6 +12,13 @@ db.serialize(() => {
   db.all("PRAGMA table_info(users)", [], (e2, cols2) => {
     if (!e2 && cols2 && !cols2.some(c => c.name === 'notify_enabled')) db.run("ALTER TABLE users ADD COLUMN notify_enabled INTEGER DEFAULT 1");
   });
+  // админка + мультиавторизация (ВК/Яндекс/Max): последний визит и провайдер (tg_id остаётся единым subject: 'tg:123', 'vk:456', ...)
+  db.all("PRAGMA table_info(users)", [], (e3, cols3) => {
+    if (!e3 && cols3) {
+      if (!cols3.some(c => c.name === 'last_seen')) db.run("ALTER TABLE users ADD COLUMN last_seen DATETIME");
+      if (!cols3.some(c => c.name === 'provider')) db.run("ALTER TABLE users ADD COLUMN provider TEXT DEFAULT 'tg'");
+    }
+  });
   db.run(`CREATE TABLE IF NOT EXISTS food_logs (
     id INTEGER PRIMARY KEY AUTOINCREMENT, tg_id TEXT, recipe_id INTEGER,
     timestamp DATETIME DEFAULT CURRENT_TIMESTAMP

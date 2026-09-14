@@ -59,6 +59,12 @@ function resolveTgId(req) {
   return null;                                     // иначе — попытка подмены, отказ
 }
 
+// Последний визит (для админки: "последний вход")
+function touchSeen(tgId) {
+  if (!tgId) return;
+  db.run("UPDATE users SET last_seen = datetime('now','localtime') WHERE tg_id = ?", [tgId], () => {});
+}
+
 /* ================= расчёты ================= */
 const ACTIVITY_MULTIPLIERS = { sedentary: 1.2, light: 1.375, moderate: 1.55, active: 1.725, very_active: 1.9 };
 
@@ -224,6 +230,7 @@ app.post('/api/user/init', (req, res) => {
     [tgId, name, goal, gender, age, height, current_weight, target_weight || current_weight, calorie_norm, al],
     (err) => {
       if (err) { console.error(err); return res.status(500).json({ error: 'Database error' }); }
+      touchSeen(tgId);
       res.json({ status: 'ok', calorie_norm });
     }
   );
@@ -235,6 +242,7 @@ app.get('/api/user/:tgId', (req, res) => {
   db.get("SELECT * FROM users WHERE tg_id = ?", [tgId], (err, row) => {
     if (err) return res.status(500).json({ error: err.message });
     if (!row) return res.status(404).json({ error: 'User not found' });
+    touchSeen(tgId);
     res.json(row);
   });
 });
@@ -291,6 +299,65 @@ app.post('/api/user/delete', (req, res) => {
     db.run("DELETE FROM users WHERE tg_id = ?", [tgId], (err) => {
       if (err) return res.status(500).json({ error: err.message });
       res.json({ status: 'ok' });
+    });
+  });
+});
+
+/* ================= админка (ADMIN_TOKEN в .env) ================= */
+function requireAdmin(req, res, next) {
+  const token = process.env.ADMIN_TOKEN;
+  if (!token) return res.status(403).json({ error: 'Admin disabled' });
+  const got = String(req.headers['x-admin-token'] || '');
+  const a = Buffer.from(got), b = Buffer.from(token);
+  if (a.length !== b.length || !crypto.timingSafeEqual(a, b)) return res.status(403).json({ error: 'Forbidden' });
+  next();
+}
+
+app.get('/api/admin/stats', requireAdmin, (req, res) => {
+  const today = localDate();
+  db.get("SELECT COUNT(*) c FROM users", [], (e1, u) => {
+    db.get("SELECT COUNT(*) c FROM users WHERE date(last_seen) = ?", [today], (e2, t) => {
+      db.get("SELECT COUNT(*) c FROM users WHERE date(last_seen) >= date('now','-7 days')", [], (e3, w) => {
+        db.get("SELECT COUNT(*) c FROM users WHERE date(created_at) >= date('now','-7 days')", [], (e4, n) => {
+          if (e1 || e2 || e3 || e4) return res.status(500).json({ error: 'Database error' });
+          res.json({ users: u.c, activeToday: t.c, active7d: w.c, new7d: n.c });
+        });
+      });
+    });
+  });
+});
+
+app.get('/api/admin/users', requireAdmin, (req, res) => {
+  const q = String(req.query.search || '').trim();
+  const limit = Math.min(Math.max(parseInt(req.query.limit) || 50, 1), 200);
+  const offset = Math.max(parseInt(req.query.offset) || 0, 0);
+  const where = q ? "WHERE tg_id LIKE ? OR name LIKE ?" : "";
+  const args = q ? ['%' + q + '%', '%' + q + '%'] : [];
+  db.get("SELECT COUNT(*) c FROM users " + where, args, (e1, cnt) => {
+    if (e1) return res.status(500).json({ error: e1.message });
+    db.all(`SELECT u.tg_id, u.name, u.provider, u.goal, u.gender, u.age, u.calorie_norm, u.meal_count,
+        u.created_at, u.last_seen,
+        (SELECT COUNT(*) FROM workout_logs w WHERE w.tg_id = u.tg_id) AS workouts,
+        (SELECT COUNT(*) FROM food_logs f WHERE f.tg_id = u.tg_id) AS meals
+      FROM users u ${where} ORDER BY datetime(COALESCE(u.last_seen, u.created_at)) DESC LIMIT ? OFFSET ?`,
+      [...args, limit, offset], (e2, rows) => {
+        if (e2) return res.status(500).json({ error: e2.message });
+        res.json({ total: cnt.c, users: rows || [] });
+      });
+  });
+});
+
+app.get('/api/admin/user/:id', requireAdmin, (req, res) => {
+  const id = String(req.params.id || '');
+  db.get("SELECT * FROM users WHERE tg_id = ?", [id], (e1, user) => {
+    if (e1) return res.status(500).json({ error: e1.message });
+    if (!user) return res.status(404).json({ error: 'Not found' });
+    db.all("SELECT timestamp, recipe_id FROM food_logs WHERE tg_id = ? ORDER BY timestamp DESC LIMIT 10", [id], (e2, meals) => {
+      db.all("SELECT date, duration_minutes, total_volume FROM workout_logs WHERE tg_id = ? ORDER BY date DESC LIMIT 10", [id], (e3, workouts) => {
+        db.all("SELECT date, weight FROM weight_logs WHERE tg_id = ? ORDER BY date DESC LIMIT 10", [id], (e4, weights) => {
+          res.json({ user, meals: meals || [], workouts: workouts || [], weights: weights || [] });
+        });
+      });
     });
   });
 });
@@ -387,6 +454,7 @@ app.post('/api/dashboard', (req, res) => {
   db.get("SELECT * FROM users WHERE tg_id = ?", [tgId], (err, user) => {
     if (err) return res.status(500).json({ error: 'Database error' });
     if (!user) return res.status(404).json({ error: 'User not found' });
+    touchSeen(tgId);
     const today = localDate();
     db.all(`SELECT r.* FROM food_logs fl JOIN recipes r ON fl.recipe_id = r.id
         WHERE fl.tg_id = ? AND date(fl.timestamp) = ?`, [tgId, today], (err, meals) => {
@@ -484,6 +552,7 @@ app.post('/api/log-meal', (req, res) => {
     [tgId, recipe_id], (err) => {
       if (err) return res.status(500).json({ error: err.message });
       checkAchievements(tgId);
+      touchSeen(tgId);
       res.json({ status: 'ok' });
     });
 });
@@ -721,6 +790,7 @@ app.post('/api/workout/log', (req, res) => {
     }
   }
   const _totalVolume = _cleanSets.reduce((sum, x) => sum + x.reps * x.weight, 0);
+  touchSeen(tgId);
   db.run(`INSERT INTO workout_logs (tg_id, program_id, program_day_id, date, duration_minutes, total_volume, notes)
       VALUES (?, ?, ?, ?, ?, ?, ?)`,
     [tgId, program_id || null, program_day_id || null, localDate(),
@@ -797,6 +867,7 @@ app.post('/api/water', (req, res) => {
   if (!tgId) return res.status(401).json({ error: 'Unauthorized' });
   const { amount } = req.body;
   if (!amount || !(amount > 0) || amount > 5000) return res.status(400).json({ error: 'Invalid amount' });
+  touchSeen(tgId);
   const today = localDate();
   const respondWithTotal = () => {
     db.get("SELECT amount_ml FROM water_logs WHERE tg_id = ? AND date = ?", [tgId, today], (e, r) => {
@@ -829,6 +900,7 @@ app.post('/api/weight', (req, res) => {
   if (!tgId) return res.status(401).json({ error: 'Unauthorized' });
   const { weight } = req.body;
   if (!weight || !(weight >= 20) || weight > 400) return res.status(400).json({ error: 'Invalid weight' });
+  touchSeen(tgId);
   db.run("INSERT OR REPLACE INTO weight_logs (tg_id, date, weight) VALUES (?, ?, ?)",
     [tgId, localDate(), weight], (err) => {
       if (err) return res.status(500).json({ error: err.message });
