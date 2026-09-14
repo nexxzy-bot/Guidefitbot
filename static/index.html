@@ -33,8 +33,6 @@ h3{font-family:'Bebas Neue';font-size:19px;font-weight:400;letter-spacing:.03em}
 .muted{color:var(--text2)}
 .small{font-size:12px}
 .hidden{display:none!important}
-.pressable{transition:transform .12s ease}
-.pressable:active{transform:scale(.97)}
 .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:18px;margin-bottom:12px;box-shadow:var(--sh-sm)}
 .badge{display:inline-flex;align-items:center;gap:5px;padding:5px 10px;border-radius:9px;font-size:10.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase}
 .badge-accent{background:var(--accent-dim);color:var(--accent-dark)}
@@ -144,7 +142,7 @@ select.input{appearance:none}
 .nav-item.active .pill{background:var(--accent);color:#fff;box-shadow:0 6px 14px rgba(13,155,232,.4)}
 .bottom-nav{position:fixed;bottom:14px;left:50%;transform:translateX(-50%);width:min(440px,calc(100% - 28px));background:var(--surface);border:1px solid var(--border);border-radius:24px;display:flex;padding:7px;gap:4px;box-shadow:0 14px 36px rgba(12,60,100,.16);z-index:50}
 .bottom-nav>button{flex:1;background:none;border:none;padding:0}
-.toast{position:fixed;bottom:96px;left:50%;transform:translateX(-50%) translateY(18px);background:var(--text);color:#fff;padding:13px 18px;border-radius:14px;font-size:13.5px;font-weight:700;opacity:0;transition:all .25s ease;z-index:70;max-width:88%;text-align:center;box-shadow:0 10px 30px rgba(12,34,51,.3)}
+.toast{position:fixed;bottom:96px;left:50%;transform:translateX(-50%) translateY(18px);background:var(--text);color:#fff;padding:13px 18px;border-radius:14px;font-size:13.5px;font-weight:700;opacity:0;transition:all .25s ease;z-index:230;max-width:88%;text-align:center;box-shadow:0 10px 30px rgba(12,34,51,.3)}
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 .toast.err{background:var(--red)}
 .toast.ok{background:var(--green)}
@@ -191,20 +189,14 @@ body{overscroll-behavior-y:none}
 .chip{min-height:44px;display:inline-flex;align-items:center;box-sizing:border-box}
 .sel-btn,.loc-card{min-height:44px}
 .pressable{transition:transform .12s ease,opacity .12s ease}
-.pressable:active{opacity:.85}
+.pressable:active{transform:scale(.97);opacity:.85}
 body{touch-action:manipulation}
 
 @media (prefers-reduced-motion:reduce){
 *{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}
 }
 
-/* v21: cardIn убран — один плавный fadeUp экрана .25s; наложение двух анимаций давало рывки на Йоге/Профиле */
-.prog-card:nth-child(2),.meal-item:nth-child(2),.exlib-item:nth-child(2){animation-delay:.04s}
-.prog-card:nth-child(3),.meal-item:nth-child(3),.exlib-item:nth-child(3){animation-delay:.08s}
-.prog-card:nth-child(4),.meal-item:nth-child(4),.exlib-item:nth-child(4){animation-delay:.12s}
-.prog-card:nth-child(5),.meal-item:nth-child(5),.exlib-item:nth-child(5){animation-delay:.16s}
-.prog-card:nth-child(6),.meal-item:nth-child(6),.exlib-item:nth-child(6){animation-delay:.2s}
-.prog-card:nth-child(n+7),.meal-item:nth-child(n+7),.exlib-item:nth-child(n+7){animation-delay:.24s}
+/* v21: один плавный fadeUp экрана .25s (каскадные задержки без animation-name удалены как мёртвые) */
 </style>
 </head>
 <body>
@@ -242,10 +234,10 @@ body{touch-action:manipulation}
       <span id="ringText">0%</span>
     </div>
   </div>
-  <div class="stat-grid" id="homeStatGrid"></div>
+  <div class="stat-grid" id="homeStatGrid"><div class="shimmer" style="grid-column:1/-1"></div><div class="shimmer"></div><div class="shimmer"></div></div>
   <span class="hidden" id="homeCals"></span><span class="hidden" id="homeWater"></span><span class="hidden" id="homeStreakVal"></span>
   <div class="flex between items-center mb3"><h3>Приёмы пищи</h3><span class="subtle" style="font-size:11px;font-weight:700" id="mealCountLbl"></span></div>
-  <div id="homeMealsList"></div>
+  <div id="homeMealsList"><div class="shimmer"></div><div class="shimmer"></div></div>
   <div class="card pressable mb4 mt3" onclick="goStreak()" style="cursor:pointer;display:flex;align-items:center;gap:14px">
     <div style="flex:1">
       <div class="badge badge-amber mb2" id="dashWorkoutBadge">Тренировка</div>
@@ -274,8 +266,8 @@ body{touch-action:manipulation}
   </div>
   <div class="bar-chart" id="barChart"></div>
   <div class="grid2 mt3">
-    <div class="card text-center" style="margin-bottom:0"><div class="subtle" style="font-size:11px;font-weight:700">Тренировка, мин</div><div style="font-weight:800;font-size:19px" id="statsWorkout">—</div></div>
-    <div class="card text-center" style="margin-bottom:0"><div class="subtle" style="font-size:11px;font-weight:700">Вес / вода</div><div style="font-weight:800;font-size:19px" id="statsWeight">—</div></div>
+    <div class="card text-center" style="margin-bottom:0"><div class="subtle" style="font-size:11px;font-weight:700">Тренировка, мин</div><div style="font-weight:800;font-size:17px" id="statsWorkout">—</div></div>
+    <div class="card text-center" style="margin-bottom:0"><div class="subtle" style="font-size:11px;font-weight:700">Вес / вода</div><div style="font-weight:800;font-size:17px" id="statsWeight">—</div></div>
   </div>
   <div class="card mb4" style="margin-top:14px"><h3 class="mb3">Вес</h3><div id="weightChart" style="height:170px"></div>
     <div class="flex gap2 mt3"><input type="number" inputmode="decimal" step="0.1" class="input" id="newWeight" placeholder="Вес, кг" style="flex:1" onkeydown="if(event.key==='Enter')saveWeight()"><button class="btn btn-primary" onclick="saveWeight()">Сохранить</button></div></div>
@@ -638,7 +630,7 @@ function obRender(){
       '<p class="muted" style="font-size:14px;line-height:1.6">' + esc(ob.name) + ', ' + gl + ': ' + ob.weight + ' → ' + ob.target + ' кг. Рассчитаем норму и подберём программу.</p></div>' +
       '<label class="pressable" style="display:flex;gap:10px;align-items:flex-start;margin-top:18px;text-align:left;cursor:pointer">' +
       '<input type="checkbox" id="obConsent"' + (ob.consent ? ' checked' : '') + ' onchange="obConsent(this.checked)" style="width:20px;height:20px;margin-top:2px;accent-color:var(--accent);flex-shrink:0">' +
-      '<span style="font-size:12.5px;line-height:1.55">Я соглашаюсь с <a href="/privacy.html" target="_blank" onclick="event.stopPropagation()">Политикой обработки персональных данных</a> и <a href="/terms.html" target="_blank" onclick="event.stopPropagation()">Пользовательским соглашением</a><br><span class="subtle" style="font-size:11.5px">включая данные о весе, росте и пищевых привычках</span></span></label>';
+      '<span style="font-size:12.5px;line-height:1.55">Я соглашаюсь с <a href="/privacy.html" target="_blank" style="color:var(--accent-dark)" onclick="event.stopPropagation()">Политикой обработки персональных данных</a> и <a href="/terms.html" target="_blank" style="color:var(--accent-dark)" onclick="event.stopPropagation()">Пользовательским соглашением</a><br><span class="subtle" style="font-size:11.5px">включая данные о весе, росте и пищевых привычках</span></span></label>';
   }
   h += '<div class="flex gap2" style="margin-top:26px">' +
     (s > 0 ? '<button class="btn btn-ghost pressable" style="flex:1" onclick="obBack()">Назад</button>' : '') +
@@ -1276,10 +1268,6 @@ async function woRenderLib(c){
         '<div class="subtle">' + ({chest:'Грудь',back:'Спина',legs:'Ноги',shoulders:'Плечи',arms:'Руки',core:'Пресс',full_body:'Всё тело',cardio:'Кардио'})[x.muscle_group] + ' · ' + esc(x.difficulty==='beginner'?'легко':x.difficulty==='intermediate'?'средне':'сложно') + '</div></div>' +
         ic('chevron',16) + '</div>' +
         '<div id="libinfo-' + i + '" class="ex-info hidden"></div>';
-      const q = (typeof EXQ !== 'undefined' && EXQ[x.name]) || 'gym workout training';
-      api('/api/ex-photo?q=' + encodeURIComponent(q)).then(d => {
-        if(d && d.url){ const el = document.getElementById('libthumb-' + i); if(el) el.innerHTML = '<img src="' + d.url.replace(/"/g,'') + '" loading="lazy" alt="">'; }
-      }).catch(() => {});
     });
     c.innerHTML = html;
   }catch(e){ c.innerHTML = '<div class="empty">Ошибка загрузки</div>'; }
@@ -1293,6 +1281,15 @@ async function woLibDetail(i){
   box.classList.remove('hidden');
   if(box.dataset.loaded) return;
   const x = window._exList[i];
+  (function loadLibThumb(){
+    const th = document.getElementById('libthumb-' + i);
+    if(!th || th.dataset.ph) return;
+    th.dataset.ph = '1';
+    const q = (typeof EXQ !== 'undefined' && EXQ[x.name]) || 'gym workout training';
+    api('/api/ex-photo?q=' + encodeURIComponent(q)).then(d => {
+      if(d && d.url){ const el = document.getElementById('libthumb-' + i); if(el) el.innerHTML = '<img src="' + d.url.replace(/"/g,'') + '" loading="lazy" alt="">'; }
+    }).catch(() => {});
+  })();
   const g = (typeof EXG !== 'undefined' && EXG[x.name]) || null;
   let html = (WHY[x.muscle_group] ? '<p class="ex-why" style="margin:0 0 10px">' + WHY[x.muscle_group] + '</p>' : '');
   if(g){
@@ -1877,7 +1874,7 @@ renderHomeDonuts = function(){
       if(bar){
         const b = document.createElement('button');
         b.id = 'wtrUndo'; b.className = 'pressable';
-        b.style.cssText = 'position:absolute;right:4px;top:4px;width:26px;height:26px;border-radius:8px;background:rgba(255,255,255,.85);color:#067;background:none;border:none;font-size:16px;font-weight:800;color:var(--text3)';
+        b.style.cssText = 'position:absolute;right:4px;top:4px;width:26px;height:26px;border-radius:8px;background:var(--surface);border:1px solid var(--border);font-size:16px;font-weight:800;color:var(--text3)';
         b.textContent = '−';
         b.onclick = function(ev){ ev.stopPropagation(); undoWater(); };
         bar.style.position = 'relative';

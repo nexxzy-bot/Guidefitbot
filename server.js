@@ -951,7 +951,7 @@ app.get('/api/ex-photo', async (req, res) => {
     const r = await fetch('https://api.pexels.com/v1/search?query=' + encodeURIComponent(q) + '&per_page=1&orientation=landscape', { headers: { Authorization: key } });
     const d = await r.json();
     const url = (d.photos && d.photos[0]) ? d.photos[0].src.medium : null;
-    if(url) photoCache[q] = { url: url };
+    if(url){ photoCache[q] = { url: url }; const ks = Object.keys(photoCache); if(ks.length > 300) delete photoCache[ks[0]]; }
     res.json({ url: url });
   }catch(e){ res.json({ url: null }); }
 });
