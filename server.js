@@ -54,8 +54,7 @@ app.use('/api', (req, res, next) => {
 function resolveTgId(req) {
   const requested = String(req.body?.tg_id ?? req.query?.tg_id ?? req.params?.tgId ?? '');
   if (req.tgUserId) return req.tgUserId;          // подписанные данные Telegram имеют приоритет
-  if (!process.env.TELEGRAM_TOKEN) return requested === 'demo_user' ? requested : null; // dev без токена: только демо
-  // v14: demo_user закрыт (аудит) — без TELEGRAM_TOKEN всё равно пускает любого
+  if (!process.env.TELEGRAM_TOKEN) return requested === 'demo_user' ? requested : null; // dev без токена: только demo_user
   return null;                                     // иначе — попытка подмены, отказ
 }
 
@@ -208,6 +207,9 @@ app.post('/api/user/init', (req, res) => {
   if (!name || !goal || !gender || !age || !height || !current_weight) {
     return res.status(400).json({ error: 'Missing fields' });
   }
+  if (typeof name !== 'string' || !name.trim() || name.length > 100) {
+    return res.status(400).json({ error: 'Invalid values' });
+  }
   if (!['lose', 'maintain', 'gain'].includes(goal) || !['male', 'female'].includes(gender) ||
       (activity_level && !['sedentary', 'light', 'moderate', 'active', 'very_active'].includes(activity_level))) {
     return res.status(400).json({ error: 'Invalid values' });
@@ -317,8 +319,8 @@ app.get('/api/admin/stats', requireAdmin, (req, res) => {
   const today = localDate();
   db.get("SELECT COUNT(*) c FROM users", [], (e1, u) => {
     db.get("SELECT COUNT(*) c FROM users WHERE date(last_seen) = ?", [today], (e2, t) => {
-      db.get("SELECT COUNT(*) c FROM users WHERE date(last_seen) >= date('now','-7 days')", [], (e3, w) => {
-        db.get("SELECT COUNT(*) c FROM users WHERE date(created_at) >= date('now','-7 days')", [], (e4, n) => {
+      db.get("SELECT COUNT(*) c FROM users WHERE date(last_seen) >= date('now','localtime','-7 days')", [], (e3, w) => {
+        db.get("SELECT COUNT(*) c FROM users WHERE date(created_at) >= date('now','localtime','-7 days')", [], (e4, n) => {
           if (e1 || e2 || e3 || e4) return res.status(500).json({ error: 'Database error' });
           res.json({ users: u.c, activeToday: t.c, active7d: w.c, new7d: n.c });
         });
@@ -582,7 +584,7 @@ app.get('/api/shopping-list/:tgId', (req, res) => {
   const tgId = resolveTgId(req);
   if (!tgId) return res.status(401).json({ error: 'Unauthorized' });
   db.all(`SELECT r.ingredients FROM food_logs f JOIN recipes r ON f.recipe_id = r.id
-      WHERE f.tg_id = ? AND date(f.timestamp) >= date('now', '-7 days')`,
+      WHERE f.tg_id = ? AND date(f.timestamp) >= date('now','localtime','-7 days')`,
     [tgId], (err, rows) => {
       if (err) return res.status(500).json({ error: err.message });
       const SMALL = /(ст\.?\s*л|столов|ч\.?\s*л|чайн|щепот|по вкусу|зубч|пуч|доль|ломт|лист|веточ|горсть)/i;
@@ -987,8 +989,8 @@ function sendWeeklyReports() {
   db.all("SELECT tg_id, name FROM users WHERE notify_enabled = 1", [], (e, users) => {
     if (e || !users) return;
     users.forEach(u => {
-      db.get("SELECT COUNT(*) c FROM workout_logs WHERE tg_id = ? AND date >= date('now','-7 days')", [u.tg_id], (e1, w) => {
-        db.get("SELECT COUNT(DISTINCT date(timestamp)) c FROM food_logs WHERE tg_id = ? AND date(timestamp) >= date('now','-7 days')", [u.tg_id], (e2, m) => {
+      db.get("SELECT COUNT(*) c FROM workout_logs WHERE tg_id = ? AND date >= date('now','localtime','-7 days')", [u.tg_id], (e1, w) => {
+        db.get("SELECT COUNT(DISTINCT date(timestamp)) c FROM food_logs WHERE tg_id = ? AND date(timestamp) >= date('now','localtime','-7 days')", [u.tg_id], (e2, m) => {
           db.all("SELECT weight FROM weight_logs WHERE tg_id = ? ORDER BY date ASC, id ASC LIMIT 1", [u.tg_id], (e3, wr) => {
             db.all("SELECT weight FROM weight_logs WHERE tg_id = ? ORDER BY date DESC, id DESC LIMIT 1", [u.tg_id], (e4, wl) => {
               const wLine = (wr.length && wl.length) ? (' Вес: ' + wr[0].weight + ' → ' + wl[0].weight + ' кг.') : '';

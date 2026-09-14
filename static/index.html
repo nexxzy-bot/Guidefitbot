@@ -1103,8 +1103,8 @@ async function toggleExInfo(i){
       }
     }
     box.innerHTML = guideHtml +
-      (d.description ? '<p class="muted" style="font-size:12.5px;line-height:1.65;margin-top:10px">' + (d.description || '') + '</p>' : '') +
-      (tips.length ? '<p class="subtle" style="font-size:10.5px;font-weight:800;margin:12px 0 6px">Советы</p><ul class="ex-tips">' + tips.map(t => '<li>' + t + '</li>').join('') + '</ul>' : '');
+      (d.description ? '<p class="muted" style="font-size:12.5px;line-height:1.65;margin-top:10px">' + esc(d.description || '') + '</p>' : '') +
+      (tips.length ? '<p class="subtle" style="font-size:10.5px;font-weight:800;margin:12px 0 6px">Советы</p><ul class="ex-tips">' + tips.map(t => '<li>' + esc(t) + '</li>').join('') + '</ul>' : '');
     box.dataset.loaded = '1';
   }catch(e){ box.innerHTML = '<div class="empty">Не удалось загрузить</div>'; }
 }
@@ -1525,10 +1525,8 @@ try{
     _navOrig(screen);
     if(screen === 'home'){
       setTimeout(function(){ tourMaybe(screen); }, 350);
-      setTimeout(renderHomeDonuts, 500);
     }
   };
-  setTimeout(renderHomeDonuts, 1500);
 }catch(e){}
 </script>
 <style>
@@ -1766,7 +1764,7 @@ function tourFinal(){
   ov.innerHTML = '<div class="spot-hint" style="left:50%;top:50%;transform:translate(-50%,-50%);max-width:320px;text-align:center">' +
     '<div class="tour-ic">' + ic('sparkles',30) + '</div>' +
     '<h2 style="font-size:22px">Начинаем!</h2>' +
-    '<p class="muted mt2" style="font-size:13.5px;line-height:1.6">Ты готова. GuideFit всё посчитает — просто пользуйся.</p>' + tourDots() +
+    '<p class="muted mt2" style="font-size:13.5px;line-height:1.6">Всё настроено. GuideFit всё посчитает — просто пользуйся.</p>' + tourDots() +
     '<button class="btn btn-primary btn-block pressable mt3" onclick="tourSkip()">Начинаем!</button></div>';
   document.body.appendChild(ov);
 }
