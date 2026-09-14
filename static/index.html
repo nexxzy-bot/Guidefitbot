@@ -469,7 +469,7 @@ async function initVkLogin(){
   try{ providers = await api('/api/auth/providers'); }
   catch(e){ return vkFail('Вход временно недоступен, откройте приложение через Telegram'); }
   if(!providers.vk) return vkFail('Вход временно недоступен, откройте приложение через Telegram');
-  if(typeof VKID === 'undefined'){
+  if(!window.VKIDSDK){
     const s = document.createElement('script');
     s.src = '/vkid-sdk.js';
     s.onload = function(){ renderVkWidget(); };
@@ -479,7 +479,8 @@ async function initVkLogin(){
 }
 async function renderVkWidget(){
   try{
-    if(typeof VKID === 'undefined' || !VKID.Config || !VKID.OAuthList) return vkFail('Вход временно недоступен, откройте приложение через Telegram');
+    const VKID = window.VKIDSDK;
+    if(!VKID || !VKID.Config || !VKID.OAuthList) return vkFail('Вход временно недоступен, откройте приложение через Telegram');
     if(!window.crypto || !crypto.subtle) return vkFail('Вход временно недоступен, откройте приложение через Telegram');
     const raw = new Uint8Array(64);
     crypto.getRandomValues(raw);
@@ -499,9 +500,11 @@ async function renderVkWidget(){
     const w = new VKID.OAuthList();
     const r = w.render({ container: box, oauthList: names, styles: { borderRadius: 10, height: 56 } });
     const emitter = (r && typeof r.on === 'function') ? r : ((typeof w.on === 'function') ? w : null);
-    if(!emitter || !VKID.WidgetEvents || !VKID.WidgetEvents.LOGIN_SUCCESS) return vkFail('Вход временно недоступен, откройте приложение через Telegram');
-    emitter.on(VKID.WidgetEvents.LOGIN_SUCCESS, onVkLogin);
-    emitter.on(VKID.WidgetEvents.ERROR, function(e){ try{ console.error('VK widget:', e); }catch(_){} });
+    const successEv = (VKID.OAuthListInternalEvents && VKID.OAuthListInternalEvents.LOGIN_SUCCESS) || (VKID.WidgetEvents && VKID.WidgetEvents.LOGIN_SUCCESS);
+    const errorEv = (VKID.WidgetEvents && VKID.WidgetEvents.ERROR);
+    if(!emitter || !successEv) return vkFail('Вход временно недоступен, откройте приложение через Telegram');
+    emitter.on(successEv, onVkLogin);
+    if(errorEv) emitter.on(errorEv, function(e){ try{ console.error('VK widget:', e); }catch(_){} });
   }catch(e){ vkFail('Вход временно недоступен, откройте приложение через Telegram'); }
 }
 async function onVkLogin(payload){
