@@ -239,7 +239,9 @@ app.post('/api/user/init', (req, res) => {
     (err) => {
       if (err) { console.error(err); return res.status(500).json({ error: 'Database error' }); }
       touchSeen(tgId);
-      res.json({ status: 'ok', calorie_norm });
+      db.get("SELECT avatar FROM users WHERE tg_id = ?", [tgId], (e2, a2) => {
+        res.json({ status: 'ok', calorie_norm, avatar: (!e2 && a2 && a2.avatar) || null });
+      });
     }
   );
 });
@@ -358,9 +360,13 @@ app.post('/api/auth/vk/exchange', async (req, res) => {
       if (!exRes.ok || !ex.access_token) { console.error('VK exchange failed:', exRes.status, JSON.stringify(ex).slice(0, 300)); return res.status(502).json({ error: 'VK exchange failed' }); }
       access_token = ex.access_token;
     }
-    // имя: сначала user_info (немаскированное), затем payload id_token, затем fallback
+    // имя и фото: кандидаты из user_info и id_token; имя — приоритет кириллице
+    const CYR = /[А-Яа-яЁё]/;
+    const nameCands = [];
+    const avCands = [];
+    const pushName = (v) => { v = String(v || '').trim(); if (v) nameCands.push(v.slice(0, 100)); };
+    const pushAv = (v) => { if (typeof v === 'string' && /^https?:\/\//.test(v)) avCands.push(v.slice(0, 500)); };
     let vkId = (ex && ex.user_id) ? String(ex.user_id) : null;
-    let vkName = null;
     try {
       const uiRes = await fetch('https://id.vk.ru/oauth2/user_info', {
         method: 'POST',
@@ -371,28 +377,32 @@ app.post('/api/auth/vk/exchange', async (req, res) => {
       const ui = await uiRes.json().catch(() => ({}));
       if (ui && ui.user) {
         if (ui.user.user_id) vkId = String(ui.user.user_id);
-        const fn = [ui.user.first_name, ui.user.last_name].filter(Boolean).join(' ').trim();
-        if (fn) vkName = fn.slice(0, 100);
+        pushName([ui.user.first_name, ui.user.last_name].filter(Boolean).join(' '));
+        pushAv(ui.user.avatar); pushAv(ui.user.photo); pushAv(ui.user.picture); pushAv(ui.user.user_photo);
       }
     } catch (e) { console.error('VK user_info:', e.message); }
-    if (!vkName && ex && ex.id_token) {
+    if (ex && ex.id_token) {
       try {
         const payload = JSON.parse(Buffer.from(String(ex.id_token).split('.')[1], 'base64').toString('utf8'));
         if (payload && payload.user_id) vkId = String(payload.user_id);
-        const nm = payload.user_name || payload.name || [payload.first_name, payload.last_name].filter(Boolean).join(' ').trim();
-        if (nm) vkName = String(nm).slice(0, 100);
+        pushName(payload.user_name); pushName(payload.name);
+        pushName([payload.first_name, payload.last_name].filter(Boolean).join(' '));
+        pushAv(payload.picture); pushAv(payload.photo); pushAv(payload.avatar);
       } catch (e) { console.error('VK id_token decode:', e.message); }
     }
+    const vkName = nameCands.find(n => CYR.test(n)) || nameCands[0] || null;
+    const vkAvatar = avCands[0] || null;
     if (!vkId) { console.error('VK exchange: нет user_id'); return res.status(502).json({ error: 'VK exchange failed' }); }
     const tgId = 'vk:' + vkId;
     const now = Math.floor(Date.now() / 1000);
     await new Promise((resolve, reject) => {
-      db.run(`INSERT INTO users (tg_id, name, provider, created_at, notify_enabled)
-        VALUES (?, ?, 'vk', datetime('now','localtime'), 1)
+      db.run(`INSERT INTO users (tg_id, name, avatar, provider, created_at, notify_enabled)
+        VALUES (?, ?, ?, 'vk', datetime('now','localtime'), 1)
         ON CONFLICT(tg_id) DO UPDATE SET
           name = CASE WHEN users.name IS NULL OR users.name = '' THEN excluded.name ELSE users.name END,
+          avatar = CASE WHEN excluded.avatar IS NULL OR excluded.avatar = '' THEN users.avatar ELSE excluded.avatar END,
           last_seen = datetime('now','localtime')`,
-        [tgId, vkName || ('VK ' + vkId)], (e) => e ? reject(e) : resolve());
+        [tgId, vkName || ('VK ' + vkId), vkAvatar], (e) => e ? reject(e) : resolve());
     });
     const session = crypto.randomBytes(32).toString('hex');
     await new Promise((resolve, reject) => {

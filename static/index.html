@@ -435,7 +435,12 @@ async function enterWithSession(tgId){
     if(!tgId){ const me = await api('/api/auth/me'); tgId = me.tg_id; }
     const user = await api('/api/user/' + encodeURIComponent(tgId));
     currentUser = user;
-    renderAvatar(user.name);
+    if(!user.goal){
+      ob = { step: 0, total: 10, meal_count: user.meal_count || 3, name: user.name || '' };
+      obRender();
+      return;
+    }
+    renderAvatar(user.name, user.avatar);
     $('bottomNav').style.display = 'flex';
     navigate('home');
   }catch(e){
@@ -653,9 +658,9 @@ async function initApp(){
     // штатный вход через Telegram — без изменений
     const tgId = myTgId();
     try{
-      const user = await api('/api/user/' + tgId);
-      currentUser = user;
-      renderAvatar(user.name);
+    const user = await api('/api/user/' + tgId);
+    currentUser = user;
+    renderAvatar(user.name, user.avatar);
       $('bottomNav').style.display = 'flex';
       navigate('home');
     }catch(e){
@@ -669,10 +674,11 @@ async function initApp(){
   await enterWithSession();
 }
 
-function renderAvatar(name){
+function renderAvatar(name, avatar){
   const el = $('homeAvatar');
   const tUser = tg && tg.initDataUnsafe ? tg.initDataUnsafe.user : null;
-  if(tUser && tUser.photo_url){ el.innerHTML = '<img src="' + esc(tUser.photo_url) + '" alt="">'; }
+  if(avatar){ el.innerHTML = '<img src="' + esc(avatar) + '" alt="" referrerpolicy="no-referrer">'; }
+  else if(tUser && tUser.photo_url){ el.innerHTML = '<img src="' + esc(tUser.photo_url) + '" alt="">'; }
   else el.textContent = (name || 'U').charAt(0).toUpperCase();
 }
 
@@ -739,8 +745,8 @@ async function obFinish(){
     const r = await api('/api/user/init', { method:'POST', body:data });
     let myId = data.tg_id;
     if(!tgUid()){ try{ const me = await api('/api/auth/me'); if(me && me.tg_id) myId = me.tg_id; }catch(e){} }
-    currentUser = { ...data, tg_id: myId, calorie_norm: r.calorie_norm, meal_count: data.meal_count };
-    renderAvatar(data.name);
+    currentUser = { ...data, tg_id: myId, calorie_norm: r.calorie_norm, meal_count: data.meal_count, avatar: r.avatar || (currentUser && currentUser.avatar) || null };
+    renderAvatar(data.name, currentUser.avatar);
     $('bottomNav').style.display = 'flex';
     navigate('home');
     showSuccess('Готово! Профиль создан');
@@ -1780,8 +1786,12 @@ async function loadProfile(){
       '<div class="flex between items-center mb3"><h3>Достижения</h3><span class="badge badge-amber" id="achCount"></span></div><div id="achList"></div>' +
       '<button class="btn btn-ghost btn-block pressable mb4" onclick="navigate(\'settings\')" style="display:flex;align-items:center;justify-content:center;gap:8px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 1v4m0 14v4M4.2 4.2l2.8 2.8m10 10 2.8 2.8M1 12h4m14 0h4M4.2 19.8l2.8-2.8m10-10 2.8-2.8"/></svg> Настройки</button>';
     try{
-      const tgu = (typeof tg !== 'undefined' && tg && tg.initDataUnsafe && tg.initDataUnsafe.user) ? tg.initDataUnsafe.user : null;
-      if(tgu && tgu.photo_url){ const av = document.getElementById('profAvatar'); if(av) av.innerHTML = '<img src="' + tgu.photo_url + '" referrerpolicy="no-referrer" loading="lazy" decoding="async" alt="">'; }
+      const av = document.getElementById('profAvatar');
+      if(av && user.avatar){ av.innerHTML = '<img src="' + esc(user.avatar) + '" referrerpolicy="no-referrer" loading="lazy" decoding="async" alt="">'; }
+      else{
+        const tgu = (typeof tg !== 'undefined' && tg && tg.initDataUnsafe && tg.initDataUnsafe.user) ? tg.initDataUnsafe.user : null;
+        if(tgu && tgu.photo_url){ const av2 = document.getElementById('profAvatar'); if(av2) av2.innerHTML = '<img src="' + tgu.photo_url + '" referrerpolicy="no-referrer" loading="lazy" decoding="async" alt="">'; }
+      }
     }catch(e){}
     const list = (ach.achievements || []);
     const unlocked = list.filter(a => a.unlocked).length;
