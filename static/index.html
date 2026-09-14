@@ -464,36 +464,71 @@ function b64urlBytes(arr){
   for(let i = 0; i < arr.length; i++) s += String.fromCharCode(arr[i]);
   return btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 }
+function vkLoadSdk(){
+  return new Promise(function(resolve, reject){
+    try{
+      if(window.VKIDSDK) return resolve(window.VKIDSDK);
+      const s = document.createElement('script');
+      s.src = '/vkid-sdk.js';
+      s.onload = function(){ resolve(window.VKIDSDK); };
+      s.onerror = function(){ reject(new Error('sdk')); };
+      document.head.appendChild(s);
+    }catch(e){ reject(e); }
+  });
+}
+async function vkConfigure(){
+  const VKID = await vkLoadSdk();
+  if(!VKID || !VKID.Config) throw new Error('sdk');
+  if(!window.crypto || !crypto.subtle) throw new Error('crypto');
+  const raw = new Uint8Array(64);
+  crypto.getRandomValues(raw);
+  _vkVerifier = b64urlBytes(raw);
+  const dig = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(_vkVerifier));
+  const challenge = b64urlBytes(new Uint8Array(dig));
+  const stateRaw = new Uint8Array(16);
+  crypto.getRandomValues(stateRaw);
+  VKID.Config.init({
+    app: VK_APP_ID, redirectUrl: VK_REDIRECT,
+    responseMode: VKID.ConfigResponseMode.Callback, source: VKID.ConfigSource.LOWCODE,
+    scope: '', codeChallenge: challenge, codeChallengeMethod: 'S256', state: b64urlBytes(stateRaw)
+  });
+  return VKID;
+}
+async function handleVkRedirect(){
+  let code = null, dev = null;
+  try{
+    const q = new URLSearchParams(window.location.search);
+    code = q.get('vkcode'); dev = q.get('vkdevice');
+  }catch(e){}
+  if(!code) return false;
+  const clean = function(){ try{ history.replaceState(null, '', location.pathname); }catch(e){} };
+  try{
+    const VKID = await vkConfigure();
+    if(!VKID.Auth || typeof VKID.Auth.exchangeCode !== 'function') throw new Error('no exchange');
+    const tok = await VKID.Auth.exchangeCode(code, dev || undefined);
+    const access_token = tok && tok.access_token;
+    if(!access_token) throw new Error('no token');
+    const d = await api('/api/auth/vk/exchange', { method:'POST', body:{ access_token } });
+    if(!d || !d.session) throw new Error('Нет сессии');
+    try{ localStorage.setItem('gf_session', d.session); }catch(e){}
+    clean();
+    await enterWithSession();
+    return true;
+  }catch(e){ try{ console.error('VK redirect:', e); }catch(_){} clean(); return false; }
+}
 async function initVkLogin(){
   let providers = {};
   try{ providers = await api('/api/auth/providers'); }
   catch(e){ return vkFail('Вход временно недоступен, откройте приложение через Telegram'); }
   if(!providers.vk) return vkFail('Вход временно недоступен, откройте приложение через Telegram');
-  if(!window.VKIDSDK){
-    const s = document.createElement('script');
-    s.src = '/vkid-sdk.js';
-    s.onload = function(){ renderVkWidget(); };
-    s.onerror = function(){ vkFail('Вход временно недоступен, откройте приложение через Telegram'); };
-    document.head.appendChild(s);
-  } else renderVkWidget();
+  renderVkWidget();
 }
 async function renderVkWidget(){
+  let VKID;
+  try{ VKID = await vkConfigure(); }
+  catch(e){ return vkFail('Вход временно недоступен, откройте приложение через Telegram'); }
   try{
-    const VKID = window.VKIDSDK;
-    if(!VKID || !VKID.Config || !VKID.OAuthList) return vkFail('Вход временно недоступен, откройте приложение через Telegram');
-    if(!window.crypto || !crypto.subtle) return vkFail('Вход временно недоступен, откройте приложение через Telegram');
-    const raw = new Uint8Array(64);
-    crypto.getRandomValues(raw);
-    _vkVerifier = b64urlBytes(raw);
-    const dig = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(_vkVerifier));
-    const challenge = b64urlBytes(new Uint8Array(dig));
-    const stateRaw = new Uint8Array(16);
-    crypto.getRandomValues(stateRaw);
-    VKID.Config.init({
-      app: VK_APP_ID, redirectUrl: VK_REDIRECT,
-      responseMode: VKID.ConfigResponseMode.Callback, source: VKID.ConfigSource.LOWCODE,
-      scope: '', codeChallenge: challenge, codeChallengeMethod: 'S256', state: b64urlBytes(stateRaw)
-    });
+    if(!VKID.OAuthList) return vkFail('Вход временно недоступен, откройте приложение через Telegram');
     const names = (VKID.OAuthName && VKID.OAuthName.VK && VKID.OAuthName.OK) ? [VKID.OAuthName.VK, VKID.OAuthName.OK] : ['vkid', 'ok_ru'];
     const box = document.getElementById('vkLoginBox');
     if(!box) return;
@@ -629,7 +664,8 @@ async function initApp(){
     }
     return;
   }
-  // standalone/APK: вход по сохранённой сессии, иначе экран входа
+  // standalone/APK: возврат из VK (vkcode) → сохранённая сессия → иначе экран входа
+  if(await handleVkRedirect()) return;
   await enterWithSession();
 }
 

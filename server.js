@@ -323,35 +323,49 @@ app.get('/api/auth/me', (req, res) => {
   res.json({ tg_id: req.tgUserId });
 });
 
+// redirect-режим VKID: топ-окно приходит сюда с code, уводим обратно в приложение
+app.get('/api/auth/vk/callback', (req, res) => {
+  const code = req.query.code;
+  const device_id = req.query.device_id || req.query.deviceId || req.query.deviceID;
+  if (!code) return res.status(400).json({ error: 'Missing code' });
+  const base = process.env.MINIAPP_URL || '';
+  res.redirect(302, base + '/?vkcode=' + encodeURIComponent(code) + (device_id ? '&vkdevice=' + encodeURIComponent(device_id) : ''));
+});
+
 function vkForm(params) {
   return Object.entries(params).map(([k, v]) => encodeURIComponent(k) + '=' + encodeURIComponent(String(v))).join('&');
 }
 
 app.post('/api/auth/vk/exchange', async (req, res) => {
   try {
-    const { code, device_id, code_verifier } = req.body || {};
-    if (!code || !device_id || !code_verifier) return res.status(400).json({ error: 'Missing fields' });
+    const { code, device_id, code_verifier, access_token: directToken } = req.body || {};
     const client_id = process.env.VK_CLIENT_ID, client_secret = process.env.VK_CLIENT_SECRET;
     if (!client_id || !client_secret) { console.error('VK exchange: нет VK_CLIENT_ID/SECRET в .env'); return res.status(502).json({ error: 'VK auth not configured' }); }
-    let ex, exRes;
-    try {
-      exRes = await fetch('https://id.vk.ru/oauth2/auth', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: vkForm({ grant_type: 'authorization_code', code, client_id, client_secret, device_id, redirect_uri: VK_REDIRECT_URI, code_verifier }),
-        signal: AbortSignal.timeout(15000)
-      });
-      ex = await exRes.json().catch(() => ({}));
-    } catch (e) { console.error('VK exchange fetch:', e.message); return res.status(502).json({ error: 'VK exchange failed' }); }
-    if (!exRes.ok || !ex.access_token) { console.error('VK exchange failed:', exRes.status, JSON.stringify(ex).slice(0, 300)); return res.status(502).json({ error: 'VK exchange failed' }); }
+    let ex = null, access_token = directToken || null;
+    if (!access_token) {
+      // режим 1 (виджет): code + PKCE-verifier меняем на токены на бэкенде
+      if (!code || !device_id || !code_verifier) return res.status(400).json({ error: 'Missing fields' });
+      let exRes;
+      try {
+        exRes = await fetch('https://id.vk.ru/oauth2/auth', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: vkForm({ grant_type: 'authorization_code', code, client_id, client_secret, device_id, redirect_uri: VK_REDIRECT_URI, code_verifier }),
+          signal: AbortSignal.timeout(15000)
+        });
+        ex = await exRes.json().catch(() => ({}));
+      } catch (e) { console.error('VK exchange fetch:', e.message); return res.status(502).json({ error: 'VK exchange failed' }); }
+      if (!exRes.ok || !ex.access_token) { console.error('VK exchange failed:', exRes.status, JSON.stringify(ex).slice(0, 300)); return res.status(502).json({ error: 'VK exchange failed' }); }
+      access_token = ex.access_token;
+    }
     // имя: сначала user_info (немаскированное), затем payload id_token, затем fallback
-    let vkId = ex.user_id ? String(ex.user_id) : null;
+    let vkId = (ex && ex.user_id) ? String(ex.user_id) : null;
     let vkName = null;
     try {
       const uiRes = await fetch('https://id.vk.ru/oauth2/user_info', {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: vkForm({ client_id, access_token: ex.access_token }),
+        body: vkForm({ client_id, access_token }),
         signal: AbortSignal.timeout(15000)
       });
       const ui = await uiRes.json().catch(() => ({}));
@@ -361,7 +375,7 @@ app.post('/api/auth/vk/exchange', async (req, res) => {
         if (fn) vkName = fn.slice(0, 100);
       }
     } catch (e) { console.error('VK user_info:', e.message); }
-    if (!vkName && ex.id_token) {
+    if (!vkName && ex && ex.id_token) {
       try {
         const payload = JSON.parse(Buffer.from(String(ex.id_token).split('.')[1], 'base64').toString('utf8'));
         if (payload && payload.user_id) vkId = String(payload.user_id);
