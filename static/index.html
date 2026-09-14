@@ -278,7 +278,7 @@ body{touch-action:manipulation}
     <div class="card text-center" style="margin-bottom:0"><div class="subtle" style="font-size:11px;font-weight:700">Вес / вода</div><div style="font-weight:800;font-size:19px" id="statsWeight">—</div></div>
   </div>
   <div class="card mb4" style="margin-top:14px"><h3 class="mb3">Вес</h3><div id="weightChart" style="height:170px"></div>
-    <div class="flex gap2 mt3"><input type="number" step="0.1" class="input" id="newWeight" placeholder="Вес, кг" style="flex:1"><button class="btn btn-primary" onclick="saveWeight()">Сохранить</button></div></div>
+    <div class="flex gap2 mt3"><input type="number" inputmode="decimal" step="0.1" class="input" id="newWeight" placeholder="Вес, кг" style="flex:1" onkeydown="if(event.key==='Enter')saveWeight()"><button class="btn btn-primary" onclick="saveWeight()">Сохранить</button></div></div>
 </div>
 
 <!-- ТРЕНИРОВКИ -->
@@ -425,6 +425,12 @@ function applyTelegramTheme(){
 const TABS = ['home','stats','workouts','nutrition','profile'];
 const SCREEN_PARENT = {program:'workouts', 'active-workout':'workouts', settings:'profile', shopping:'nutrition', mealcard:'nutrition'};
 function navigate(screen){
+  try{
+    const cur = document.querySelector('.screen.active');
+    if(cur && cur.id === 'screen-active-workout' && screen !== 'active-workout'){ clearInterval(workoutTimer); workoutTimer = null; }
+    if(screen !== 'active-workout'){ clearInterval(restTimer); restTimer = null; const ro = document.getElementById('restOverlay'); if(ro) ro.classList.remove('show'); }
+    if(screen !== 'workouts' && screen !== 'program' && typeof yfTimer !== 'undefined'){ clearInterval(yfTimer); }
+  }catch(e){}
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   const t = $('screen-'+screen); if(t) t.classList.add('active');
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
@@ -536,7 +542,7 @@ function obNumErr(id, msg){
 }
 function obField(id, label, ph, val){
   return '<div class="input-wrap"><label class="input-label">' + label + '</label>' +
-    '<input type="number" step="0.1" class="input" id="' + id + '" value="' + (val || '') + '" placeholder="' + ph + '">' +
+    '<input type="number" inputmode="decimal" step="0.1" class="input" id="' + id + '" value="' + (val || '') + '" placeholder="' + ph + '">' +
     '<div class="ob-err" id="' + id + 'Err"></div></div>';
 }
 function obGo(n){ ob.step = n; obRender(); }
@@ -603,7 +609,7 @@ function obRender(){
   if(s === 0){
     h += '<div class="badge badge-accent mb2">GuideFit</div><h1 style="margin-bottom:6px">Привет! Я GuideFit</h1>' +
       '<p class="muted" style="font-size:14px;margin:10px 0 24px;line-height:1.55">Рассчитаем калории, БЖУ и подберём программу под твою цель</p>' +
-      '<div class="input-wrap"><label class="input-label">Как тебя зовут?</label><input type="text" class="input" id="obName" maxlength="30" value="' + esc(ob.name || '') + '"></div>';
+      '<div class="input-wrap"><label class="input-label">Как тебя зовут?</label><input type="text" class="input" id="obName" maxlength="30" value="' + esc(ob.name || '') + '" onkeydown="if(event.key===\'Enter\')obNext()"></div>';
   } else if(s === 1){
     h += '<h1 style="margin-bottom:18px">Твой пол</h1><div class="sel-row">' + obCard('male','Мужчина','','gender') + obCard('female','Женщина','','gender') + '</div>';
   } else if(s === 2){
@@ -635,9 +641,9 @@ function obRender(){
       '<span style="font-size:12.5px;line-height:1.55">Я соглашаюсь с <a href="/privacy.html" target="_blank" onclick="event.stopPropagation()">Политикой обработки персональных данных</a> и <a href="/terms.html" target="_blank" onclick="event.stopPropagation()">Пользовательским соглашением</a><br><span class="subtle" style="font-size:11.5px">включая данные о весе, росте и пищевых привычках</span></span></label>';
   }
   h += '<div class="flex gap2" style="margin-top:26px">' +
-    (s > 0 && s < 9 ? '<button class="btn btn-ghost pressable" style="flex:1" onclick="obBack()">Назад</button>' : '') +
+    (s > 0 ? '<button class="btn btn-ghost pressable" style="flex:1" onclick="obBack()">Назад</button>' : '') +
     (s < 9 ? '<button class="btn btn-primary pressable" style="flex:2" onclick="obNext()">' + (s === 0 ? 'Начать' : 'Далее') + '</button>'
-           : '<button id="obStartBtn" class="btn btn-primary btn-block pressable" onclick="obFinish()" style="' + (ob.consent ? '' : 'opacity:.45;pointer-events:none') + '">Начинаем!</button>') +
+           : '<button id="obStartBtn" class="btn btn-primary pressable" style="flex:2' + (ob.consent ? '' : ';opacity:.45;pointer-events:none') + '" onclick="obFinish()">Начинаем!</button>') +
     '</div>';
   box.innerHTML = h;
   obHydrate(box);
@@ -915,11 +921,10 @@ async function finishWorkout(isProgram){
   let totalVolume = 0;
   const sets = [];
   currentExercises.forEach((ex, idx) => {
-    for(let i = 0; i < ex.sets; i++){
-      const wEl = $('w-' + idx + '-' + i), rEl = $('r-' + idx + '-' + i);
-      const w = parseFloat(wEl && wEl.value) || 0, r = parseInt(rEl && rEl.value) || 0;
+    ((wzDone[idx] || [])).forEach((s, i) => {
+      const w = +s.w || 0, r = parseInt(s.r) || 0;
       if(r > 0){ totalVolume += w * r; sets.push({ exercise_id: ex.id, set_number: i + 1, reps: r, weight: w }); }
-    }
+    });
   });
   try{
     await api('/api/workout/log', {
@@ -1202,6 +1207,8 @@ function renderWeightChart(history){
         return '<circle cx="' + x.toFixed(1) + '" cy="' + y.toFixed(1) + '" r="4.5" fill="var(--surface)" stroke="var(--accent)" stroke-width="2.5"/>';
       }).join('') + '</svg>' +
       '<div class="flex between mt2"><span class="subtle" style="font-size:10px;font-weight:700">' + esc(vals[0].date.slice(5)) + '</span><span class="subtle" style="font-size:10px;font-weight:700">' + esc(vals[vals.length-1].date.slice(5)) + '</span></div>';
+  } else if(history.length === 1){
+    chart.innerHTML = '<div class="empty" style="padding:16px">Первая запись: ' + esc(String(history[0].weight)) + ' кг — взвесься ещё раз, появится линия</div>';
   } else chart.innerHTML = '<div class="empty" style="padding:16px">Записывай вес — здесь появится график</div>';
 }
 
@@ -1217,9 +1224,11 @@ async function setMealCount(n){
 async function saveWeight(){
   const w = parseFloat($('newWeight').value);
   if(!w){ showError('Введи вес'); return; }
+  if(!(w >= 20 && w <= 400)){ showError('Вес: от 20 до 400 кг'); return; }
   try{
     await api('/api/weight', { method:'POST', body:{ tg_id: currentUser.tg_id, weight: w } });
     showSuccess('Вес сохранён! ⚖️');
+    $('newWeight').value = '';
     if($('screen-stats').classList.contains('active')) loadStats();
     if($('screen-profile').classList.contains('active')) loadProfile();
   }catch(e){ showError(e.message); }
@@ -1416,7 +1425,7 @@ function woFinishFlow(){
 let wzEx = 0, wzDone = [];
 function renderActiveWorkout(isProgram){
   workoutSeconds = 0; timerPaused = false;
-  wzEx = 0; wzDone = currentExercises.map(e => 0);
+  wzEx = 0; wzDone = currentExercises.map(() => []);
   startTimer();
   wzRender(isProgram);
 }
@@ -1429,8 +1438,12 @@ function wzRender(isProgram){
   if(!c) return;
   if(wzEx >= currentExercises.length){ wzFinish(isProgram); return; }
   const ex = currentExercises[wzEx];
-  const done = wzDone[wzEx];
+  const list = wzDone[wzEx] || (wzDone[wzEx] = []);
+  const done = list.length;
   const allDone = done >= ex.sets;
+  const lastSet = list[list.length - 1];
+  const wDef = lastSet ? lastSet.w : 0;
+  const rDef = lastSet ? lastSet.r : (parseInt(ex.reps) || 10);
   c.innerHTML =
     '<div class="card" style="text-align:center;padding:14px">' +
       '<div class="flex between items-center">' +
@@ -1451,7 +1464,11 @@ function wzRender(isProgram){
       '<div class="flex gap2 mt3" style="justify-content:center;flex-wrap:wrap">' +
         Array.from({length: ex.sets}, (_, i) =>
           '<div class="wz-set' + (i < done ? ' done' : '') + '">' + (i < done ? ic('check',22) : (i+1)) + '</div>').join('') +
-      '</div></div>' +
+      '</div>' +
+      '<div class="flex gap2 mt3"><div style="flex:1"><label class="input-label" style="margin-bottom:5px">Вес, кг</label>' +
+        '<input id="wzW" type="number" inputmode="decimal" step="0.5" min="0" max="1000" class="input" style="text-align:center;padding:12px" value="' + wDef + '"></div>' +
+        '<div style="flex:1"><label class="input-label" style="margin-bottom:5px">Повторы</label>' +
+        '<input id="wzR" type="number" inputmode="numeric" step="1" min="1" max="500" class="input" style="text-align:center;padding:12px" value="' + rDef + '"></div></div></div>' +
     (allDone
       ? '<button class="btn btn-primary btn-block pressable wz-main" onclick="wzNext(' + isProgram + ')">' +
           (wzEx === currentExercises.length - 1 ? 'Завершить тренировку' : 'Следующее упражнение') + ' ' + ic('chevron',18) + '</button>'
@@ -1470,9 +1487,13 @@ function wzRender(isProgram){
 }
 function wzSetDone(isProgram){
   const ex = currentExercises[wzEx];
-  wzDone[wzEx]++;
-  if(typeof haptic === 'function') haptic('ok');
-  if(wzDone[wzEx] >= ex.sets && wzEx < currentExercises.length - 1){ startRest(ex.rest_seconds || 40); }
+  const arr = wzDone[wzEx] || (wzDone[wzEx] = []);
+  const wEl = document.getElementById('wzW'), rEl = document.getElementById('wzR');
+  const planned = parseInt(ex.reps) || 10;
+  const w = Math.min(Math.max(parseFloat(wEl && wEl.value) || 0, 0), 1000);
+  const r = Math.min(Math.max(parseInt(rEl && rEl.value) || planned, 1), 500);
+  if(arr.length < ex.sets){ arr.push({ w, r }); if(typeof haptic === 'function') haptic('ok'); }
+  if(arr.length >= ex.sets && wzEx < currentExercises.length - 1){ startRest(ex.rest_seconds || 40); }
   wzRender(isProgram);
 }
 function wzNext(isProgram){ wzEx++; if(typeof haptic === 'function') haptic(); wzRender(isProgram); }
@@ -1629,10 +1650,10 @@ function loadSettings(){
     '<div class="card mb4"><h3 class="mb3">Мои данные</h3>' +
       '<div class="set-field"><label class="input-label">Имя</label><input class="input" id="setName" value="' + esc(u.name) + '"></div>' +
       '<div class="grid2">' +
-        '<div class="set-field"><label class="input-label">Возраст</label><input class="input" type="number" id="setAge" value="' + u.age + '"></div>' +
-        '<div class="set-field"><label class="input-label">Рост, см</label><input class="input" type="number" id="setHeight" value="' + u.height + '"></div>' +
-        '<div class="set-field"><label class="input-label">Вес, кг</label><input class="input" type="number" step="0.1" id="setWeight" value="' + u.current_weight + '"></div>' +
-        '<div class="set-field"><label class="input-label">Целевой вес</label><input class="input" type="number" step="0.1" id="setTarget" value="' + u.target_weight + '"></div>' +
+        '<div class="set-field"><label class="input-label">Возраст</label><input class="input" type="number" inputmode="numeric" id="setAge" value="' + u.age + '"></div>' +
+        '<div class="set-field"><label class="input-label">Рост, см</label><input class="input" type="number" inputmode="numeric" id="setHeight" value="' + u.height + '"></div>' +
+        '<div class="set-field"><label class="input-label">Вес, кг</label><input class="input" type="number" inputmode="decimal" step="0.1" id="setWeight" value="' + u.current_weight + '"></div>' +
+        '<div class="set-field"><label class="input-label">Целевой вес</label><input class="input" type="number" inputmode="decimal" step="0.1" id="setTarget" value="' + u.target_weight + '"></div>' +
       '</div>' +
       '<label class="input-label">Цель</label><div class="flex gap2 mb3" style="flex-wrap:wrap">' + goalChips + '</div>' +
       '<button class="btn btn-primary btn-block pressable" onclick="saveProfileSettings()">Сохранить</button>' +
