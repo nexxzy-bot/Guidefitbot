@@ -201,6 +201,8 @@ db.serialize(() => {
   const as = db.prepare(`INSERT OR IGNORE INTO achievements (id, title, description, icon, condition_type, condition_value) VALUES (?, ?, ?, ?, ?, ?)`);
   achievements.forEach(a => as.run(a.id, a.title, a.description, a.icon, a.condition_type, a.condition_value));
   as.finalize();
+  // миграция иконок со старых эмодзи на SVG-ключи фронта (идемпотентно)
+  db.run(`UPDATE achievements SET icon = CASE id WHEN 1 THEN 'run' WHEN 2 THEN 'flame' WHEN 3 THEN 'trophy' WHEN 4 THEN 'droplet' WHEN 5 THEN 'chef' WHEN 6 THEN 'dumbbell' ELSE icon END WHERE icon NOT IN ('run','flame','trophy','droplet','chef','dumbbell')`);
 });
 
 module.exports = db;

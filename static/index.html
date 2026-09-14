@@ -153,7 +153,7 @@ select.input{appearance:none}
 .home-head{display:flex;align-items:center;gap:12px;padding:10px 0 16px}
 .ach{display:flex;align-items:center;gap:12px;background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:12px;margin-bottom:8px;box-shadow:var(--sh-sm)}
 .ach.locked{opacity:.45}
-.ach-ic{width:46px;height:46px;border-radius:15px;background:var(--amber-dim);display:flex;align-items:center;justify-content:center;font-size:21px;flex-shrink:0}
+.ach-ic{width:46px;height:46px;border-radius:15px;background:var(--amber-dim);color:var(--amber);display:flex;align-items:center;justify-content:center;font-size:21px;flex-shrink:0}
 .empty{text-align:center;padding:34px 18px;color:var(--text3);font-size:13px;font-weight:600}
 .shimmer{background:linear-gradient(90deg,var(--solid) 25%,#E2EDF8 50%,var(--solid) 75%);background-size:200% 100%;animation:sh 1.3s infinite;border-radius:14px;height:64px;margin-bottom:10px}
 @keyframes sh{to{background-position:-200% 0}}
@@ -383,7 +383,7 @@ const ICONS = {
 };
 function ic(name, size){
   size = size || 20;
-  return '<svg width="'+size+'" height="'+size+'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0">'+ICONS[name]+'</svg>';
+  return '<svg width="'+size+'" height="'+size+'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0">'+(ICONS[name] || ICONS.trophy)+'</svg>';
 }
 function showToast(msg, type){
   const t = $('toast');

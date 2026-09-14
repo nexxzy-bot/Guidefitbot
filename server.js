@@ -163,7 +163,7 @@ function checkAchievements(tg_id) {
                     db.run("INSERT OR IGNORE INTO user_achievements (tg_id, achievement_id) VALUES (?, ?)",
                       [tg_id, a.id], function (err2) {
                         if (!err2 && this.changes > 0) {
-                          sendTelegram(tg_id, `🏅 Новое достижение: ${a.icon} «${a.title}»\n${a.description}`);
+                          sendTelegram(tg_id, `🏅 Новое достижение «${a.title}»\n${a.description}`);
                         }
                       });
                   }
