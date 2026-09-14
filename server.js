@@ -30,12 +30,14 @@ function validateInitData(initData) {
   if (!hash) return { valid: false };
   params.delete('hash');
   const dataCheckString = [...params.entries()]
-    .sort(([a], [b]) => a.localeCompare(b))
+    .sort(([a], [b]) => a < b ? -1 : a > b ? 1 : 0)
     .map(([k, v]) => k + '=' + v).join('\n');
   const secretKey = crypto.createHmac('sha256', 'WebAppData').update(token).digest();
   const calcHash = crypto.createHmac('sha256', secretKey).update(dataCheckString).digest('hex');
   const _a = Buffer.from(calcHash, 'hex'), _b = Buffer.from(hash, 'hex');
   if (_a.length !== _b.length || !crypto.timingSafeEqual(_a, _b)) return { valid: false };
+  const authDate = parseInt(params.get('auth_date') || '0', 10);
+  if (!authDate || Date.now() / 1000 - authDate > 86400) return { valid: false, reason: 'stale' };
   try {
     const user = JSON.parse(params.get('user') || 'null');
     return user && user.id ? { valid: true, id: String(user.id) } : { valid: false };
@@ -52,7 +54,7 @@ app.use('/api', (req, res, next) => {
 function resolveTgId(req) {
   const requested = String(req.body?.tg_id ?? req.query?.tg_id ?? req.params?.tgId ?? '');
   if (req.tgUserId) return req.tgUserId;          // подписанные данные Telegram имеют приоритет
-  if (!process.env.TELEGRAM_TOKEN) return requested; // dev-режим без токена
+  if (!process.env.TELEGRAM_TOKEN) return requested === 'demo_user' ? requested : null; // dev без токена: только демо
   // v14: demo_user закрыт (аудит) — без TELEGRAM_TOKEN всё равно пускает любого
   return null;                                     // иначе — попытка подмены, отказ
 }
@@ -62,14 +64,14 @@ const ACTIVITY_MULTIPLIERS = { sedentary: 1.2, light: 1.375, moderate: 1.55, act
 
 function calcCalories(current_weight, height, age, gender, activity_level, goal) {
   const w = Number(current_weight), h = Number(height), a = Number(age);
-  if (!w || !h || !a) return null; // нет данных — не считаем мусор
+  if (!w || !h || !a || w <= 0 || h <= 0 || a <= 0) return null; // нет данных — не считаем мусор
   let bmr = 10 * w + 6.25 * h - 5 * a;
   bmr += gender === 'male' ? 5 : -161;
   const mult = ACTIVITY_MULTIPLIERS[activity_level] || 1.375;
   let norm = Math.round(bmr * mult);
   if (goal === 'lose') norm -= 500;
   if (goal === 'gain') norm += 500;
-  return norm;
+  return Math.max(norm, 1000); // пол: норма не бывает ниже физиологического минимума
 }
 
 // Честные нормы от веса: белки 1.8–2 г/кг, жиры 1 г/кг, углеводы — остаток калорий, вода 30 мл/кг
@@ -85,7 +87,7 @@ function calcNorms(user) {
 
 function calcStreak(tg_id, callback) {
   db.all("SELECT date FROM workout_logs WHERE tg_id = ? ORDER BY date DESC", [tg_id], (err, rows) => {
-    if (err || !rows.length) return callback(0);
+    if (err || !rows || !rows.length) return callback(0);
     const dates = [...new Set(rows.map(r => r.date))].sort().reverse();
     if (dates[0] !== localDate() && dates[0] !== localDate(-1)) return callback(0);
     let streak = 1;
@@ -186,7 +188,7 @@ app.use('/api', (req, res, next) => {
   const h = rlHits.get(key) || { n: 0, t: now };
   if (now - h.t > 60000) { h.n = 0; h.t = now; }
   h.n++;
-  if (rlHits.size > 20000) rlHits.clear();
+  if (rlHits.size > 20000) { const kill = Math.floor(rlHits.size / 2); let i = 0; for (const k of rlHits.keys()) { if (i++ >= kill) break; rlHits.delete(k); } }
   rlHits.set(key, h);
   if (h.n > 120) return res.status(429).json({ error: 'Too many requests' });
   next();
@@ -199,6 +201,10 @@ app.post('/api/user/init', (req, res) => {
   const { name, goal, gender, age, height, current_weight, target_weight, activity_level } = req.body;
   if (!name || !goal || !gender || !age || !height || !current_weight) {
     return res.status(400).json({ error: 'Missing fields' });
+  }
+  if (!['lose', 'maintain', 'gain'].includes(goal) || !['male', 'female'].includes(gender) ||
+      (activity_level && !['sedentary', 'light', 'moderate', 'active', 'very_active'].includes(activity_level))) {
+    return res.status(400).json({ error: 'Invalid values' });
   }
   if (!(age >= 10 && age <= 100) || !(height >= 120 && height <= 230) ||
       !(current_weight >= 20 && current_weight <= 400) ||
@@ -237,11 +243,19 @@ app.post('/api/user/update', (req, res) => {
   const tgId = resolveTgId(req);
   if (!tgId) return res.status(401).json({ error: 'Unauthorized' });
   db.get("SELECT * FROM users WHERE tg_id = ?", [tgId], (err, user) => {
-    if (err || !user) return res.status(404).json({ error: 'User not found' });
+    if (err) return res.status(500).json({ error: err.message });
+    if (!user) return res.status(404).json({ error: 'User not found' });
     const fields = {};
     ['current_weight', 'target_weight', 'goal', 'activity_level', 'name', 'age', 'height'].forEach(k => {
       if (req.body[k] !== undefined) fields[k] = req.body[k];
     });
+    if (fields.current_weight !== undefined && !(fields.current_weight >= 20 && fields.current_weight <= 400)) return res.status(400).json({ error: 'Invalid values' });
+    if (fields.target_weight !== undefined && !(fields.target_weight >= 20 && fields.target_weight <= 400)) return res.status(400).json({ error: 'Invalid values' });
+    if (fields.age !== undefined && !(fields.age >= 10 && fields.age <= 100)) return res.status(400).json({ error: 'Invalid values' });
+    if (fields.height !== undefined && !(fields.height >= 120 && fields.height <= 230)) return res.status(400).json({ error: 'Invalid values' });
+    if (fields.goal !== undefined && !['lose', 'maintain', 'gain'].includes(fields.goal)) return res.status(400).json({ error: 'Invalid values' });
+    if (fields.activity_level !== undefined && !['sedentary', 'light', 'moderate', 'active', 'very_active'].includes(fields.activity_level)) return res.status(400).json({ error: 'Invalid values' });
+    if (fields.name !== undefined && (typeof fields.name !== 'string' || !fields.name.trim() || fields.name.length > 30)) return res.status(400).json({ error: 'Invalid values' });
     if (req.body.meal_count !== undefined) {
       const mc = parseInt(req.body.meal_count);
       if (mc >= 2 && mc <= 6) fields.meal_count = mc;
@@ -272,6 +286,7 @@ app.post('/api/user/delete', (req, res) => {
     db.run("DELETE FROM water_logs WHERE tg_id = ?", [tgId]);
     db.run("DELETE FROM weight_logs WHERE tg_id = ?", [tgId]);
     db.run("DELETE FROM user_programs WHERE tg_id = ?", [tgId]);
+    db.run("DELETE FROM user_achievements WHERE tg_id = ?", [tgId]);
     db.run("DELETE FROM notification_log WHERE tg_id = ?", [tgId]);
     db.run("DELETE FROM users WHERE tg_id = ?", [tgId], (err) => {
       if (err) return res.status(500).json({ error: err.message });
@@ -325,6 +340,7 @@ app.get('/api/stats/:tgId', (req, res) => {
   const days = [];
   for (let i = 0; i < 7; i++) days.push(localDate(i - dayOfWeek + 1));
   db.get("SELECT calorie_norm, current_weight FROM users WHERE tg_id = ?", [tgId], (err, user) => {
+    if (err) console.error('stats user:', err.message);
     const target = user?.calorie_norm || 2000;
     const currentWeight = user?.current_weight || null;
     const placeholders = days.map(() => '?').join(',');
@@ -374,6 +390,7 @@ app.post('/api/dashboard', (req, res) => {
     const today = localDate();
     db.all(`SELECT r.* FROM food_logs fl JOIN recipes r ON fl.recipe_id = r.id
         WHERE fl.tg_id = ? AND date(fl.timestamp) = ?`, [tgId, today], (err, meals) => {
+      if (err) console.error('dashboard meals:', err.message);
       const consumption = { calories: 0, protein: 0, fat: 0, carbs: 0 };
       (meals || []).forEach(m => {
         consumption.calories += m.calories || 0;
@@ -427,17 +444,12 @@ app.post('/api/dashboard', (req, res) => {
 app.post('/api/meal', (req, res) => {
   const { category, goal, exclude_id } = req.body;
   if (!category) return res.status(400).json({ error: 'Missing category' });
-  let sql = "SELECT * FROM recipes WHERE category = ?";
-  const params = [category];
-  if (goal) { sql += " AND (goals LIKE ? OR goals IS NULL OR goals = '')"; params.push('%' + goal + '%'); }
-  if (exclude_id) { sql += " AND id != ?"; params.push(exclude_id); }
   const maxK = parseFloat(req.body.max_calories);
-  let baseSql = sql;
-  const baseParams = params.slice();
-  if (exclude_id) { baseSql += " AND id != ?"; baseParams.push(exclude_id); }
   const pick = (withCap, withExclude) => {
-    let sql2 = withExclude ? baseSql : sql;
-    const p2 = (withExclude ? baseParams : params).slice();
+    let sql2 = "SELECT * FROM recipes WHERE category = ?";
+    const p2 = [category];
+    if (goal) { sql2 += " AND (goals LIKE ? OR goals IS NULL OR goals = '')"; p2.push('%' + goal + '%'); }
+    if (withExclude && exclude_id) { sql2 += " AND id != ?"; p2.push(exclude_id); }
     if (withCap && maxK > 0) { sql2 += " AND calories <= ?"; p2.push(Math.round(maxK * 1.15)); }
     sql2 += " ORDER BY RANDOM() LIMIT 1";
     db.get(sql2, p2, (err, row) => {
@@ -551,7 +563,7 @@ app.get('/api/weekly-report/:tgId', (req, res) => {
             const totalMinutes = (workouts || []).reduce((s, w) => s + (w.duration_minutes || 0), 0);
             const totalVolume = (workouts || []).reduce((s, w) => s + (w.total_volume || 0), 0);
             const avgCals = meals?.length ? Math.round(meals.reduce((s, m) => s + (m.calories || 0), 0) / 7) : 0;
-            const weightChange = weights?.length >= 2 ? (weights[weights.length - 1].weight - weights[0].weight).toFixed(1) : 0;
+            const weightChange = weights?.length >= 2 ? Number((weights[weights.length - 1].weight - weights[0].weight).toFixed(1)) : 0;
             res.json({
               totalWorkouts: (workouts || []).length,
               totalMinutes,
@@ -609,8 +621,10 @@ app.get('/api/program/:id', (req, res) => {
     if (err) return res.status(500).json({ error: err.message });
     if (!program) return res.status(404).json({ error: 'Not found' });
     db.all("SELECT * FROM program_days WHERE program_id = ? ORDER BY week, day", [req.params.id], (err, days) => {
+      if (err) return res.status(500).json({ error: err.message });
+      if (!days || !days.length) return res.json({ program, days: [], total_days: 0 });
       const fetchExercises = (index) => {
-        if (index >= days.length) return res.json({ program, days, totalDays: days.length });
+        if (index >= days.length) return res.json({ program, days, total_days: days.length });
         db.all(`SELECT pe.*, e.name as exercise_name, e.muscle_group, e.description as exercise_desc
             FROM program_exercises pe JOIN exercises e ON pe.exercise_id = e.id
             WHERE pe.program_day_id = ?`, [days[index].id], (err, exes) => {
@@ -657,9 +671,13 @@ app.post('/api/user/program/progress', (req, res) => {
   const tgId = resolveTgId(req);
   if (!tgId) return res.status(401).json({ error: 'Unauthorized' });
   db.get("SELECT * FROM user_programs WHERE tg_id = ? AND active = 1", [tgId], (err, up) => {
-    if (err || !up) return res.status(404).json({ error: 'No active program' });
+    if (err) return res.status(500).json({ error: err.message });
+    if (!up) return res.status(404).json({ error: 'No active program' });
     db.all("SELECT * FROM program_days WHERE program_id = ? ORDER BY week, day", [up.program_id], (err, days) => {
+      if (err) return res.status(500).json({ error: err.message });
+      if (!days || !days.length) return res.status(404).json({ error: 'No program days' });
       const idx = days.findIndex(d => d.week === up.current_week && d.day === up.current_day);
+      if (idx === -1) return res.status(404).json({ error: 'Current day not found' });
       const next = days[idx + 1];
       if (!next) {
         db.run("UPDATE user_programs SET active = 0, completed = 1 WHERE id = ?", [up.id], (err2) => {
@@ -710,14 +728,19 @@ app.post('/api/workout/log', (req, res) => {
     function (err) {
       if (err) return res.status(500).json({ error: err.message });
       const logId = this.lastID;
+      const done = () => { checkAchievements(tgId); res.json({ status: 'ok', log_id: logId, total_volume: _totalVolume }); };
       if (_cleanSets.length > 0) {
         const stmt = db.prepare(`INSERT INTO workout_sets (log_id, exercise_id, set_number, reps, weight)
             VALUES (?, ?, ?, ?, ?)`);
-        _cleanSets.forEach(s3 => stmt.run(logId, s3.exercise_id, s3.set_number, s3.reps, s3.weight));
-        stmt.finalize();
-      }
-      checkAchievements(tgId);
-      res.json({ status: 'ok', log_id: logId, total_volume: _totalVolume });
+        let setErr = null, pending = _cleanSets.length;
+        _cleanSets.forEach(s3 => stmt.run(logId, s3.exercise_id, s3.set_number, s3.reps, s3.weight, (e) => {
+          if (e && !setErr) setErr = e;
+          if (--pending === 0) stmt.finalize(() => {
+            if (setErr) return res.status(500).json({ error: setErr.message });
+            done();
+          });
+        }));
+      } else done();
     });
 });
 
@@ -734,12 +757,14 @@ app.get('/api/workout/logs/:tgId', (req, res) => {
 
 app.get('/api/workout/log/:id', (req, res) => {
   const tgId = resolveTgId(req);
+  if (!tgId) return res.status(401).json({ error: 'Unauthorized' });
   db.get("SELECT * FROM workout_logs WHERE id = ? AND tg_id = ?", [req.params.id, tgId], (err, log) => {
     if (err) return res.status(500).json({ error: err.message });
     if (!log) return res.status(404).json({ error: 'Not found' });
     db.all(`SELECT ws.*, e.name as exercise_name
-        FROM workout_sets ws JOIN exercises e ON ws.exercise_id = e.id
+        FROM workout_sets ws LEFT JOIN exercises e ON ws.exercise_id = e.id
         WHERE ws.log_id = ?`, [req.params.id], (err, sets) => {
+      if (err) return res.status(500).json({ error: err.message });
       res.json({ log, sets: sets || [] });
     });
   });

@@ -3,10 +3,11 @@ const TOKEN = process.env.TELEGRAM_TOKEN;
 const APP_URL = process.env.MINIAPP_URL;
 if (!TOKEN || !APP_URL) { console.error('Нужны TELEGRAM_TOKEN и MINIAPP_URL в .env'); process.exit(1); }
 const tgApi = (m, b) => fetch('https://api.telegram.org/bot' + TOKEN + '/' + m, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(b || {}) }).then(r => r.json()).catch(() => null);
-let offset = -1;
+let offset = -1, backoff = 1000;
 async function loop() {
   try {
     const res = await fetch('https://api.telegram.org/bot' + TOKEN + '/getUpdates?offset=' + offset + '&timeout=30').then(r => r.json());
+    backoff = 1000;
     if (res && res.ok) for (const u of res.result) {
       offset = u.update_id + 1;
       const m = u.message;
@@ -17,7 +18,12 @@ async function loop() {
       }
       if (m.text === '/help') await tgApi('sendMessage', { chat_id: m.chat.id, text: 'Просто открой приложение кнопкой выше. Вопросы и пожелания пиши сюда — читаем всё.' });
     }
-  } catch (e) {}
+  } catch (e) {
+    console.error('Bot poll error:', e && e.message ? e.message : e);
+    backoff = Math.min(backoff * 2, 60000);
+    setTimeout(loop, backoff);
+    return;
+  }
   setTimeout(loop, 100);
 }
 loop();

@@ -3,15 +3,15 @@ const db = new sqlite3.Database('./guidefit.db');
 const fs = require('fs');
 
 db.serialize(() => {
-  db.all("PRAGMA table_info(users)", [], (e2, cols2) => {
-    if (!e2 && cols2 && !cols2.some(c => c.name === 'notify_enabled')) db.run("ALTER TABLE users ADD COLUMN notify_enabled INTEGER DEFAULT 1");
-  });
   db.run(`CREATE TABLE IF NOT EXISTS users (
     tg_id TEXT PRIMARY KEY, name TEXT, goal TEXT, gender TEXT,
     age INTEGER, height INTEGER, current_weight REAL, target_weight REAL,
     calorie_norm INTEGER, activity_level TEXT DEFAULT 'moderate',
     meal_count INTEGER DEFAULT 4, created_at DATETIME DEFAULT CURRENT_TIMESTAMP
   )`);
+  db.all("PRAGMA table_info(users)", [], (e2, cols2) => {
+    if (!e2 && cols2 && !cols2.some(c => c.name === 'notify_enabled')) db.run("ALTER TABLE users ADD COLUMN notify_enabled INTEGER DEFAULT 1");
+  });
   db.run(`CREATE TABLE IF NOT EXISTS food_logs (
     id INTEGER PRIMARY KEY AUTOINCREMENT, tg_id TEXT, recipe_id INTEGER,
     timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
@@ -100,6 +100,15 @@ db.serialize(() => {
   db.run(`CREATE INDEX IF NOT EXISTS idx_weight_logs_tg_date ON weight_logs(tg_id, date)`);
   db.run(`CREATE INDEX IF NOT EXISTS idx_food_logs_tg_ts ON food_logs(tg_id, timestamp)`);
 
+  // дедупликация + уникальность на день (защита от гонок параллельных записей)
+  db.run(`UPDATE water_logs SET amount_ml = (SELECT SUM(w2.amount_ml) FROM water_logs w2 WHERE w2.tg_id = water_logs.tg_id AND w2.date = water_logs.date) WHERE id IN (SELECT MIN(id) FROM water_logs GROUP BY tg_id, date)`);
+  db.run(`DELETE FROM water_logs WHERE id NOT IN (SELECT MIN(id) FROM water_logs GROUP BY tg_id, date)`);
+  db.run(`CREATE UNIQUE INDEX IF NOT EXISTS uq_water_tg_date ON water_logs(tg_id, date)`);
+  db.run(`DELETE FROM weight_logs WHERE id NOT IN (SELECT MAX(id) FROM weight_logs GROUP BY tg_id, date)`);
+  db.run(`CREATE UNIQUE INDEX IF NOT EXISTS uq_weight_tg_date ON weight_logs(tg_id, date)`);
+  db.run(`DELETE FROM user_achievements WHERE id NOT IN (SELECT MIN(id) FROM user_achievements GROUP BY tg_id, achievement_id)`);
+  db.run(`CREATE UNIQUE INDEX IF NOT EXISTS uq_userach ON user_achievements(tg_id, achievement_id)`);
+
   // v9: каталог рецептов пересобирается при каждом старте
   db.run("CREATE TABLE IF NOT EXISTS image_store (recipe_id INTEGER PRIMARY KEY, url TEXT)");
   db.run("INSERT OR REPLACE INTO image_store (recipe_id, url) SELECT id, image_url FROM recipes WHERE image_url IS NOT NULL AND image_url != ''");
@@ -118,6 +127,8 @@ db.serialize(() => {
         r.image_url || '', JSON.stringify(r.goals || ['lose','gain','maintain']), r.photo || '');
     });
     stmt.finalize();
+    // восстанавливаем закэшированные Pexels-URL, пережившие пересев каталога
+    db.run(`UPDATE recipes SET image_url = (SELECT url FROM image_store WHERE image_store.recipe_id = recipes.id) WHERE (image_url IS NULL OR image_url = '' OR image_url = 'empty.jpg') AND EXISTS (SELECT 1 FROM image_store WHERE image_store.recipe_id = recipes.id)`);
   }
   if (fs.existsSync('./exercises.json')) {
     const exercises = JSON.parse(fs.readFileSync('./exercises.json', 'utf8'));
@@ -169,6 +180,7 @@ db.serialize(() => {
       yf.run(f.id, f.title, f.focus, f.level, f.minutes, f.description);
       (f.poses || []).forEach(pp => yfp.run(f.id, pp.pose_id, pp.seconds));
     });
+    yp.finalize(); yf.finalize(); yfp.finalize();
     console.log('Йога загружена: ' + yg.flows.length + ' практик');
   }
   const achievements = [

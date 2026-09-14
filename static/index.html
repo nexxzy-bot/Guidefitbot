@@ -273,6 +273,10 @@ body{touch-action:manipulation}
     <div class="subtle" style="font-size:12px;font-weight:600;margin-top:4px">потреблено сегодня</div>
   </div>
   <div class="bar-chart" id="barChart"></div>
+  <div class="grid2 mt3">
+    <div class="card text-center" style="margin-bottom:0"><div class="subtle" style="font-size:11px;font-weight:700">Тренировка, мин</div><div style="font-weight:800;font-size:19px" id="statsWorkout">—</div></div>
+    <div class="card text-center" style="margin-bottom:0"><div class="subtle" style="font-size:11px;font-weight:700">Вес / вода</div><div style="font-weight:800;font-size:19px" id="statsWeight">—</div></div>
+  </div>
   <div class="card mb4" style="margin-top:14px"><h3 class="mb3">Вес</h3><div id="weightChart" style="height:170px"></div>
     <div class="flex gap2 mt3"><input type="number" step="0.1" class="input" id="newWeight" placeholder="Вес, кг" style="flex:1"><button class="btn btn-primary" onclick="saveWeight()">Сохранить</button></div></div>
 </div>
@@ -670,6 +674,7 @@ async function loadDashboard(){
     $('homeWater').textContent = data.water || 0;
     _lastCons = data.consumption || {};
     renderMacrosPlate(_lastCons);
+    if(typeof renderHomeDonuts === 'function'){ try{ renderHomeDonuts(); }catch(e){} }
 
     renderHomeMeals(data);
 
@@ -1429,7 +1434,7 @@ function wzRender(isProgram){
   c.innerHTML =
     '<div class="card" style="text-align:center;padding:14px">' +
       '<div class="flex between items-center">' +
-        '<button class="btn btn-ghost pressable" style="padding:9px 13px;font-size:12.5px" onclick="navigate(\'workouts\')">Прервать</button>' +
+        '<button class="btn btn-ghost pressable" style="padding:9px 13px;font-size:12.5px" onclick="abortWorkout()">Прервать</button>' +
         '<div class="timer-big" style="font-size:28px" id="workoutTimer">00:00</div>' +
         '<button class="btn btn-ghost pressable" style="padding:9px 13px;font-size:12.5px" onclick="toggleTimer()" id="timerBtn">Пауза</button>' +
       '</div></div>' +
@@ -1472,6 +1477,7 @@ function wzSetDone(isProgram){
 }
 function wzNext(isProgram){ wzEx++; if(typeof haptic === 'function') haptic(); wzRender(isProgram); }
 function wzFinish(isProgram){
+  clearInterval(workoutTimer); workoutTimer = null;
   const c = document.getElementById('activeWorkoutContent');
   if(c) c.innerHTML = '<div class="card text-center" style="padding:36px 20px">' +
     '<div style="width:72px;height:72px;border-radius:50%;background:var(--green-dim);color:var(--green);display:flex;align-items:center;justify-content:center;margin:0 auto 16px">' + ic('check',34) + '</div>' +
@@ -1839,6 +1845,7 @@ function renderNormBars(u){
     '<div class="track"><div class="fill" style="width:' + Math.round(r[1]/maxV*100) + '%;background:' + r[3] + '"></div></div></div>').join('') +
     '<p class="subtle" style="font-size:11px">' + kcal + ' ккал в день · пересчитывается при изменении веса</p>';
 }
+if (typeof renderHomeDonuts === 'function') {
 const _rhd = renderHomeDonuts;
 renderHomeDonuts = function(){
   _rhd();
@@ -1858,6 +1865,7 @@ renderHomeDonuts = function(){
     }
   }, 50);
 };
+}
 </script>
 <script>
 try{
