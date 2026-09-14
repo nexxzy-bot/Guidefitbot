@@ -134,8 +134,9 @@ db.serialize(() => {
         r.image_url || '', JSON.stringify(r.goals || ['lose','gain','maintain']), r.photo || '');
     });
     stmt.finalize();
-    // восстанавливаем закэшированные Pexels-URL, пережившие пересев каталога
-    db.run(`UPDATE recipes SET image_url = (SELECT url FROM image_store WHERE image_store.recipe_id = recipes.id) WHERE (image_url IS NULL OR image_url = '' OR image_url = 'empty.jpg') AND EXISTS (SELECT 1 FROM image_store WHERE image_store.recipe_id = recipes.id)`);
+    // восстанавливаем закэшированные URL (включая локальные /images/...) поверх пересева:
+    // локальный файл всегда побеждает (это обработанный артефакт), remote из JSON — только для новых id
+    db.run(`UPDATE recipes SET image_url = (SELECT url FROM image_store WHERE image_store.recipe_id = recipes.id) WHERE EXISTS (SELECT 1 FROM image_store WHERE image_store.recipe_id = recipes.id AND url IS NOT NULL AND url != '' AND ((recipes.image_url IS NULL OR recipes.image_url = '' OR recipes.image_url = 'empty.jpg') OR image_store.url LIKE '/images/%'))`);
   }
   if (fs.existsSync('./exercises.json')) {
     const exercises = JSON.parse(fs.readFileSync('./exercises.json', 'utf8'));
