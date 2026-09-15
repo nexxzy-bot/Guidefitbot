@@ -350,6 +350,7 @@ let currentProgramId = null, currentProgramDay = null, isProgramWorkout = false;
 let currentMealRecipe = null, currentMealCategory = 'breakfast';
 let restTimer = null, restRemaining = 0;
 let backTarget = null;
+let _wzExit = false; // явный выход из активной тренировки (сохранение/прерывание) — без лишнего confirm
 
 function $(id){ return document.getElementById(id); }
 function esc(s){ return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
@@ -612,9 +613,20 @@ function applyTelegramTheme(){
 
 /* ============ навигация ============ */
 const TABS = ['home','stats','workouts','nutrition','profile'];
-const SCREEN_PARENT = {program:'workouts', 'active-workout':'workouts', settings:'profile', shopping:'nutrition', mealcard:'nutrition'};
+const SCREEN_PARENT = {program:'workouts', 'active-workout':'workouts', settings:'profile'};
+// Уход с экрана активной тренировки (таббар/свайп) раньше молча стирал подходы: спрашиваем подтверждение
+function leavingWorkoutOk(screen){
+  try{
+    const cur = document.querySelector('.screen.active');
+    if(_wzExit || !cur || cur.id !== 'screen-active-workout' || screen === 'active-workout') return true;
+    if(!confirm('Прервать тренировку? Записанные подходы не сохранятся.')) return false;
+    isProgramWorkout = false; currentProgramDay = null;
+    return true;
+  }catch(e){ return true; }
+}
 function navigate(screen){
   try{
+    if(!leavingWorkoutOk(screen)) return;
     const cur = document.querySelector('.screen.active');
     if(cur && cur.id === 'screen-active-workout' && screen !== 'active-workout'){ clearInterval(workoutTimer); workoutTimer = null; }
     if(screen !== 'active-workout'){ clearInterval(restTimer); restTimer = null; const ro = document.getElementById('restOverlay'); if(ro) ro.classList.remove('show'); }
@@ -1109,7 +1121,8 @@ function abortWorkout(){
   clearInterval(workoutTimer); workoutTimer = null;
   skipRest();
   isProgramWorkout = false; currentProgramDay = null;
-  navigate('workouts');
+  _wzExit = true;
+  try{ navigate('workouts'); } finally{ _wzExit = false; }
 }
 
 async function finishWorkout(isProgram){
@@ -1142,7 +1155,8 @@ async function finishWorkout(isProgram){
       }catch(e2){ /* день программы без активной программы — тренировка сохранена, это ок */ }
     }
     isProgramWorkout = false; currentProgramDay = null;
-    navigate('workouts');
+    _wzExit = true;
+    try{ navigate('workouts'); } finally{ _wzExit = false; }
   }catch(e){ showError('Ошибка сохранения тренировки'); }
 }
 
@@ -1723,6 +1737,9 @@ function tourClose(){ const ov = document.getElementById('tourOverlay'); if(ov) 
 function tourSkip(){ tourDone(); tourClose(); }
 function tourMaybe(screen){
   try{
+    // экран главной должен быть реально активен: уход с тренировки может быть отменён в диалоге
+    const home = document.getElementById('screen-home');
+    if(!home || !home.classList.contains('active')) return;
     if(localStorage.getItem('gf_tour_' + tourUid())) return;
     /* ждём рендер дашборда (waterCard/streakPlate появляются после ответа /api/dashboard), максимум ~3с */
     let tries = 0;
@@ -1739,7 +1756,8 @@ try{
   const _navOrig = navigate;
   navigate = function(screen){
     _navOrig(screen);
-    if(screen === 'home'){
+    const home = document.getElementById('screen-home');
+    if(screen === 'home' && home && home.classList.contains('active')){
       setTimeout(function(){ tourMaybe(screen); }, 350);
     }
   };
@@ -1855,6 +1873,20 @@ async function loadProfile(){
   }catch(e){ c.innerHTML = '<div class="empty">Не удалось загрузить</div>'; }
   _profileLoading = false;
 }
+/* Напоминания рассылает Telegram-бот: у аккаунтов ВК и анонимных чата с ним нет,
+   поэтому тумблер им не показываем — иначе интерфейс обещает то, чего не будет. */
+function notifyAvailable(){
+  try{ if(tg && tg.initData) return true; }catch(e){}
+  return !!(currentUser && currentUser.provider === 'tg');
+}
+function notifyBlock(){
+  if(!notifyAvailable()){
+    return '<div class="card mb4"><h3 class="mb3">Уведомления</h3>' +
+      '<p class="muted" style="font-size:12.5px;line-height:1.6">Напоминания приёмам пищи, взвешиваниям и недельный отчёт отправляет Telegram-бот. ' +
+      'Чтобы их получать, открой приложение кнопкой из Telegram.</p></div>';
+  }
+  return '<div class="card mb4"><h3 class="mb3">Уведомления</h3><button class="btn btn-ghost btn-block pressable" onclick="toggleNotifyUI()" style="display:flex;align-items:center;justify-content:center;gap:8px">' + ic('sparkles',16) + ' <span id="notifyLblSettings">Уведомления: …</span></button></div>';
+}
 function loadSettings(){
   const c = $('settingsContent');
   if(!c || !currentUser) return;
@@ -1875,7 +1907,7 @@ function loadSettings(){
       '<button class="btn btn-primary btn-block pressable" onclick="saveProfileSettings()">Сохранить</button>' +
       '<p class="subtle mt2" style="font-size:11.5px">После сохранения норма калорий пересчитается автоматически.</p></div>' +      '<div class="card mb4"><h3 class="mb3">Приёмы пищи в день</h3><div class="flex gap2">' +
       [2,3,4,5,6].map(n => '<button class="chip pressable' + (u.meal_count===n?' active':'') + '" id="mc' + n + '" onclick="setMealCount(' + n + ')">' + n + '</button>').join('') + '</div></div>' +
-    '<div class="card mb4"><h3 class="mb3">Уведомления</h3><button class="btn btn-ghost btn-block pressable" onclick="toggleNotifyUI()" style="display:flex;align-items:center;justify-content:center;gap:8px">' + ic('sparkles',16) + ' <span id="notifyLblSettings">Уведомления: …</span></button></div>' +
+    notifyBlock() +
     '<a href="https://t.me/nexxdsgn" target="_blank" rel="noopener" class="btn btn-ghost btn-block pressable" style="text-decoration:none;display:flex;align-items:center;justify-content:center;gap:8px">' + ic('person',16) + ' Написать в поддержку · t.me/nexxdsgn</a>' +
     '<a href="/privacy.html" target="_blank" rel="noopener" class="btn btn-ghost btn-block pressable mt2" style="text-decoration:none;display:flex;align-items:center;justify-content:center;gap:8px">Политика конфиденциальности</a>' +
     '<button class="btn btn-ghost btn-block pressable mt2" onclick="doLogout()" style="display:flex;align-items:center;justify-content:center;gap:8px;color:#e0504b"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg> Выйти</button>' +
@@ -2168,10 +2200,13 @@ try{
       if(!c || document.getElementById('supportCard')) return;
       const card = document.createElement('div');
       card.className = 'card mb4'; card.id = 'supportCard';
+      const canNotify = (typeof notifyAvailable === 'function') ? notifyAvailable() : true;
       card.innerHTML = '<h3 class="mb3">Помощь</h3>' +
         '<a href="https://t.me/nexxdsgn" target="_blank" rel="noopener" class="btn btn-ghost btn-block pressable" style="text-decoration:none;display:flex;align-items:center;gap:8px">' + ic('person',16) + ' Написать в поддержку · t.me/nexxdsgn</a>' +
-        '<button class="btn btn-ghost btn-block pressable mt2" onclick="toggleNotifyUI()" style="display:flex;align-items:center;gap:8px">' + ic('sparkles',16) + ' <span id="notifyLbl">Уведомления: …</span></button>' +
-        '<p class="subtle mt2" style="font-size:11px">Напоминания о приёмах пищи, взвешивании и недельный отчёт по понедельникам.</p>';
+        (canNotify
+          ? '<button class="btn btn-ghost btn-block pressable mt2" onclick="toggleNotifyUI()" style="display:flex;align-items:center;gap:8px">' + ic('sparkles',16) + ' <span id="notifyLbl">Уведомления: …</span></button>' +
+            '<p class="subtle mt2" style="font-size:11px">Напоминания о приёмах пищи, взвешивании и недельный отчёт по понедельникам.</p>'
+          : '<p class="subtle mt2" style="font-size:11px;line-height:1.6">Напоминания и недельный отчёт приходят в Telegram-боте — они доступны при запуске приложения из Telegram.</p>');
       c.appendChild(card);
       const l = document.getElementById('notifyLbl');
       if(l) l.textContent = 'Уведомления: ' + ((currentUser && currentUser.notify_enabled) ? 'включены' : 'выключены');
@@ -2181,6 +2216,7 @@ try{
 }catch(e){}
 async function toggleNotifyUI(){
   if(!currentUser) return;
+  if(!notifyAvailable()){ showToast('Напоминания приходят только в Telegram-боте', 'err'); return; }
   try{
     const r = await api('/api/notifications/toggle', { method: 'POST', body: { tg_id: currentUser.tg_id } });
     currentUser.notify_enabled = r.notify_enabled;

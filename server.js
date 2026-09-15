@@ -44,13 +44,17 @@ function validateInitData(initData) {
   } catch (e) { return { valid: false }; }
 }
 
+// Срок жизни сессии standalone/APK. Токен лежит в localStorage, бесконечный срок = бесконечная утечка.
+const SESSION_TTL_SEC = 180 * 24 * 3600; // 180 дней
+function sessionCutoff() { return Math.floor(Date.now() / 1000) - SESSION_TTL_SEC; }
+
 app.use('/api', (req, res, next) => {
   const check = validateInitData(req.headers['x-telegram-init-data']);
   if (check.valid) { req.tgUserId = check.id; return next(); }
-  // standalone/APK: сессия VK-входа (Telegram initData в приоритете и не тронут)
+  // standalone/APK: сессия VK/анонимного входа (Telegram initData в приоритете и не тронут)
   const sess = String(req.headers['x-session-token'] || '');
   if (!sess) return next();
-  db.get("SELECT tg_id FROM sessions WHERE token = ?", [sess], (err, row) => {
+  db.get("SELECT tg_id FROM sessions WHERE token = ? AND created_at > ?", [sess, sessionCutoff()], (err, row) => {
     if (!err && row && row.tg_id) req.tgUserId = row.tg_id;
     next();
   });
@@ -130,6 +134,7 @@ function isTelegramId(tg_id) { return /^\d+$/.test(String(tg_id || '')); }
 
 // Уведомление с дедупликацией: один тип — один раз в день на пользователя
 function notifyOnce(tg_id, type, dateStr, text) {
+  if (!isTelegramId(tg_id)) return; // vk:/anon: — чата с ботом нет, в лог не пишем
   db.run("INSERT OR IGNORE INTO notification_log (tg_id, type, date) VALUES (?, ?, ?)",
     [tg_id, type, dateStr], function (err) {
       if (!err && this.changes > 0) sendTelegram(tg_id, text);
@@ -310,6 +315,8 @@ app.post('/api/user/delete', (req, res) => {
     db.run("DELETE FROM user_programs WHERE tg_id = ?", [tgId]);
     db.run("DELETE FROM user_achievements WHERE tg_id = ?", [tgId]);
     db.run("DELETE FROM notification_log WHERE tg_id = ?", [tgId]);
+    // сессии тоже удаляем: иначе токен из localStorage продолжает открывать аккаунт
+    db.run("DELETE FROM sessions WHERE tg_id = ?", [tgId]);
     db.run("DELETE FROM users WHERE tg_id = ?", [tgId], (err) => {
       if (err) return res.status(500).json({ error: err.message });
       res.json({ status: 'ok' });
@@ -693,15 +700,20 @@ app.get('/api/recipe/:id', (req, res) => {
 app.post('/api/log-meal', (req, res) => {
   const tgId = resolveTgId(req);
   if (!tgId) return res.status(401).json({ error: 'Unauthorized' });
-  const { recipe_id } = req.body;
+  const recipe_id = parseInt(req.body?.recipe_id, 10);
   if (!recipe_id) return res.status(400).json({ error: 'Missing fields' });
-  db.run("INSERT INTO food_logs (tg_id, recipe_id, timestamp) VALUES (?, ?, datetime('now','localtime'))",
-    [tgId, recipe_id], (err) => {
-      if (err) return res.status(500).json({ error: err.message });
-      checkAchievements(tgId);
-      touchSeen(tgId);
-      res.json({ status: 'ok' });
-    });
+  // без проверки каталога в дневник писался любой id и запись молча терялась в JOIN дашборда
+  db.get("SELECT 1 AS x FROM recipes WHERE id = ?", [recipe_id], (e0, r0) => {
+    if (e0) return res.status(500).json({ error: e0.message });
+    if (!r0) return res.status(404).json({ error: 'Recipe not found' });
+    db.run("INSERT INTO food_logs (tg_id, recipe_id, timestamp) VALUES (?, ?, datetime('now','localtime'))",
+      [tgId, recipe_id], (err) => {
+        if (err) return res.status(500).json({ error: err.message });
+        checkAchievements(tgId);
+        touchSeen(tgId);
+        res.json({ status: 'ok' });
+      });
+  });
 });
 
 app.delete('/api/food-log/:id', (req, res) => {
@@ -1161,6 +1173,19 @@ setTimeout(sendWeeklyReports, 90 * 1000);
 
 setInterval(runReminders, 30 * 60 * 1000);
 setTimeout(runReminders, 15 * 1000);
+
+// Чистка: истёкшие сессии (TTL 180 дней) и старый лог уведомлений (90 дней)
+function pruneOld() {
+  const cutoff = sessionCutoff();
+  db.run("DELETE FROM sessions WHERE created_at < ?", [cutoff], (e) => {
+    if (e) return console.error('sessions prune:', e.message);
+    db.run("DELETE FROM notification_log WHERE date < date('now','localtime','-90 days')", [], (e2) => {
+      if (e2) console.error('notify log prune:', e2.message);
+    });
+  });
+}
+setInterval(pruneOld, 6 * 60 * 60 * 1000);
+setTimeout(pruneOld, 60 * 1000);
 
 app.use((err, req, res, next) => {
   console.error('Unhandled error:', err);
