@@ -215,15 +215,15 @@ body{touch-action:manipulation}
 <!-- ОНБОРДИНГ (пошаговый мастер) -->
 <div class="screen active" id="screen-onboard"><div id="onboardBox" style="padding-top:28px"></div></div>
 
-<!-- ВХОД (standalone-режим без Telegram: VK ID + Одноклассники) -->
+<!-- ВХОД (standalone-режим без Telegram: VK ID + Одноклассники, либо анонимная регистрация) -->
 <div class="screen" id="screen-login">
   <div style="padding-top:48px;text-align:center">
     <div class="badge badge-accent mb2">GuideFit</div>
-    <h1 style="margin-bottom:8px" id="loginTitle">Добро пожаловать в GuideFit</h1>
-    <p class="muted" style="font-size:14px;margin-bottom:24px;line-height:1.55" id="loginSubtitle">Войди или зарегистрируйся, чтобы сохранять прогресс</p>
+    <h1 style="margin-bottom:8px" id="loginTitle">Сохраняй результат</h1>
+    <p class="muted" style="font-size:14px;margin-bottom:24px;line-height:1.55" id="loginSubtitle">Войди через ВК, чтобы прогресс не потерялся. Или зарегистрируйся анонимно — без номера телефона.</p>
     <div id="vkLoginBox" style="display:flex;flex-direction:column;gap:10px"></div>
-    <button type="button" id="vkSignupBtn" class="pressable" style="margin-top:14px;background:none;border:none;color:var(--accent-dark);font-size:13.5px;font-weight:800;padding:12px" onclick="vkStartRegister()">Нет аккаунта? Зарегистрироваться</button>
     <p class="subtle mt2" id="vkLoginMsg" style="display:none"></p>
+    <button type="button" id="anonRegBtn" class="pressable" style="margin-top:14px;background:none;border:none;color:var(--accent-dark);font-size:13.5px;font-weight:800;padding:12px" onclick="startAnonymous()">Анонимная регистрация — без номера телефона</button>
   </div>
 </div>
 
@@ -443,7 +443,8 @@ async function enterWithSession(tgId, intent){
     const user = await api('/api/user/' + encodeURIComponent(tgId));
     currentUser = user;
     if(!user.goal){
-      ob = { step: 0, total: 10, meal_count: user.meal_count || 3, name: user.name || '' };
+      // v25: имя из VK/анонимного входа НЕ подставляем — поле всегда пустое (Telegram-флоу не задет)
+      ob = { step: 0, total: 10, meal_count: user.meal_count || 3, name: '' };
       obRender();
       return;
     }
@@ -462,10 +463,11 @@ function showLoginScreen(){
   try{ $('bottomNav').style.display = 'none'; }catch(e){}
   navigate('login');
   try{
-    const lt = $('loginTitle'), ls = $('loginSubtitle'), sb = $('vkSignupBtn');
-    if(lt) lt.textContent = 'Добро пожаловать в GuideFit';
-    if(ls) ls.textContent = 'Войди или зарегистрируйся, чтобы сохранять прогресс';
-    if(sb) sb.style.display = '';
+    const lt = $('loginTitle'), ls = $('loginSubtitle'), ab = $('anonRegBtn'), msg = $('vkLoginMsg');
+    if(lt) lt.textContent = 'Сохраняй результат';
+    if(ls) ls.textContent = 'Войди через ВК, чтобы прогресс не потерялся. Или зарегистрируйся анонимно — без номера телефона.';
+    if(msg){ msg.style.display = 'none'; msg.textContent = ''; }
+    if(ab){ ab.style.display = ''; ab.disabled = false; ab.textContent = 'Анонимная регистрация — без номера телефона'; }
   }catch(e){}
   initVkLogin();
 }
@@ -474,11 +476,10 @@ const VK_APP_ID = 54770382;
 const VK_REDIRECT = 'https://app.xn--80aag3axnld9b.xn--p1ai/api/auth/vk/callback';
 let _vkVerifier = null;
 function vkFail(t){
+  // ВК недоступен — экран входа остаётся рабочим: анонимная регистрация всегда доступна
   const box = document.getElementById('vkLoginBox');
   const msg = document.getElementById('vkLoginMsg');
-  const sb = document.getElementById('vkSignupBtn');
   if(box) box.innerHTML = '';
-  if(sb) sb.style.display = 'none';
   if(msg){ msg.style.display = ''; msg.textContent = t; }
 }
 function b64urlBytes(arr){
@@ -538,19 +539,20 @@ async function handleVkRedirect(){
     return true;
   }catch(e){ try{ console.error('VK redirect:', e); }catch(_){} clean(); return false; }
 }
+const VK_UNAVAILABLE = 'Вход через ВК недоступен. Можно продолжить анонимно — без номера телефона.';
 async function initVkLogin(){
   let providers = {};
   try{ providers = await api('/api/auth/providers'); }
-  catch(e){ return vkFail('Вход временно недоступен, откройте приложение через Telegram'); }
-  if(!providers.vk) return vkFail('Вход временно недоступен, откройте приложение через Telegram');
+  catch(e){ return vkFail(VK_UNAVAILABLE); }
+  if(!providers.vk) return vkFail(VK_UNAVAILABLE);
   renderVkWidget();
 }
 async function renderVkWidget(){
   let VKID;
   try{ VKID = await vkConfigure(); }
-  catch(e){ return vkFail('Вход временно недоступен, откройте приложение через Telegram'); }
+  catch(e){ return vkFail(VK_UNAVAILABLE); }
   try{
-    if(!VKID.OAuthList) return vkFail('Вход временно недоступен, откройте приложение через Telegram');
+    if(!VKID.OAuthList) return vkFail(VK_UNAVAILABLE);
     const names = (VKID.OAuthName && VKID.OAuthName.VK && VKID.OAuthName.OK) ? [VKID.OAuthName.VK, VKID.OAuthName.OK] : ['vkid', 'ok_ru'];
     const box = document.getElementById('vkLoginBox');
     if(!box) return;
@@ -559,30 +561,35 @@ async function renderVkWidget(){
     const w = new VKID.OAuthList();
     const r = w.render({ container: box, oauthList: names, styles: { borderRadius: 10, height: 56 } });
     const emitter = (r && typeof r.on === 'function') ? r : ((typeof w.on === 'function') ? w : null);
-    if(!emitter || !successEv) return vkFail('Вход временно недоступен, откройте приложение через Telegram');
+    if(!emitter || !successEv) return vkFail(VK_UNAVAILABLE);
     emitter.on(successEv, function(p){ onVkLogin(p, 'login'); });
     if(errorEv) emitter.on(errorEv, function(e){ try{ console.error('VK widget:', e); }catch(_){} });
-  }catch(e){ vkFail('Вход временно недоступен, откройте приложение через Telegram'); }
+  }catch(e){ vkFail(VK_UNAVAILABLE); }
 }
-/* v24: «Зарегистрироваться» — тот же VK OAuth (второй виджет OAuthList), различие только в поведении после возврата */
-async function vkStartRegister(){
-  let VKID;
-  try{ VKID = await vkConfigure(); }
-  catch(e){ return vkFail('Вход временно недоступен, откройте приложение через Telegram'); }
+/* v25: анонимная регистрация — без OAuth и без номера телефона.
+   Сервер создаёт юзера tg_id='anon:<hex>' (name=NULL, provider='anon') и сессию;
+   сессия живёт в localStorage, поэтому повторный визит входит автоматически.
+   Если localStorage очищен — аккаунт недостижим (это осознанно: ВК — способ сохранить прогресс). */
+let _anonBusy = false;
+const ANON_BTN_LABEL = 'Анонимная регистрация — без номера телефона';
+async function startAnonymous(){
+  if(_anonBusy) return;
+  _anonBusy = true;
+  const btn = document.getElementById('anonRegBtn');
+  if(btn){ btn.disabled = true; btn.style.opacity = '.5'; btn.textContent = 'Создаём аккаунт…'; }
   try{
-    const names = (VKID.OAuthName && VKID.OAuthName.VK && VKID.OAuthName.OK) ? [VKID.OAuthName.VK, VKID.OAuthName.OK] : ['vkid', 'ok_ru'];
+    const d = await api('/api/auth/anonymous', { method:'POST' });
+    if(!d || !d.session) throw new Error('Нет сессии');
+    try{ localStorage.setItem('gf_session', d.session); }catch(e){}
     const box = document.getElementById('vkLoginBox');
-    if(!box) return;
-    box.innerHTML = '';
-    const successEv = (VKID.OAuthListInternalEvents && VKID.OAuthListInternalEvents.LOGIN_SUCCESS) || (VKID.WidgetEvents && VKID.WidgetEvents.LOGIN_SUCCESS);
-    const errorEv = (VKID.WidgetEvents && VKID.WidgetEvents.ERROR);
-    const w = new VKID.OAuthList();
-    const r = w.render({ container: box, oauthList: names, styles: { borderRadius: 10, height: 56 } });
-    const emitter = (r && typeof r.on === 'function') ? r : ((typeof w.on === 'function') ? w : null);
-    if(!emitter || !successEv){ box.innerHTML = ''; return initVkLogin(); }
-    emitter.on(successEv, function(p){ onVkLogin(p, 'register'); });
-    if(errorEv) emitter.on(errorEv, function(e){ try{ console.error('VK widget:', e); }catch(_){} });
-  }catch(e){ vkFail('Вход временно недоступен, откройте приложение через Telegram'); }
+    if(box) box.innerHTML = '';
+    await enterWithSession(null, 'register');
+  }catch(e){
+    showError((e && e.message) || 'Не удалось создать аккаунт');
+  }finally{
+    _anonBusy = false;
+    if(btn){ btn.disabled = false; btn.style.opacity = ''; btn.textContent = ANON_BTN_LABEL; }
+  }
 }
 async function onVkLogin(payload, intent){
   try{
@@ -1607,6 +1614,9 @@ function woFinishFlow(){
 .spot-hint:after{content:'';position:absolute;width:14px;height:14px;background:var(--surface);transform:rotate(45deg);left:var(--ax,24px)}
 .spot-hint.above:after{bottom:-7px}
 .spot-hint.below:after{top:-7px}
+/* центральная подсказка (шаг без спотлайта: элемента нет на экране) */
+.spot-hint.spot-center{left:50%;top:50%;transform:translate(-50%,-50%);width:calc(100% - 44px);max-width:320px;text-align:center}
+.spot-hint.spot-center:after{display:none}
 .spot-nav{position:absolute;left:0;right:0;bottom:calc(20px + env(safe-area-inset-bottom,0px));display:flex;flex-direction:column;gap:8px;padding:0 22px;z-index:222}
 /* v21: пошаговый онбординг */
 .ob-progress{margin-bottom:20px}
@@ -1903,21 +1913,32 @@ try{
 try{
 }catch(e){}
 /* ============ обучение: полноэкранный спотлайт ============ */
+/* v25: 5 шагов со спотлайтом + финальная центральная подсказка.
+   Селекторы — по актуальной разметке: карточка калорий и вода на дашборде, таббар (id=bottomNav). */
 const TOUR_STEPS = [
-  { sel:'.hero-card', screen:'home', t:'Калории и БЖУ', d:'Кольцо — сколько калорий осталось на сегодня. Записывай еду — кольцо заполнится. Тапни «БЖУ ▸», чтобы раскрыть белки, жиры и углеводы.' },
-  { sel:'#homeMealsList', screen:'home', t:'Приёмы пищи', d:'Жми «+» у приёма пищи и выбирай блюдо — калории и БЖУ посчитаются сами и попадут в дневник.' },
-  { sel:'#waterCard', screen:'home', t:'Вода', d:'Каждое нажатие «+» — один стакан (250 мл). Шкала заполнилась — дневная норма выпита. «−» отменяет последний стакан.' },
-  { sel:'#streakPlate', screen:'home', t:'Серия и программа', d:'Огонёк — твоя серия тренировок. Нажми на плашку: если программа начата — откроется она, иначе — список тренировок.' },
-  { sel:'.nav-item[data-tab="workouts"]', screen:'home', t:'Тренировки', d:'Программы «Лёгкие» и «Средние», силовые, йога и библиотека упражнений. Активная программа — всегда первой, с меткой «Твоя программа».' },
-  { sel:'.nav-item[data-tab="nutrition"]', screen:'home', t:'Еда', d:'Рецепты под твою норму калорий, список покупок за неделю и БЖУ дня.' },
-  { sel:'.nav-item[data-tab="stats"]', screen:'home', t:'Статистика', d:'Калории по дням и график веса: взвешивайся и отмечай вес — прогресс видно на графике.' },
-  { sel:'.nav-item[data-tab="profile"]', screen:'home', t:'Профиль и настройки', d:'Достижения и вес — в профиле; тема, уведомления, данные и поддержка — в настройках.' }
+  { sel:'#screen-home .hero-card', t:'Калории и БЖУ', d:'Кольцо — сколько калорий осталось на сегодня. Записывай еду — кольцо заполняется. Тапни «БЖУ ▸», чтобы раскрыть белки, жиры и углеводы.' },
+  { sel:'#waterCard', t:'Вода', d:'Каждое нажатие «+» — один стакан (250 мл). Шкала заполнилась — дневная норма выпита. «−» отменяет последний стакан.' },
+  { sel:'.nav-item[data-tab="nutrition"]', t:'Питание', d:'Рецепты под твою норму калорий, дневник за сегодня и список покупок за неделю.' },
+  { sel:'.nav-item[data-tab="workouts"]', t:'Тренировки', d:'Активная программа — всегда первой; плюс силовые, йога и библиотека упражнений.' },
+  { sel:'.nav-item[data-tab="profile"]', t:'Профиль', d:'Достижения и вес — в профиле; тема, уведомления и данные — в настройках.' }
 ];
+/* Элемент шага: ищем по всему документу (таббар лежит вне .screen) и только если реально виден. */
 function tourEl(step){
   if(!step || !step.sel) return null;
-  const active = document.querySelector('.screen.active');
-  if(!active || active.id !== 'screen-' + step.screen) return null;
-  return active.querySelector(step.sel);
+  let el = null;
+  try{ el = document.querySelector(step.sel); }catch(e){ el = null; }
+  if(!el || !el.isConnected) return null;
+  const r = el.getBoundingClientRect();
+  if(r.width < 8 || r.height < 8) return null; // экран скрыт/элемент не отрисован
+  return el;
+}
+/* scroll-behavior:smooth в CSS ломает расчёт координат — скроллим мгновенно */
+function tourScrollTo(el){
+  const html = document.documentElement;
+  const prev = html.style.scrollBehavior;
+  html.style.scrollBehavior = 'auto';
+  try{ el.scrollIntoView({ block:'center' }); }catch(e){}
+  html.style.scrollBehavior = prev;
 }
 function tourDots(){
   return '<div class="tour-dots">' + TOUR_STEPS.concat([{}]).map(function(_, i){ return '<span class="wz-dot" style="background:' + (i === tourIdx ? 'var(--accent)' : 'var(--border2)') + '"></span>'; }).join('') + '</div>';
@@ -1940,49 +1961,75 @@ function tourOverlay(inner){
 }
 function tourShow(){
   try{
-    while(tourIdx < TOUR_STEPS.length && !tourEl(TOUR_STEPS[tourIdx])) tourIdx++;
-    if(tourIdx >= TOUR_STEPS.length){ tourFinal(); return; }
     const step = TOUR_STEPS[tourIdx];
+    if(!step){ tourFinal(); return; }
+    const el = tourEl(step);
+    // элемента нет на экране — центральная подсказка без спотлайта (чужой блок не подсвечиваем)
+    if(!el){ tourCenter(step); return; }
     tourOverlay('<div class="spot-nav">' +
       '<button class="btn btn-primary btn-block pressable" data-tour="next">Далее</button>' +
       '<button class="btn btn-ghost btn-block pressable" data-tour="skip" style="font-size:13px">Пропустить обучение</button></div>');
-    try{ const el = tourEl(step); if(el) el.scrollIntoView({ block: 'center' }); }catch(e){}
-    setTimeout(function(){ tourPosition(step); }, 80);
+    tourScrollTo(el);
+    tourPosition(step);
+    // повторное выравнивание после скролла/ререндера
+    setTimeout(function(){ tourPosition(step); }, 200);
   }catch(e){ tourClose(); }
 }
+/* Шаг без спотлайта: подсказка по центру экрана */
+function tourCenter(step){
+  tourOverlay('<div class="spot-hint spot-center">' +
+    '<h3 style="font-size:15.5px;margin-bottom:6px">' + step.t + '</h3>' +
+    '<p class="muted" style="font-size:12.5px;line-height:1.55">' + step.d + '</p>' + tourDots() +
+    '<div class="flex gap2" style="margin-top:14px">' +
+      '<button class="btn btn-primary pressable" style="flex:1" data-tour="next">Далее</button>' +
+      '<button class="btn btn-ghost pressable" style="flex:1;font-size:13px" data-tour="skip">Пропустить</button>' +
+    '</div></div>');
+  if(typeof haptic === 'function') haptic();
+}
+const TOUR_NAV_H = 132; // высота зоны кнопок тура снизу (не перекрываем подсказкой)
 function tourPosition(step){
   try{
-  const ov = document.getElementById('tourOverlay');
-  const el = tourEl(step);
-  if(!ov) return;
-  if(!el || !el.isConnected){ return; }
-  const r = el.getBoundingClientRect(), pad = 6;
-  const cut = document.createElement('div');
-  cut.className = 'spot-hole';
-  cut.style.top = Math.max(r.top - pad, 0) + 'px';
-  cut.style.left = Math.max(r.left - pad, 0) + 'px';
-  cut.style.width = Math.min(r.width + pad*2, window.innerWidth) + 'px';
-  cut.style.height = (r.height + pad*2) + 'px';
-  ov.appendChild(cut);
-  const hint = document.createElement('div');
-  hint.className = 'spot-hint ' + (r.top > window.innerHeight * 0.45 ? 'above' : 'below');
-  hint.innerHTML = '<h3 style="font-size:15.5px;margin-bottom:6px">' + step.t + '</h3>' +
-    '<p class="muted" style="font-size:12.5px;line-height:1.55">' + step.d + '</p>' + tourDots();
-  ov.appendChild(hint);
-  const hw = Math.min(hint.offsetWidth || 290, 300);
-  const hl = Math.min(Math.max(r.left + r.width/2 - hw/2, 12), Math.max(window.innerWidth - hw - 12, 12));
-  hint.style.left = hl + 'px'; hint.style.right = 'auto'; hint.style.maxWidth = hw + 'px';
-  if(r.top > window.innerHeight * 0.45){ hint.style.bottom = (window.innerHeight - r.top + 14) + 'px'; hint.style.top = 'auto'; }
-  else { hint.style.top = (r.bottom + 14) + 'px'; hint.style.bottom = 'auto'; }
-  const hr = hint.getBoundingClientRect();
-  if(hr.top < 10){ hint.style.top = '10px'; hint.style.bottom = 'auto'; }
-  if(hr.bottom > window.innerHeight - 150){ hint.style.top = Math.max(window.innerHeight - 240, 10) + 'px'; hint.style.bottom = 'auto'; }
-  hint.style.setProperty('--ax', Math.max(Math.min(r.left + r.width/2 - hl - 7, hw - 26), 12) + 'px');
-  if(typeof haptic === 'function') haptic();
+    const ov = document.getElementById('tourOverlay');
+    if(!ov) return;
+    const el = tourEl(step);
+    // элемент исчез (сменился экран) — переходим на центральную подсказку
+    if(!el){ tourCenter(step); return; }
+    // функцию зовут повторно (после скролла) — старые вырез и подсказку убираем, чтобы не дублировались
+    ov.querySelectorAll('.spot-hole, .spot-hint').forEach(function(n){ n.remove(); });
+    const vw = window.innerWidth, vh = window.innerHeight, pad = 6;
+    const r = el.getBoundingClientRect();
+    const cut = document.createElement('div');
+    cut.className = 'spot-hole';
+    const cTop = Math.max(r.top - pad, 4), cLeft = Math.max(r.left - pad, 4);
+    cut.style.top = cTop + 'px';
+    cut.style.left = cLeft + 'px';
+    cut.style.width = Math.min(r.width + pad*2, Math.max(vw - cLeft - 4, 20)) + 'px';
+    cut.style.height = Math.min(r.height + pad*2, Math.max(vh - cTop - 4, 20)) + 'px';
+    ov.appendChild(cut);
+    const hint = document.createElement('div');
+    hint.className = 'spot-hint';
+    hint.innerHTML = '<h3 style="font-size:15.5px;margin-bottom:6px">' + step.t + '</h3>' +
+      '<p class="muted" style="font-size:12.5px;line-height:1.55">' + step.d + '</p>' + tourDots();
+    ov.appendChild(hint);
+    const hw = Math.min(hint.offsetWidth || 290, 300, vw - 24);
+    hint.style.maxWidth = hw + 'px';
+    const hh = hint.offsetHeight || 120;
+    const ceil = vh - 12 - TOUR_NAV_H; // выше зоны кнопок «Далее/Пропустить»
+    // по умолчанию — под элементом, если там нет места — над ним
+    let top = r.bottom + 14;
+    if(top + hh > ceil) top = r.top - 14 - hh;
+    top = Math.min(Math.max(top, 12), Math.max(ceil - hh, 12));
+    let left = r.left + r.width/2 - hw/2;
+    left = Math.min(Math.max(left, 12), Math.max(vw - hw - 12, 12));
+    const below = (top >= r.bottom);
+    hint.classList.add(below ? 'below' : 'above');
+    hint.style.top = top + 'px'; hint.style.left = left + 'px'; hint.style.right = 'auto'; hint.style.bottom = 'auto';
+    hint.style.setProperty('--ax', Math.max(Math.min(r.left + r.width/2 - left - 7, hw - 26), 12) + 'px');
+    if(typeof haptic === 'function') haptic();
   }catch(e){}
 }
 function tourFinal(){
-  tourOverlay('<div class="spot-hint" style="left:50%;top:50%;transform:translate(-50%,-50%);max-width:320px;text-align:center">' +
+  tourOverlay('<div class="spot-hint spot-center">' +
     '<div class="tour-ic">' + ic('sparkles',30) + '</div>' +
     '<h2 style="font-size:22px">Начинаем!</h2>' +
     '<p class="muted mt2" style="font-size:13.5px;line-height:1.6">Всё настроено. GuideFit всё посчитает — просто пользуйся.</p>' + tourDots() +

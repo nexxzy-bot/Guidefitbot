@@ -1,4 +1,4 @@
-const CACHE = 'guidefit-v24';
+const CACHE = 'guidefit-v25';
 self.addEventListener('install', e => { self.skipWaiting(); });
 self.addEventListener('activate', e => {
   e.waitUntil(caches.keys().then(keys =>

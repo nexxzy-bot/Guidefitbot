@@ -113,7 +113,7 @@ function calcStreak(tg_id, callback) {
 /* ================= уведомления в Telegram ================= */
 async function sendTelegram(tg_id, text) {
   const token = process.env.TELEGRAM_TOKEN;
-  if (!token || !tg_id || tg_id === 'demo_user') return;
+  if (!token || !isTelegramId(tg_id)) return;
   try {
     await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
       method: 'POST',
@@ -123,6 +123,10 @@ async function sendTelegram(tg_id, text) {
     }).catch(e => console.error('TG send:', e.message));
   } catch (e) { console.error('TG send error:', e.message); }
 }
+
+// Напоминания шлём только реальным Telegram-юзерам (числовой id).
+// У аккаунтов 'vk:...' и 'anon:...' чата с ботом нет — им уведомления не отправляем.
+function isTelegramId(tg_id) { return /^\d+$/.test(String(tg_id || '')); }
 
 // Уведомление с дедупликацией: один тип — один раз в день на пользователя
 function notifyOnce(tg_id, type, dateStr, text) {
@@ -325,6 +329,45 @@ app.get('/api/auth/me', (req, res) => {
   res.json({ tg_id: req.tgUserId });
 });
 
+/* ================= анонимная регистрация (без OAuth и без номера телефона) ================= */
+// грубый in-memory лимит: не больше 10 анонимных аккаунтов в час с одного IP
+const ANON_MAX_PER_HOUR = 10;
+const anonHits = new Map();
+function anonAllowed(ip) {
+  const now = Date.now();
+  const hits = (anonHits.get(ip) || []).filter(t => now - t < 3600000);
+  if (hits.length >= ANON_MAX_PER_HOUR) { anonHits.set(ip, hits); return false; }
+  hits.push(now);
+  anonHits.set(ip, hits);
+  if (anonHits.size > 20000) { const kill = Math.floor(anonHits.size / 2); let i = 0; for (const k of anonHits.keys()) { if (i++ >= kill) break; anonHits.delete(k); } }
+  return true;
+}
+
+app.post('/api/auth/anonymous', (req, res) => {
+  const ip = req.ip || 'unknown';
+  if (!anonAllowed(ip)) return res.status(429).json({ error: 'Слишком много попыток. Попробуйте позже' });
+  // tg_id вида 'anon:<hex>'; при коллизии (в теории — 2^72 вариантов) повторяем генерацию
+  const create = (attempt) => {
+    const tgId = 'anon:' + crypto.randomBytes(9).toString('hex');
+    db.get("SELECT 1 AS x FROM users WHERE tg_id = ?", [tgId], (err, row) => {
+      if (err) { console.error('anon check:', err.message); return res.status(500).json({ error: 'Database error' }); }
+      if (row) { if (attempt < 5) return create(attempt + 1); return res.status(500).json({ error: 'Database error' }); }
+      // name намеренно NULL — юзер заполнит его в визарде
+      db.run("INSERT INTO users (tg_id, provider, notify_enabled, created_at) VALUES (?, 'anon', 1, datetime('now','localtime'))",
+        [tgId], (err2) => {
+          if (err2) { console.error('anon insert:', err2.message); return res.status(500).json({ error: 'Database error' }); }
+          const session = crypto.randomBytes(32).toString('hex');
+          db.run("INSERT INTO sessions (token, tg_id, created_at) VALUES (?, ?, ?)",
+            [session, tgId, Math.floor(Date.now() / 1000)], (err3) => {
+              if (err3) { console.error('anon session:', err3.message); return res.status(500).json({ error: 'Database error' }); }
+              res.json({ session });
+            });
+        });
+    });
+  };
+  create(0);
+});
+
 // redirect-режим VKID: топ-окно приходит сюда с code, уводим обратно в приложение
 app.get('/api/auth/vk/callback', (req, res) => {
   const code = req.query.code;
@@ -360,11 +403,8 @@ app.post('/api/auth/vk/exchange', async (req, res) => {
       if (!exRes.ok || !ex.access_token) { console.error('VK exchange failed:', exRes.status, JSON.stringify(ex).slice(0, 300)); return res.status(502).json({ error: 'VK exchange failed' }); }
       access_token = ex.access_token;
     }
-    // имя и фото: кандидаты из user_info и id_token; имя — приоритет кириллице
-    const CYR = /[А-Яа-яЁё]/;
-    const nameCands = [];
+    // фото из VK (avatar). Имя НЕ читаем и НЕ сохраняем: юзер вводит его сам в визарде.
     const avCands = [];
-    const pushName = (v) => { v = String(v || '').trim(); if (v) nameCands.push(v.slice(0, 100)); };
     const pushAv = (v) => { if (typeof v === 'string' && /^https?:\/\//.test(v)) avCands.push(v.slice(0, 500)); };
     let vkId = (ex && ex.user_id) ? String(ex.user_id) : null;
     try {
@@ -377,7 +417,6 @@ app.post('/api/auth/vk/exchange', async (req, res) => {
       const ui = await uiRes.json().catch(() => ({}));
       if (ui && ui.user) {
         if (ui.user.user_id) vkId = String(ui.user.user_id);
-        pushName([ui.user.first_name, ui.user.last_name].filter(Boolean).join(' '));
         pushAv(ui.user.avatar); pushAv(ui.user.photo); pushAv(ui.user.picture); pushAv(ui.user.user_photo);
       }
     } catch (e) { console.error('VK user_info:', e.message); }
@@ -385,24 +424,20 @@ app.post('/api/auth/vk/exchange', async (req, res) => {
       try {
         const payload = JSON.parse(Buffer.from(String(ex.id_token).split('.')[1], 'base64').toString('utf8'));
         if (payload && payload.user_id) vkId = String(payload.user_id);
-        pushName(payload.user_name); pushName(payload.name);
-        pushName([payload.first_name, payload.last_name].filter(Boolean).join(' '));
         pushAv(payload.picture); pushAv(payload.photo); pushAv(payload.avatar);
       } catch (e) { console.error('VK id_token decode:', e.message); }
     }
-    const vkName = nameCands.find(n => CYR.test(n)) || nameCands[0] || null;
     const vkAvatar = avCands[0] || null;
     if (!vkId) { console.error('VK exchange: нет user_id'); return res.status(502).json({ error: 'VK exchange failed' }); }
     const tgId = 'vk:' + vkId;
     const now = Math.floor(Date.now() / 1000);
     await new Promise((resolve, reject) => {
-      db.run(`INSERT INTO users (tg_id, name, avatar, provider, created_at, notify_enabled)
-        VALUES (?, ?, ?, 'vk', datetime('now','localtime'), 1)
+      db.run(`INSERT INTO users (tg_id, avatar, provider, created_at, notify_enabled)
+        VALUES (?, ?, 'vk', datetime('now','localtime'), 1)
         ON CONFLICT(tg_id) DO UPDATE SET
-          name = CASE WHEN users.name IS NULL OR users.name = '' THEN excluded.name ELSE users.name END,
           avatar = CASE WHEN excluded.avatar IS NULL OR excluded.avatar = '' THEN users.avatar ELSE excluded.avatar END,
           last_seen = datetime('now','localtime')`,
-        [tgId, vkName || ('VK ' + vkId), vkAvatar], (e) => e ? reject(e) : resolve());
+        [tgId, vkAvatar], (e) => e ? reject(e) : resolve());
     });
     const session = crypto.randomBytes(32).toString('hex');
     await new Promise((resolve, reject) => {
@@ -1067,16 +1102,16 @@ function runReminders() {
   if (!process.env.TELEGRAM_TOKEN) return;
   const today = localDate();
   const hour = new Date().getHours();
-  db.all("SELECT tg_id, name, created_at FROM users WHERE notify_enabled = 1", [], (err, users) => {
+  db.all("SELECT tg_id, name, created_at FROM users WHERE notify_enabled = 1 AND tg_id NOT LIKE '%:%'", [], (err, users) => {
     if (err || !users) return;
     (users || []).forEach(u => {
-      if (u.tg_id === 'demo_user') return;
+      const who = u.name || 'друг';
       // вес: не записывал 3+ дня
       if (hour === 10) {
         db.get("SELECT MAX(date) d FROM weight_logs WHERE tg_id = ?", [u.tg_id], (e, r) => {
           const last = r?.d || (u.created_at || '').slice(0, 10);
           if (last && dayDiff(today, last) >= 3) {
-            notifyOnce(u.tg_id, 'weight:' + today, today, `⚖️ ${u.name}, время взвеситься! Открой GuideFit и обнови вес — так статистика будет точной.`);
+            notifyOnce(u.tg_id, 'weight:' + today, today, `⚖️ ${who}, время взвеситься! Открой GuideFit и обнови вес — так статистика будет точной.`);
           }
         });
       }
@@ -1084,7 +1119,7 @@ function runReminders() {
       if (hour === 19) {
         db.get("SELECT MAX(date) d, COUNT(*) c FROM workout_logs WHERE tg_id = ?", [u.tg_id], (e, r) => {
           if (r && r.c > 0 && r.d && dayDiff(today, r.d) >= 3) {
-            notifyOnce(u.tg_id, 'inactive:' + today, today, `🏃 ${u.name}, тебя не было 3 дня! Даже 15 минут тренировки вернут ритм. Заходи в GuideFit 💪`);
+            notifyOnce(u.tg_id, 'inactive:' + today, today, `🏃 ${who}, тебя не было 3 дня! Даже 15 минут тренировки вернут ритм. Заходи в GuideFit 💪`);
           }
         });
       }
@@ -1094,7 +1129,7 @@ function runReminders() {
             WHERE tg_id = ? AND date(timestamp) = ? AND CAST(strftime('%H', timestamp) AS INTEGER) BETWEEN ? AND ?`,
           [u.tg_id, today, Math.max(hour - 4, 0), hour], (e, r) => {
             if (r && r.c === 0) {
-              notifyOnce(u.tg_id, 'meal' + hour + ':' + today, today, `🍽️ ${u.name}, приём пищи записан? Загляни в GuideFit — там идеи блюд под твою цель.`);
+              notifyOnce(u.tg_id, 'meal' + hour + ':' + today, today, `🍽️ ${who}, приём пищи записан? Загляни в GuideFit — там идеи блюд под твою цель.`);
             }
           });
       }
@@ -1105,7 +1140,7 @@ function sendWeeklyReports() {
   const now = new Date();
   if (now.getDay() !== 1 || now.getHours() !== 9) return;
   const today = localDate();
-  db.all("SELECT tg_id, name FROM users WHERE notify_enabled = 1", [], (e, users) => {
+  db.all("SELECT tg_id, name FROM users WHERE notify_enabled = 1 AND tg_id NOT LIKE '%:%'", [], (e, users) => {
     if (e || !users) return;
     users.forEach(u => {
       db.get("SELECT COUNT(*) c FROM workout_logs WHERE tg_id = ? AND date >= date('now','localtime','-7 days')", [u.tg_id], (e1, w) => {
