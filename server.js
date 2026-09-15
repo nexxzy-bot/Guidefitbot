@@ -137,16 +137,16 @@ function checkAchievements(tg_id) {
   if (!tg_id || tg_id === 'demo_user') return;
   db.get("SELECT current_weight FROM users WHERE tg_id = ?", [tg_id], (err, u) => {
     const waterNorm = Math.round((Number(u?.current_weight) || 70) * 30);
-    db.all("SELECT achievement_id FROM user_achievements WHERE tg_id = ?", [tg_id], (err, ua) => {
+    db.all("SELECT achievement_id FROM user_achievements WHERE tg_id = ?", [tg_id], (err2, ua) => {
       const unlocked = new Set((ua || []).map(a => a.achievement_id));
-      db.all("SELECT * FROM achievements", [], (err, all) => {
-        if (err) return;
-        db.get("SELECT COUNT(*) c, COALESCE(SUM(total_volume),0) v FROM workout_logs WHERE tg_id = ?", [tg_id], (err, w) => {
-          db.get("SELECT COUNT(*) c FROM food_logs WHERE tg_id = ?", [tg_id], (err, m) => {
+      db.all("SELECT * FROM achievements", [], (err3, all) => {
+        if (err3) return;
+        db.get("SELECT COUNT(*) c, COALESCE(SUM(total_volume),0) v FROM workout_logs WHERE tg_id = ?", [tg_id], (err4, w) => {
+          db.get("SELECT COUNT(*) c FROM food_logs WHERE tg_id = ?", [tg_id], (err5, m) => {
             calcStreak(tg_id, (streak) => {
               // серия дней с выполненной нормой воды
               let waterStreak = 0;
-              db.all("SELECT date, amount_ml FROM water_logs WHERE tg_id = ? ORDER BY date DESC LIMIT 30", [tg_id], (err, wr) => {
+              db.all("SELECT date, amount_ml FROM water_logs WHERE tg_id = ? ORDER BY date DESC LIMIT 30", [tg_id], (err6, wr) => {
                 const wmap = {};
                 (wr || []).forEach(r => wmap[r.date] = r.amount_ml);
                 for (let i = 0; ; i++) {
@@ -619,6 +619,8 @@ app.post('/api/dashboard', (req, res) => {
 });
 
 /* ================= рецепты и дневник питания ================= */
+// v23: селектор блюд доступен и без авторизации (гость выбирает рецепт до логина);
+// запись в дневник по-прежнему требует tg_id
 app.post('/api/meal', (req, res) => {
   const { category, goal, exclude_id } = req.body;
   if (!category) return res.status(400).json({ error: 'Missing category' });
@@ -954,11 +956,20 @@ app.get('/api/workout/log/:id', (req, res) => {
 app.post('/api/water/undo', (req, res) => {
   const tgId = resolveTgId(req);
   if (!tgId) return res.status(401).json({ error: 'Unauthorized' });
-  db.run("DELETE FROM water_logs WHERE id = (SELECT id FROM water_logs WHERE tg_id = ? AND date = ? ORDER BY id DESC LIMIT 1)",
-    [tgId, localDate()], function (err) {
-      if (err) return res.status(500).json({ error: err.message });
-      res.json({ status: 'ok', removed: this.changes });
+  const today = localDate();
+  const STEP = 250; // один стакан
+  // v24: вода хранится ОДНОЙ строкой на день (UNIQUE(tg_id,date), amount_ml копится через UPDATE +250).
+  // Прежний DELETE сносил строку целиком — «−» убирал сразу всю воду за день. Теперь снимаем ровно один стакан, ниже нуля не идём.
+  db.get("SELECT amount_ml FROM water_logs WHERE tg_id = ? AND date = ?", [tgId, today], (err, row) => {
+    if (err) return res.status(500).json({ error: err.message });
+    const cur = row ? (Number(row.amount_ml) || 0) : 0;
+    if (cur <= 0) return res.json({ status: 'ok', removed: 0, total: 0 });
+    const next = Math.max(cur - STEP, 0);
+    db.run("UPDATE water_logs SET amount_ml = ? WHERE tg_id = ? AND date = ?", [next, tgId, today], (err2) => {
+      if (err2) return res.status(500).json({ error: err2.message });
+      res.json({ status: 'ok', removed: 1, total: next });
     });
+  });
 });
 
 app.post('/api/notifications/toggle', (req, res) => {
@@ -1057,7 +1068,7 @@ function runReminders() {
   const today = localDate();
   const hour = new Date().getHours();
   db.all("SELECT tg_id, name, created_at FROM users WHERE notify_enabled = 1", [], (err, users) => {
-    if (err) return;
+    if (err || !users) return;
     (users || []).forEach(u => {
       if (u.tg_id === 'demo_user') return;
       // вес: не записывал 3+ дня
@@ -1099,9 +1110,9 @@ function sendWeeklyReports() {
     users.forEach(u => {
       db.get("SELECT COUNT(*) c FROM workout_logs WHERE tg_id = ? AND date >= date('now','localtime','-7 days')", [u.tg_id], (e1, w) => {
         db.get("SELECT COUNT(DISTINCT date(timestamp)) c FROM food_logs WHERE tg_id = ? AND date(timestamp) >= date('now','localtime','-7 days')", [u.tg_id], (e2, m) => {
-          db.all("SELECT weight FROM weight_logs WHERE tg_id = ? ORDER BY date ASC, id ASC LIMIT 1", [u.tg_id], (e3, wr) => {
-            db.all("SELECT weight FROM weight_logs WHERE tg_id = ? ORDER BY date DESC, id DESC LIMIT 1", [u.tg_id], (e4, wl) => {
-              const wLine = (wr.length && wl.length) ? (' Вес: ' + wr[0].weight + ' → ' + wl[0].weight + ' кг.') : '';
+          db.all("SELECT weight FROM weight_logs WHERE tg_id = ? ORDER BY date DESC, id DESC LIMIT 1", [u.tg_id], (e4, wl) => {
+            db.all("SELECT weight FROM weight_logs WHERE tg_id = ? ORDER BY date ASC, id ASC LIMIT 1", [u.tg_id], (e5, wf) => {
+              const wLine = (wf.length && wl.length) ? (' Вес: ' + wf[0].weight + ' → ' + wl[0].weight + ' кг.') : '';
               notifyOnce(u.tg_id, 'weekly:' + today, today, '📊 Неделя в GuideFit: тренировок — ' + (w ? w.c : 0) + ', дней с записанной едой — ' + (m ? m.c : 0) + ' из 7.' + wLine + ' Новая неделя — новый шаг к цели!');
             });
           });

@@ -94,6 +94,10 @@ select.input{appearance:none}
 .fill-blue{background:var(--cyan)}
 .fill-green{background:var(--green)}
 .fill-red{background:var(--red)}
+@keyframes wtrPlus{0%{box-shadow:0 0 0 0 rgba(13,155,232,.45);transform:scale(1)}60%{box-shadow:0 0 0 12px rgba(13,155,232,0);transform:scale(1.08)}100%{box-shadow:0 0 0 0 rgba(13,155,232,0);transform:scale(1)}}
+.wtr2-add.pulse{animation:wtrPlus .22s ease}
+@keyframes pressFx{0%{transform:scale(1)}40%{transform:scale(.97)}100%{transform:scale(1)}}
+.press-fx{animation:pressFx .32s ease}
 .bar-chart{display:flex;align-items:flex-end;gap:6px;height:150px;padding:16px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);margin-bottom:12px;box-shadow:var(--sh-sm)}
 .bar-col{flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;height:100%;justify-content:flex-end}
 .bar-track{flex:1;width:100%;max-width:26px;display:flex;align-items:flex-end;background:var(--solid);border-radius:9px;overflow:hidden}
@@ -137,12 +141,12 @@ select.input{appearance:none}
 .chip{padding:9px 15px;border-radius:99px;background:var(--surface);border:1px solid var(--border);font-size:12.5px;font-weight:700;color:var(--text2)}
 .chip.active{background:var(--accent);border-color:var(--accent);color:#fff}
 .segmented{display:flex;background:var(--solid);border-radius:14px;padding:4px;gap:4px}
-.pill{display:flex;flex-direction:column;align-items:center;gap:3px;padding:7px 0;border-radius:14px;color:var(--text3);font-size:10px;font-weight:800;flex:1;transition:all .15s ease}
+.pill{display:flex;flex-direction:column;align-items:center;gap:3px;padding:7px 0;border-radius:14px;color:var(--text3);font-size:9.5px;font-weight:800;flex:1;transition:all .15s ease}
 .pill svg{width:21px;height:21px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 .nav-item.active .pill{background:var(--accent);color:#fff;box-shadow:0 6px 14px rgba(13,155,232,.4)}
 .bottom-nav{position:fixed;bottom:14px;left:50%;transform:translateX(-50%);width:min(440px,calc(100% - 28px));background:var(--surface);border:1px solid var(--border);border-radius:24px;display:flex;padding:7px;gap:4px;box-shadow:0 14px 36px rgba(12,60,100,.16);z-index:50}
 .bottom-nav>button{flex:1;background:none;border:none;padding:0}
-.toast{position:fixed;bottom:96px;left:50%;transform:translateX(-50%) translateY(18px);background:var(--text);color:#fff;padding:13px 18px;border-radius:14px;font-size:13.5px;font-weight:700;opacity:0;transition:all .25s ease;z-index:230;max-width:88%;text-align:center;box-shadow:0 10px 30px rgba(12,34,51,.3)}
+.toast{position:fixed;top:calc(env(safe-area-inset-top,0px) + 12px);left:50%;transform:translateX(-50%) translateY(-14px);background:var(--text);color:#fff;padding:13px 18px;border-radius:14px;font-size:13.5px;font-weight:700;opacity:0;transition:all .25s ease;z-index:230;max-width:88%;text-align:center;box-shadow:0 10px 30px rgba(12,34,51,.3)}
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 .toast.err{background:var(--red)}
 .toast.ok{background:var(--green)}
@@ -179,7 +183,6 @@ input,textarea{caret-color:var(--accent)}
 .btn:disabled,.pressable:disabled{opacity:.45;pointer-events:none}
 .screen{padding-bottom:calc(112px + env(safe-area-inset-bottom,0px))}
 .bottom-nav{bottom:calc(14px + env(safe-area-inset-bottom,0px))}
-.toast{bottom:calc(96px + env(safe-area-inset-bottom,0px))}
 body{overscroll-behavior-y:none}
 .pressable{user-select:none;-webkit-user-select:none}
 
@@ -189,7 +192,8 @@ body{overscroll-behavior-y:none}
 .chip{min-height:44px;display:inline-flex;align-items:center;box-sizing:border-box}
 .sel-btn,.loc-card{min-height:44px}
 .pressable{transition:transform .12s ease,opacity .12s ease}
-.pressable:active{transform:scale(.97);opacity:.85}
+.pressable:not(:disabled):not(.disabled):active{transform:scale(.97);opacity:.85}
+.wz-main:not(:disabled):active{transform:scale(.98);opacity:.9}
 body{touch-action:manipulation}
 
 @media (prefers-reduced-motion:reduce){
@@ -215,10 +219,11 @@ body{touch-action:manipulation}
 <div class="screen" id="screen-login">
   <div style="padding-top:48px;text-align:center">
     <div class="badge badge-accent mb2">GuideFit</div>
-    <h1 style="margin-bottom:8px">С возвращением!</h1>
-    <p class="muted" style="font-size:14px;margin-bottom:24px;line-height:1.55">Войди, чтобы сохранять прогресс</p>
+    <h1 style="margin-bottom:8px" id="loginTitle">Добро пожаловать в GuideFit</h1>
+    <p class="muted" style="font-size:14px;margin-bottom:24px;line-height:1.55" id="loginSubtitle">Войди или зарегистрируйся, чтобы сохранять прогресс</p>
     <div id="vkLoginBox" style="display:flex;flex-direction:column;gap:10px"></div>
-    <p class="subtle mt3" id="vkLoginMsg" style="display:none"></p>
+    <button type="button" id="vkSignupBtn" class="pressable" style="margin-top:14px;background:none;border:none;color:var(--accent-dark);font-size:13.5px;font-weight:800;padding:12px" onclick="vkStartRegister()">Нет аккаунта? Зарегистрироваться</button>
+    <p class="subtle mt2" id="vkLoginMsg" style="display:none"></p>
   </div>
 </div>
 
@@ -249,7 +254,7 @@ body{touch-action:manipulation}
   <span class="hidden" id="homeCals"></span><span class="hidden" id="homeWater"></span><span class="hidden" id="homeStreakVal"></span>
   <div class="flex between items-center mb3"><h3>Приёмы пищи</h3><span class="subtle" style="font-size:11px;font-weight:700" id="mealCountLbl"></span></div>
   <div id="homeMealsList"><div class="shimmer"></div><div class="shimmer"></div></div>
-  <div class="card pressable mb4 mt3" onclick="goStreak()" style="cursor:pointer;display:flex;align-items:center;gap:14px">
+  <div class="card pressable mb4 mt3" id="dashWorkoutCard" onclick="goStreak()" style="cursor:pointer;display:flex;align-items:center;gap:14px">
     <div style="flex:1">
       <div class="badge badge-amber mb2" id="dashWorkoutBadge">Тренировка</div>
       <h3 style="font-size:16px" id="dashWorkoutTitle">Начни тренировку</h3>
@@ -327,7 +332,7 @@ body{touch-action:manipulation}
 
 <nav class="bottom-nav" id="bottomNav" style="display:none">
   <button class="nav-item active" data-tab="home" onclick="navigate('home')"><div class="pill"><svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg><span>Главная</span></div></button>
-  <button class="nav-item" data-tab="stats" onclick="navigate('stats')"><div class="pill"><svg viewBox="0 0 24 24"><path d="M18 20V10"/><path d="M12 20V4"/><path d="M6 20v-6"/></svg><span>Стат.</span></div></button>
+  <button class="nav-item" data-tab="stats" onclick="navigate('stats')"><div class="pill"><svg viewBox="0 0 24 24"><path d="M18 20V10"/><path d="M12 20V4"/><path d="M6 20v-6"/></svg><span>Статистика</span></div></button>
   <button class="nav-item" data-tab="workouts" onclick="navigate('workouts')"><div class="pill"><svg viewBox="0 0 24 24"><path d="M6.5 6.5h11"/><path d="M6.5 17.5h11"/><path d="M6 20v-6a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v6"/><path d="M6 10V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v6"/></svg><span>Тренировки</span></div></button>
   <button class="nav-item" data-tab="nutrition" onclick="navigate('nutrition')"><div class="pill"><svg viewBox="0 0 24 24"><path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0L12 2.69z"/><path d="M12 22v-8"/></svg><span>Еда</span></div></button>
   <button class="nav-item" data-tab="profile" onclick="navigate('profile')"><div class="pill"><svg viewBox="0 0 24 24"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg><span>Профиль</span></div></button>
@@ -340,7 +345,7 @@ const tg = window.Telegram && window.Telegram.WebApp ? window.Telegram.WebApp : 
 const API = window.location.origin;
 let currentUser = null;
 let workoutTimer = null, workoutSeconds = 0, timerPaused = false;
-let currentExercises = [], currentExerciseMeta = [];
+let currentExercises = [];
 let currentProgramId = null, currentProgramDay = null, isProgramWorkout = false;
 let currentMealRecipe = null, currentMealCategory = 'breakfast';
 let restTimer = null, restRemaining = 0;
@@ -423,6 +428,7 @@ async function api(endpoint, opts = {}){
 }
 
 /* ============ вход: Telegram либо сессия VK (standalone/APK) ============ */
+/* v24: intent — откуда пришли: 'login' (кнопка входа/возврат по сессии) | 'register' (кнопка регистрации) | 'session' */
 function tgUid(){
   try{
     if(tg && tg.initDataUnsafe && tg.initDataUnsafe.user && tg.initDataUnsafe.user.id) return String(tg.initDataUnsafe.user.id);
@@ -430,7 +436,8 @@ function tgUid(){
   return null;
 }
 
-async function enterWithSession(tgId){
+async function enterWithSession(tgId, intent){
+  intent = intent || 'login';
   try{
     if(!tgId){ const me = await api('/api/auth/me'); tgId = me.tg_id; }
     const user = await api('/api/user/' + encodeURIComponent(tgId));
@@ -440,9 +447,11 @@ async function enterWithSession(tgId){
       obRender();
       return;
     }
+    if(intent === 'register') showToast('Вы уже зарегистрированы', 'success');
     renderAvatar(user.name, user.avatar);
     $('bottomNav').style.display = 'flex';
     navigate('home');
+    setTimeout(function(){ if(typeof renderHomeDonuts === 'function'){ try{ renderHomeDonuts(); }catch(e){} } }, 700);
   }catch(e){
     if(e && e.status === 404){ ob = { step: 0, total: 10, meal_count: 3 }; obRender(); }
     else showLoginScreen();
@@ -452,6 +461,12 @@ async function enterWithSession(tgId){
 function showLoginScreen(){
   try{ $('bottomNav').style.display = 'none'; }catch(e){}
   navigate('login');
+  try{
+    const lt = $('loginTitle'), ls = $('loginSubtitle'), sb = $('vkSignupBtn');
+    if(lt) lt.textContent = 'Добро пожаловать в GuideFit';
+    if(ls) ls.textContent = 'Войди или зарегистрируйся, чтобы сохранять прогресс';
+    if(sb) sb.style.display = '';
+  }catch(e){}
   initVkLogin();
 }
 
@@ -461,7 +476,9 @@ let _vkVerifier = null;
 function vkFail(t){
   const box = document.getElementById('vkLoginBox');
   const msg = document.getElementById('vkLoginMsg');
+  const sb = document.getElementById('vkSignupBtn');
   if(box) box.innerHTML = '';
+  if(sb) sb.style.display = 'none';
   if(msg){ msg.style.display = ''; msg.textContent = t; }
 }
 function b64urlBytes(arr){
@@ -517,7 +534,7 @@ async function handleVkRedirect(){
     if(!d || !d.session) throw new Error('Нет сессии');
     try{ localStorage.setItem('gf_session', d.session); }catch(e){}
     clean();
-    await enterWithSession();
+    await enterWithSession(null, 'login');
     return true;
   }catch(e){ try{ console.error('VK redirect:', e); }catch(_){} clean(); return false; }
 }
@@ -537,17 +554,37 @@ async function renderVkWidget(){
     const names = (VKID.OAuthName && VKID.OAuthName.VK && VKID.OAuthName.OK) ? [VKID.OAuthName.VK, VKID.OAuthName.OK] : ['vkid', 'ok_ru'];
     const box = document.getElementById('vkLoginBox');
     if(!box) return;
+    const successEv = (VKID.OAuthListInternalEvents && VKID.OAuthListInternalEvents.LOGIN_SUCCESS) || (VKID.WidgetEvents && VKID.WidgetEvents.LOGIN_SUCCESS);
+    const errorEv = (VKID.WidgetEvents && VKID.WidgetEvents.ERROR);
     const w = new VKID.OAuthList();
     const r = w.render({ container: box, oauthList: names, styles: { borderRadius: 10, height: 56 } });
     const emitter = (r && typeof r.on === 'function') ? r : ((typeof w.on === 'function') ? w : null);
-    const successEv = (VKID.OAuthListInternalEvents && VKID.OAuthListInternalEvents.LOGIN_SUCCESS) || (VKID.WidgetEvents && VKID.WidgetEvents.LOGIN_SUCCESS);
-    const errorEv = (VKID.WidgetEvents && VKID.WidgetEvents.ERROR);
     if(!emitter || !successEv) return vkFail('Вход временно недоступен, откройте приложение через Telegram');
-    emitter.on(successEv, onVkLogin);
+    emitter.on(successEv, function(p){ onVkLogin(p, 'login'); });
     if(errorEv) emitter.on(errorEv, function(e){ try{ console.error('VK widget:', e); }catch(_){} });
   }catch(e){ vkFail('Вход временно недоступен, откройте приложение через Telegram'); }
 }
-async function onVkLogin(payload){
+/* v24: «Зарегистрироваться» — тот же VK OAuth (второй виджет OAuthList), различие только в поведении после возврата */
+async function vkStartRegister(){
+  let VKID;
+  try{ VKID = await vkConfigure(); }
+  catch(e){ return vkFail('Вход временно недоступен, откройте приложение через Telegram'); }
+  try{
+    const names = (VKID.OAuthName && VKID.OAuthName.VK && VKID.OAuthName.OK) ? [VKID.OAuthName.VK, VKID.OAuthName.OK] : ['vkid', 'ok_ru'];
+    const box = document.getElementById('vkLoginBox');
+    if(!box) return;
+    box.innerHTML = '';
+    const successEv = (VKID.OAuthListInternalEvents && VKID.OAuthListInternalEvents.LOGIN_SUCCESS) || (VKID.WidgetEvents && VKID.WidgetEvents.LOGIN_SUCCESS);
+    const errorEv = (VKID.WidgetEvents && VKID.WidgetEvents.ERROR);
+    const w = new VKID.OAuthList();
+    const r = w.render({ container: box, oauthList: names, styles: { borderRadius: 10, height: 56 } });
+    const emitter = (r && typeof r.on === 'function') ? r : ((typeof w.on === 'function') ? w : null);
+    if(!emitter || !successEv){ box.innerHTML = ''; return initVkLogin(); }
+    emitter.on(successEv, function(p){ onVkLogin(p, 'register'); });
+    if(errorEv) emitter.on(errorEv, function(e){ try{ console.error('VK widget:', e); }catch(_){} });
+  }catch(e){ vkFail('Вход временно недоступен, откройте приложение через Telegram'); }
+}
+async function onVkLogin(payload, intent){
   try{
     const p = payload || {};
     const code = p.code, device_id = p.device_id || p.deviceId;
@@ -557,7 +594,7 @@ async function onVkLogin(payload){
     try{ localStorage.setItem('gf_session', d.session); }catch(e){}
     const box = document.getElementById('vkLoginBox');
     if(box) box.innerHTML = '';
-    await enterWithSession();
+    await enterWithSession(null, intent || 'login');
   }catch(e){ showError((e && e.message) || 'Не удалось войти через VK'); }
 }
 
@@ -624,6 +661,8 @@ document.addEventListener('click', e => {
     const id = active.id.replace('screen-','');
     if(pulling && dy > 90 && Math.abs(dx) < 40 && TABS.includes(id)){ haptic(); navigate(id); return; }
     if(TABS.includes(id) && Math.abs(dx) > 70 && Math.abs(dy) < 40){
+      /* нельзя свайпить из активной тренировки — случайно собьёт незаписанный прогресс */
+      if(id === 'active-workout') return;
       const i = TABS.indexOf(id);
       const next = TABS[dx < 0 ? Math.min(i+1, TABS.length-1) : Math.max(i-1, 0)];
       if(next !== id){ haptic(); navigate(next); }
@@ -671,11 +710,13 @@ async function initApp(){
   }
   // standalone/APK: возврат из VK (vkcode) → сохранённая сессия → иначе экран входа
   if(await handleVkRedirect()) return;
-  await enterWithSession();
+  // v24: сохранённая сессия — если профиль заполнен, экран входа вообще не показывается (сразу дашборд)
+  await enterWithSession(null, 'session');
 }
 
 function renderAvatar(name, avatar){
   const el = $('homeAvatar');
+  if(!el) return;
   const tUser = tg && tg.initDataUnsafe ? tg.initDataUnsafe.user : null;
   if(avatar){ el.innerHTML = '<img src="' + esc(avatar) + '" alt="" referrerpolicy="no-referrer">'; }
   else if(tUser && tUser.photo_url){ el.innerHTML = '<img src="' + esc(tUser.photo_url) + '" alt="">'; }
@@ -780,7 +821,8 @@ function obRender(){
   } else if(s === 5){
     h += '<h1 style="margin-bottom:18px">Целевой вес</h1>' + obField('obTarget','Вес, кг','20–400', ob.target || '');
   } else if(s === 6){
-    h += '<h1 style="margin-bottom:18px">Уровень активности</h1><div class="sel-row">' +
+    h += '<h1 style="margin-bottom:8px">Уровень активности</h1>' +
+      '<p class="muted" style="font-size:12.5px;line-height:1.5;margin:0 0 14px">Учитывай всё: тренировки в зале, активную работу (на ногах, физический труд), прогулки и бытовую активность. Сидячая работа без тренировок — низкая активность.</p><div class="sel-row">' +
       obCard('sedentary','Малая','Сидячая','activity') + obCard('light','Лёгкая','1–3 раза','activity') +
       obCard('moderate','Средняя','3–5 раз','activity') + obCard('very_active','Высокая','Почти каждый день','activity') + '</div>';
   } else if(s === 7){
@@ -788,7 +830,7 @@ function obRender(){
       obCard('lose','Похудеть','−500 ккал','goal') + obCard('gain','Набрать','+500 ккал','goal') + obCard('maintain','Поддержать','Баланс','goal') + '</div>';
   } else if(s === 8){
     h += '<h1 style="margin-bottom:18px">Приёмов пищи в день</h1><div class="ob-chips">' +
-      [2,3,4,5,6].map(n => '<button type="button" class="chip pressable' + ((ob.meal_count||3)===n?' active':'') + '" onclick="obPick(\'meal_count\',\'' + n + '\')">' + n + '</button>').join('') + '</div>' +
+      [2,3,4,5,6].map(n => '<button type="button" class="chip pressable ob-meal-chip' + ((ob.meal_count||3)===n?' active':'') + '" onclick="obPick(\'meal_count\',\'' + n + '\')">' + n + '</button>').join('') + '</div>' +
       '<p class="subtle mt2" style="font-size:11.5px">Можно изменить позже в настройках</p>';
   } else if(s === 9){
     const gl = { lose:'Похудение', gain:'Набор', maintain:'Поддержание' }[ob.goal] || '';
@@ -816,13 +858,14 @@ async function loadDashboard(){
     const st = await api('/api/user/program/' + encodeURIComponent(tgId));
     const ap = st && st.program;
     _apId = (ap && ap.program_id) || null;
-    _apDay = ap ? (((ap.current_week || 1) - 1) * 7 + (ap.current_day || 1)) : 1;
+    const perWeek = Math.max(Math.round((ap && ap.total_days || 0) / (ap && ap.duration_weeks || 1)), 1);
+    _apDay = ap ? (((ap.current_week || 1) - 1) * perWeek + (ap.current_day || 1)) : 1;
   }catch(e){ _apId = null; }
   try{
     const data = await api('/api/dashboard', { method:'POST', body:{ tg_id: tgId } });
     const hour = new Date().getHours();
     $('greetingTime').textContent = hour < 6 ? 'Доброй ночи' : hour < 12 ? 'Доброе утро' : hour < 18 ? 'Добрый день' : 'Добрый вечер';
-    $('dashName').textContent = data.user ? data.user.name : 'друг';
+    $('dashName').textContent = (data.user && data.user.name) || 'друг';
 
     const streak = data.streak || 0;
     const C = 2 * Math.PI * 42;
@@ -853,6 +896,9 @@ async function loadDashboard(){
       $('dashWorkoutTitle').textContent = 'Начни тренировку';
       $('dashWorkoutDesc').textContent = 'Программа или свободная';
     }
+    /* v24: визуальный отклик кнопки «Начать тренировку» (press-fx при каждом рендере дашборда) */
+    const dwc = $('dashWorkoutCard');
+    if(dwc){ dwc.classList.remove('press-fx'); void dwc.offsetWidth; dwc.classList.add('press-fx'); setTimeout(function(){ dwc.classList.remove('press-fx'); }, 400); }
 
     if(data.activeProgram){
       const p = data.activeProgram;
@@ -1013,20 +1059,6 @@ async function startFreeWorkout(exId){
     renderActiveWorkout(false);
     navigate('active-workout');
   }catch(e){ showError('Ошибка загрузки упражнения'); }
-}
-
-function completeSet(exIdx, setIdx){
-  const btn = $('c-' + exIdx + '-' + setIdx);
-  if(!btn || btn.classList.contains('done')) return;
-  const ex = currentExercises[exIdx];
-  btn.classList.add('done');
-  const meta = currentExerciseMeta[exIdx];
-  meta.doneSets++;
-  $('exdone-' + exIdx).textContent = meta.doneSets + '/' + ex.sets;
-  haptic('ok');
-  // таймер отдыха после подхода (кроме последнего подхода последнего упражнения)
-  const isLastOverall = exIdx === currentExercises.length - 1 && setIdx === ex.sets - 1;
-  if(!isLastOverall && ex.rest_seconds > 0) startRest(ex.rest_seconds);
 }
 
 function startRest(seconds){
@@ -1584,7 +1616,7 @@ function woFinishFlow(){
 .ob-err{display:none;color:var(--red);font-size:11.5px;font-weight:700;margin-top:6px}
 .input-error{border-color:var(--red)!important}
 .ob-chips{display:flex;gap:8px;flex-wrap:wrap}
-.ob-chips .chip{min-width:44px}
+.ob-chips .chip{min-width:48px;width:48px;height:48px;padding:0;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;line-height:1;font-size:15px}
 </style>
 <script>
 let wzEx = 0, wzDone = [];
@@ -1658,7 +1690,9 @@ function wzSetDone(isProgram){
   const w = Math.min(Math.max(parseFloat(wEl && wEl.value) || 0, 0), 1000);
   const r = Math.min(Math.max(parseInt(rEl && rEl.value) || planned, 1), 500);
   if(arr.length < ex.sets){ arr.push({ w, r }); if(typeof haptic === 'function') haptic('ok'); }
-  if(arr.length >= ex.sets && wzEx < currentExercises.length - 1){ startRest(ex.rest_seconds || 40); }
+  /* отдых после каждого подхода, кроме самого последнего подхода последнего упражнения */
+  const isLastOverall = wzEx === currentExercises.length - 1 && arr.length >= ex.sets;
+  if(!isLastOverall) startRest(ex.rest_seconds || 40);
   wzRender(isProgram);
 }
 function wzNext(isProgram){ wzEx++; if(typeof haptic === 'function') haptic(); wzRender(isProgram); }
@@ -1672,20 +1706,24 @@ function wzFinish(isProgram){
     '<button class="btn btn-primary btn-block pressable mt4" onclick="finishWorkout(' + isProgram + ')">Сохранить и выйти</button></div>';
 }
 let tourIdx = 0;
+/* v24: тур переведён на делегирование клика внутри оверлея — кнопки Далее/Пропустить не зависят от глобальных onclick */
+function tourUid(){ try{ return (typeof currentUser !== 'undefined' && currentUser && currentUser.tg_id) || 'guest'; }catch(e){ return 'guest'; } }
+function tourDone(){ try{ localStorage.setItem('gf_tour_' + tourUid(), '1'); }catch(e){} }
+function tourClose(){ const ov = document.getElementById('tourOverlay'); if(ov) ov.remove(); }
+function tourSkip(){ tourDone(); tourClose(); }
 function tourMaybe(screen){
   try{
-    const uid = (typeof currentUser !== 'undefined' && currentUser && currentUser.tg_id) || 'guest';
-    if(localStorage.getItem('gf_tour_' + uid)) return;
-    tourIdx = 0; tourShow();
+    if(localStorage.getItem('gf_tour_' + tourUid())) return;
+    /* ждём рендер дашборда (waterCard/streakPlate появляются после ответа /api/dashboard), максимум ~3с */
+    let tries = 0;
+    const tick = function(){
+      tries++;
+      const ready = !!document.querySelector('#screen-home.active #waterCard');
+      if(ready || tries > 12){ tourIdx = 0; tourShow(); return; }
+      setTimeout(tick, 250);
+    };
+    tick();
   }catch(e){}
-}
-function tourSkip(){
-  try{
-    const uid = (typeof currentUser !== 'undefined' && currentUser && currentUser.tg_id) || 'guest';
-    localStorage.setItem('gf_tour_' + uid, '1');
-  }catch(e){}
-  const ov = document.getElementById('tourOverlay');
-  if(ov) ov.remove();
 }
 try{
   const _navOrig = navigate;
@@ -1751,14 +1789,15 @@ async function saveProfileSettings(){
   const goal = (document.querySelector('input[name="setGoal"]:checked') || {}).value;
   if(goal && ['lose','maintain','gain'].includes(goal)) body.goal = goal;
   if(Object.keys(body).length < 2){ showToast('Ничего не изменено', 'err'); return; }
+  const saveBtn = document.querySelector('#settingsContent .btn-primary');
   try{
-    const btn = document.querySelector('#profileContent .btn-primary');
-    if(btn){ btn.disabled = true; btn.textContent = 'Сохранение…'; }
+    if(saveBtn){ saveBtn.disabled = true; saveBtn.textContent = 'Сохранение…'; }
     const r = await api('/api/user/update', { method: 'POST', body: body });
     showSuccess('Настройки сохранены! Калории пересчитаны: ' + r.calorie_norm + ' ккал');
     if(typeof haptic === 'function') haptic('ok');
     setTimeout(loadProfile, 900);
   }catch(e){ showToast('Не удалось сохранить', 'err'); }
+  finally{ if(saveBtn){ saveBtn.disabled = false; saveBtn.textContent = 'Сохранить'; } }
 }
 let _profileLoading = false;
 async function loadProfile(){
@@ -1774,8 +1813,8 @@ async function loadProfile(){
     const gt = user.goal === 'lose' ? 'Похудение' : user.goal === 'gain' ? 'Набор' : 'Поддержание';
     c.innerHTML =
       '<div class="card mb4" style="text-align:center;padding:22px 18px">' +
-        '<div class="avatar" style="width:84px;height:84px;font-size:32px;margin:0 auto 12px" id="profAvatar">' + esc(user.name.charAt(0).toUpperCase()) + '</div>' +
-        '<h2 style="font-size:26px">' + esc(user.name) + '</h2>' +
+        '<div class="avatar" style="width:84px;height:84px;font-size:32px;margin:0 auto 12px" id="profAvatar">' + esc((user.name || 'U').charAt(0).toUpperCase()) + '</div>' +
+        '<h2 style="font-size:26px">' + esc(user.name || 'Друг') + '</h2>' +
         '<p class="muted" style="font-size:13px;margin:4px 0 12px">' + user.calorie_norm + ' ккал в день · ' + user.meal_count + ' ' + plural(user.meal_count,'приём','приёма','приёмов') + ' пищи</p>' +
         '<div class="flex gap2" style="flex-wrap:wrap;justify-content:center"><span class="badge badge-accent">' + gt + '</span><span class="badge badge-violet">' + (user.gender==='male'?'Мужчина':'Женщина') + '</span></div></div>' +
       '<div class="card mb4"><div class="flex between items-center"><div>' +
@@ -1800,7 +1839,7 @@ async function loadProfile(){
     document.getElementById('achList').innerHTML = list.map(a =>
       '<div class="ach' + (a.unlocked ? '' : ' locked') + '">' +
       '<div class="ach-ic">' + ic(a.icon || 'trophy', 20) + '</div>' +
-      '<div style="flex:1"><div style="font-weight:800;font-size:13.5px">' + esc(a.name) + '</div>' +
+      '<div style="flex:1"><div style="font-weight:800;font-size:13.5px">' + esc(a.title || a.name || '') + '</div>' +
       '<div class="subtle" style="font-size:11.5px;margin-top:2px">' + esc(a.description || '') + '</div></div>' +
       (a.unlocked ? '' : ic('lock',16)) + '</div>').join('') || '<div class="empty">Пока нет достижений</div>';
   }catch(e){ c.innerHTML = '<div class="empty">Не удалось загрузить</div>'; }
@@ -1824,15 +1863,14 @@ function loadSettings(){
       '</div>' +
       '<label class="input-label">Цель</label><div class="flex gap2 mb3" style="flex-wrap:wrap">' + goalChips + '</div>' +
       '<button class="btn btn-primary btn-block pressable" onclick="saveProfileSettings()">Сохранить</button>' +
-      '<p class="subtle mt2" style="font-size:11.5px">После сохранения норма калорий пересчитается автоматически.</p></div>' +
-    '<div class="card mb4"><h3 class="mb3">Приёмы пищи в день</h3><div class="flex gap2">' +
+      '<p class="subtle mt2" style="font-size:11.5px">После сохранения норма калорий пересчитается автоматически.</p></div>' +      '<div class="card mb4"><h3 class="mb3">Приёмы пищи в день</h3><div class="flex gap2">' +
       [2,3,4,5,6].map(n => '<button class="chip pressable' + (u.meal_count===n?' active':'') + '" id="mc' + n + '" onclick="setMealCount(' + n + ')">' + n + '</button>').join('') + '</div></div>' +
-    '<div class="card mb4"><h3 class="mb3">Уведомления</h3><button class="btn btn-ghost btn-block pressable" onclick="toggleNotifyUI()" style="display:flex;align-items:center;justify-content:center;gap:8px">' + ic('sparkles',16) + ' <span id="notifyLbl">Уведомления: …</span></button></div>' +
+    '<div class="card mb4"><h3 class="mb3">Уведомления</h3><button class="btn btn-ghost btn-block pressable" onclick="toggleNotifyUI()" style="display:flex;align-items:center;justify-content:center;gap:8px">' + ic('sparkles',16) + ' <span id="notifyLblSettings">Уведомления: …</span></button></div>' +
     '<a href="https://t.me/nexxdsgn" target="_blank" rel="noopener" class="btn btn-ghost btn-block pressable" style="text-decoration:none;display:flex;align-items:center;justify-content:center;gap:8px">' + ic('person',16) + ' Написать в поддержку · t.me/nexxdsgn</a>' +
     '<a href="/privacy.html" target="_blank" rel="noopener" class="btn btn-ghost btn-block pressable mt2" style="text-decoration:none;display:flex;align-items:center;justify-content:center;gap:8px">Политика конфиденциальности</a>' +
     '<button class="btn btn-ghost btn-block pressable mt2" onclick="doLogout()" style="display:flex;align-items:center;justify-content:center;gap:8px;color:#e0504b"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg> Выйти</button>' +
     '<button class="btn btn-danger btn-block pressable mt2" onclick="doDeleteData()" style="display:flex;align-items:center;justify-content:center;gap:8px">Удалить мои данные</button>';
-  const nl = document.getElementById('notifyLbl');
+  const nl = document.getElementById('notifyLblSettings');
   if(nl) nl.textContent = 'Уведомления: ' + ((u.notify_enabled) ? 'включены' : 'выключены');
 }
 function doLogout(){
@@ -1884,26 +1922,40 @@ function tourEl(step){
 function tourDots(){
   return '<div class="tour-dots">' + TOUR_STEPS.concat([{}]).map(function(_, i){ return '<span class="wz-dot" style="background:' + (i === tourIdx ? 'var(--accent)' : 'var(--border2)') + '"></span>'; }).join('') + '</div>';
 }
-function tourShow(){
-  const old = document.getElementById('tourOverlay');
-  if(old) old.remove();
-  while(tourIdx < TOUR_STEPS.length && !tourEl(TOUR_STEPS[tourIdx])) tourIdx++;
-  if(tourIdx >= TOUR_STEPS.length){ tourFinal(); return; }
-  const step = TOUR_STEPS[tourIdx];
+function tourOverlay(inner){
+  tourClose();
   const ov = document.createElement('div');
   ov.className = 'spot-overlay'; ov.id = 'tourOverlay';
-  ov.innerHTML = '<div class="spot-nav">' +
-    '<button class="btn btn-primary btn-block pressable" onclick="tourNext()">Далее</button>' +
-    '<button class="btn btn-ghost btn-block pressable" onclick="tourSkip()" style="font-size:13px">Пропустить обучение</button></div>';
+  ov.innerHTML = inner;
+  ov.addEventListener('click', function(e){
+    const b = e.target.closest('[data-tour]');
+    if(!b) return;
+    e.preventDefault();
+    const act = b.getAttribute('data-tour');
+    if(act === 'next') tourNext();
+    else if(act === 'skip') tourSkip();
+  });
   document.body.appendChild(ov);
-  try{ tourEl(step).scrollIntoView({ block: 'center' }); }catch(e){}
-  setTimeout(function(){ tourPosition(step); }, 80);
+  return ov;
+}
+function tourShow(){
+  try{
+    while(tourIdx < TOUR_STEPS.length && !tourEl(TOUR_STEPS[tourIdx])) tourIdx++;
+    if(tourIdx >= TOUR_STEPS.length){ tourFinal(); return; }
+    const step = TOUR_STEPS[tourIdx];
+    tourOverlay('<div class="spot-nav">' +
+      '<button class="btn btn-primary btn-block pressable" data-tour="next">Далее</button>' +
+      '<button class="btn btn-ghost btn-block pressable" data-tour="skip" style="font-size:13px">Пропустить обучение</button></div>');
+    try{ const el = tourEl(step); if(el) el.scrollIntoView({ block: 'center' }); }catch(e){}
+    setTimeout(function(){ tourPosition(step); }, 80);
+  }catch(e){ tourClose(); }
 }
 function tourPosition(step){
+  try{
   const ov = document.getElementById('tourOverlay');
   const el = tourEl(step);
   if(!ov) return;
-  if(!el || !el.isConnected){ tourShow(); return; }
+  if(!el || !el.isConnected){ return; }
   const r = el.getBoundingClientRect(), pad = 6;
   const cut = document.createElement('div');
   cut.className = 'spot-hole';
@@ -1927,23 +1979,19 @@ function tourPosition(step){
   if(hr.bottom > window.innerHeight - 150){ hint.style.top = Math.max(window.innerHeight - 240, 10) + 'px'; hint.style.bottom = 'auto'; }
   hint.style.setProperty('--ax', Math.max(Math.min(r.left + r.width/2 - hl - 7, hw - 26), 12) + 'px');
   if(typeof haptic === 'function') haptic();
+  }catch(e){}
 }
 function tourFinal(){
-  const old = document.getElementById('tourOverlay');
-  if(old) old.remove();
-  const ov = document.createElement('div');
-  ov.className = 'spot-overlay'; ov.id = 'tourOverlay';
-  ov.innerHTML = '<div class="spot-hint" style="left:50%;top:50%;transform:translate(-50%,-50%);max-width:320px;text-align:center">' +
+  tourOverlay('<div class="spot-hint" style="left:50%;top:50%;transform:translate(-50%,-50%);max-width:320px;text-align:center">' +
     '<div class="tour-ic">' + ic('sparkles',30) + '</div>' +
     '<h2 style="font-size:22px">Начинаем!</h2>' +
     '<p class="muted mt2" style="font-size:13.5px;line-height:1.6">Всё настроено. GuideFit всё посчитает — просто пользуйся.</p>' + tourDots() +
-    '<button class="btn btn-primary btn-block pressable mt3" onclick="tourSkip()">Начинаем!</button></div>';
-  document.body.appendChild(ov);
+    '<button class="btn btn-primary btn-block pressable mt3" data-tour="skip">Начинаем!</button></div>');
 }
 function tourNext(){
   if(typeof haptic === 'function') haptic();
   tourIdx++;
-  if(tourIdx > TOUR_STEPS.length){ tourSkip(); return; }
+  if(tourIdx >= TOUR_STEPS.length){ tourFinal(); return; }
   tourShow();
 }
 </script>
@@ -2091,8 +2139,10 @@ async function toggleNotifyUI(){
     currentUser.notify_enabled = r.notify_enabled;
     if(typeof haptic === 'function') haptic('ok');
     showSuccess('Уведомления ' + (r.notify_enabled ? 'включены' : 'выключены'));
-    const l = document.getElementById('notifyLbl');
-    if(l) l.textContent = 'Уведомления: ' + (r.notify_enabled ? 'включены' : 'выключены');
+    ['notifyLblSettings','notifyLbl'].forEach(function(id){
+      const l = document.getElementById(id);
+      if(l) l.textContent = 'Уведомления: ' + (r.notify_enabled ? 'включены' : 'выключены');
+    });
   }catch(e){ showToast('Не удалось переключить', 'err'); }
 }
 </script>
@@ -2125,7 +2175,8 @@ function renderHomeDonuts(){
   const grid = document.getElementById('homeStatGrid');
   if(!grid || !currentUser) return;
   const waterMl = parseInt((document.getElementById('homeWater')||{}).textContent) || 0;
-  const streak = parseInt((document.getElementById('homeStreakVal')||{}).textContent) || 0;
+  const streakRaw = (document.getElementById('homeStreakVal')||{}).textContent || '';
+  const streak = parseInt(streakRaw) || 0;
   const normRaw = currentUser.water_norm || Math.round((parseFloat(currentUser.current_weight) || 70) * 30);
   const norm = Math.round(normRaw / 250) * 250;
   const glasses = Math.max(4, Math.round(norm / 250));
@@ -2172,7 +2223,7 @@ function renderMacrosPlate(cons){
   if(!box) return;
   const w = parseFloat(currentUser && currentUser.current_weight) || 70;
   const kcal = (currentUser && currentUser.calorie_norm) || 2000;
-  const p = Math.round(w * ((currentUser && currentUser.goal === 'gain') ? 2 : 1.6));
+  const p = Math.round(w * ((currentUser && currentUser.goal === 'gain') ? 2 : 1.8));
   const f = Math.round(w);
   let c = Math.round((kcal - p * 4 - f * 9) / 4);
   if (c < 50) c = 50;
@@ -2199,6 +2250,9 @@ function toggleBju(ev){
 async function addWater(){
   if(!currentUser) return;
   if(typeof haptic === 'function') haptic();
+  /* v24: короткая анимация нажатия «+» (пульс ~220мс, по дизайн-системе) */
+  const wbtn = document.querySelector('.wtr2-add');
+  if(wbtn){ wbtn.classList.remove('pulse'); void wbtn.offsetWidth; wbtn.classList.add('pulse'); setTimeout(function(){ wbtn.classList.remove('pulse'); }, 260); }
   try{
     await api('/api/water', { method: 'POST', body: { tg_id: currentUser.tg_id, amount: 250 } });
     if(typeof haptic === 'function') haptic();
