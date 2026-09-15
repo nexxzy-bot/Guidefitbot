@@ -1,5 +1,8 @@
 const express = require('express');
 require('dotenv').config();
+// Часовой пояс приложения: от него зависят «сегодня» (localDate), SQLite 'localtime' и часы напоминаний.
+// По умолчанию — Москва: без этого сервер живёт в UTC и день пользователя переключался в 03:00 МСК.
+if (!process.env.TZ) process.env.TZ = 'Europe/Moscow';
 const crypto = require('crypto');
 const db = require('./db');
 
