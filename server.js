@@ -13,7 +13,16 @@ if (!db || typeof db.run !== 'function' || typeof db.get !== 'function' || typeo
   process.exit(1);
 }
 
+// Версия приложения — из package.json (показывается в «О приложении» и /api/health)
+let APP_VERSION = '2.0.0';
+try { APP_VERSION = require('./package.json').version || APP_VERSION; } catch (e) {}
+
 const app = express();
+// Приложение стоит за nginx (app.xn--80aag3axnld9b.xn--p1ai → localhost:3000).
+// Без trust proxy req.ip = 127.0.0.1 для ВСЕХ пользователей, и все лимиты
+// (120 req/min, 10 анонимных аккаунтов в час) считались бы на один общий IP.
+// 1 — доверяем ровно одному прокси впереди (nginx), реальный IP берём из X-Forwarded-For.
+app.set('trust proxy', 1);
 app.use(express.json({ limit: '1mb' }));
 app.use(express.static('static'));
 
@@ -125,6 +134,14 @@ function calcStreak(tg_id, callback) {
 }
 
 /* ================= уведомления в Telegram ================= */
+// Куда шлём напоминание: сначала явно привязанный чат, затем сам Telegram-id аккаунта.
+// У аккаунтов ВК/анонимных это позволяет получать уведомления после привязки чата ботом.
+function chatTarget(row) {
+  if (!row) return null;
+  if (isTelegramId(row.notify_chat_id)) return String(row.notify_chat_id);
+  return isTelegramId(row.tg_id) ? String(row.tg_id) : null;
+}
+
 async function sendTelegram(tg_id, text) {
   const token = process.env.TELEGRAM_TOKEN;
   if (!token || !isTelegramId(tg_id)) return;
@@ -142,20 +159,22 @@ async function sendTelegram(tg_id, text) {
 // У аккаунтов 'vk:...' и 'anon:...' чата с ботом нет — им уведомления не отправляем.
 function isTelegramId(tg_id) { return /^\d+$/.test(String(tg_id || '')); }
 
-// Уведомление с дедупликацией: один тип — один раз в день на пользователя
-function notifyOnce(tg_id, type, dateStr, text) {
-  if (!isTelegramId(tg_id)) return; // vk:/anon: — чата с ботом нет, в лог не пишем
+// Уведомление с дедупликацией: один тип — один раз в день на аккаунт.
+// accountId — идентификатор аккаунта (для лога), chatId — куда именно слать (может быть null).
+function notifyOnce(accountId, chatId, type, dateStr, text) {
+  if (!chatId || !isTelegramId(chatId)) return;
   db.run("INSERT OR IGNORE INTO notification_log (tg_id, type, date) VALUES (?, ?, ?)",
-    [tg_id, type, dateStr], function (err) {
-      if (!err && this.changes > 0) sendTelegram(tg_id, text);
+    [accountId, type, dateStr], function (err) {
+      if (!err && this.changes > 0) sendTelegram(chatId, text);
     });
 }
 
 /* ================= достижения ================= */
 function checkAchievements(tg_id) {
   if (!tg_id || tg_id === 'demo_user') return;
-  db.get("SELECT current_weight FROM users WHERE tg_id = ?", [tg_id], (err, u) => {
+  db.get("SELECT current_weight, tg_id, notify_chat_id FROM users WHERE tg_id = ?", [tg_id], (err, u) => {
     const waterNorm = Math.round((Number(u?.current_weight) || 70) * 30);
+    const achChat = chatTarget(u);
     db.all("SELECT achievement_id FROM user_achievements WHERE tg_id = ?", [tg_id], (err2, ua) => {
       const unlocked = new Set((ua || []).map(a => a.achievement_id));
       db.all("SELECT * FROM achievements", [], (err3, all) => {
@@ -187,8 +206,8 @@ function checkAchievements(tg_id) {
                   if (val >= a.condition_value) {
                     db.run("INSERT OR IGNORE INTO user_achievements (tg_id, achievement_id) VALUES (?, ?)",
                       [tg_id, a.id], function (err2) {
-                        if (!err2 && this.changes > 0) {
-                          sendTelegram(tg_id, `🏅 Новое достижение «${a.title}»\n${a.description}`);
+                        if (!err2 && this.changes > 0 && achChat) {
+                          sendTelegram(achChat, `🏅 Новое достижение «${a.title}»\n${a.description}`);
                         }
                       });
                   }
@@ -203,12 +222,35 @@ function checkAchievements(tg_id) {
 }
 
 /* ================= пользователь ================= */
-// --- v14: безопасность без новых зависимостей ---
+// --- безопасность без новых зависимостей ---
 app.disable('x-powered-by');
+// Заголовки безопасности. X-Frame-Options: DENY ломал Mini App в Telegram Web (страница
+// открывается во фрейме web.telegram.org) — поэтому запрет фреймов задан через CSP
+// frame-ancestors с явным разрешением для Telegram.
+// Список источников сверен с реальными обращениями самохостингового VK ID SDK
+// (id.vk.ru / api.vk.ru / oauth.vk.ru / login.vk.ru) и с local-шрифтами.
+// Трекер Top.Mail.ru (mytopf.com), который SDK пытается подгрузить, намеренно
+// НЕ разрешён — без согласия пользователя сторонняя аналитика не подключается.
+const CSP = [
+  "default-src 'self'",
+  "script-src 'self' 'unsafe-inline' https://telegram.org",
+  "style-src 'self' 'unsafe-inline'",
+  "img-src 'self' data: blob: https:",
+  "font-src 'self' data:",
+  "connect-src 'self' https://id.vk.ru https://api.vk.ru https://oauth.vk.ru https://login.vk.ru https://*.vk.ru https://*.vk.com https://*.userapi.com https://*.mycdn.me https://api.telegram.org",
+  "frame-src https://id.vk.ru https://oauth.vk.ru https://login.vk.ru https://*.vk.ru https://*.vk.com https://*.vkid.ru https://connect.ok.ru https://*.ok.ru",
+  "frame-ancestors 'self' https://web.telegram.org https://*.telegram.org",
+  "form-action 'self' https://oauth.vk.ru https://oauth.vk.com https://id.vk.ru",
+  "base-uri 'self'",
+  "object-src 'none'"
+].join('; ');
 app.use((req, res, next) => {
   res.setHeader('X-Content-Type-Options', 'nosniff');
-  res.setHeader('X-Frame-Options', 'DENY');
+  res.setHeader('Content-Security-Policy', CSP);
   res.setHeader('Referrer-Policy', 'same-origin');
+  res.setHeader('Permissions-Policy', 'geolocation=(), microphone=(), camera=(), payment=()');
+  res.setHeader('Strict-Transport-Security', 'max-age=15552000; includeSubDomains');
+  res.setHeader('Cross-Origin-Opener-Policy', 'same-origin-allow-popups');
   next();
 });
 const rlHits = new Map();
@@ -223,7 +265,26 @@ app.use('/api', (req, res, next) => {
   if (h.n > 120) return res.status(429).json({ error: 'Too many requests' });
   next();
 });
-app.get('/api/health', (req, res) => res.json({ status: 'ok' }));
+// Health-check реально трогает базу: иначе мониторинг не заметит зависший SQLite
+app.get('/api/health', (req, res) => {
+  db.get('SELECT 1 AS ok', [], (err) => {
+    if (err) { console.error('health db:', err.message); return res.status(503).json({ status: 'degraded', db: 'error' }); }
+    res.json({ status: 'ok', db: 'ok', version: APP_VERSION, uptime: Math.round(process.uptime()) });
+  });
+});
+
+// Общий лимитер для чувствительных запросов (в памяти, без внешних зависимостей):
+// true — лимит исчерпан. Один и тот же ключ = один bucket.
+const limiterBuckets = new Map();
+function isLimited(key, max, windowMs) {
+  const now = Date.now();
+  const hits = (limiterBuckets.get(key) || []).filter(t => now - t < windowMs);
+  if (hits.length >= max) { limiterBuckets.set(key, hits); return true; }
+  hits.push(now);
+  limiterBuckets.set(key, hits);
+  if (limiterBuckets.size > 20000) { const kill = Math.floor(limiterBuckets.size / 2); let i = 0; for (const k of limiterBuckets.keys()) { if (i++ >= kill) break; limiterBuckets.delete(k); } }
+  return false;
+}
 
 app.post('/api/user/init', (req, res) => {
   const tgId = resolveTgId(req);
@@ -239,7 +300,8 @@ app.post('/api/user/init', (req, res) => {
       (activity_level && !['sedentary', 'light', 'moderate', 'active', 'very_active'].includes(activity_level))) {
     return res.status(400).json({ error: 'Invalid values' });
   }
-  if (!(age >= 10 && age <= 100) || !(height >= 120 && height <= 230) ||
+  // возраст от 12 лет — согласовано с age-rating приложения и Пользовательским соглашением (п. 8)
+  if (!(age >= 12 && age <= 100) || !(height >= 120 && height <= 230) ||
       !(current_weight >= 20 && current_weight <= 400) ||
       (target_weight && !(target_weight >= 20 && target_weight <= 400))) {
     return res.status(400).json({ error: 'Invalid values' });
@@ -265,7 +327,10 @@ app.post('/api/user/init', (req, res) => {
   );
 });
 
-app.get('/api/user/:tgId', (req, res) => {
+app.get('/api/user/:tgId', (req, res, next) => {
+  // /api/user/export объявлен ниже по файлу: без этой проверки Express принял бы
+  // слово «export» за :tgId и вернул профиль вместо файла выгрузки (маршрут был недостижим).
+  if (req.params.tgId === 'export') return next();
   const tgId = resolveTgId(req);
   if (!tgId) return res.status(401).json({ error: 'Unauthorized' });
   db.get("SELECT * FROM users WHERE tg_id = ?", [tgId], (err, row) => {
@@ -288,7 +353,7 @@ app.post('/api/user/update', (req, res) => {
     });
     if (fields.current_weight !== undefined && !(fields.current_weight >= 20 && fields.current_weight <= 400)) return res.status(400).json({ error: 'Invalid values' });
     if (fields.target_weight !== undefined && !(fields.target_weight >= 20 && fields.target_weight <= 400)) return res.status(400).json({ error: 'Invalid values' });
-    if (fields.age !== undefined && !(fields.age >= 10 && fields.age <= 100)) return res.status(400).json({ error: 'Invalid values' });
+    if (fields.age !== undefined && !(fields.age >= 12 && fields.age <= 100)) return res.status(400).json({ error: 'Invalid values' });
     if (fields.height !== undefined && !(fields.height >= 120 && fields.height <= 230)) return res.status(400).json({ error: 'Invalid values' });
     if (fields.goal !== undefined && !['lose', 'maintain', 'gain'].includes(fields.goal)) return res.status(400).json({ error: 'Invalid values' });
     if (fields.activity_level !== undefined && !['sedentary', 'light', 'moderate', 'active', 'very_active'].includes(fields.activity_level)) return res.status(400).json({ error: 'Invalid values' });
@@ -387,6 +452,7 @@ app.post('/api/auth/anonymous', (req, res) => {
 
 // redirect-режим VKID: топ-окно приходит сюда с code, уводим обратно в приложение
 app.get('/api/auth/vk/callback', (req, res) => {
+  if (isLimited('vkcb:' + req.ip, 60, 3600000)) return res.status(429).json({ error: 'Too many requests' });
   const code = req.query.code;
   const device_id = req.query.device_id || req.query.deviceId || req.query.deviceID;
   if (!code) return res.status(400).json({ error: 'Missing code' });
@@ -400,6 +466,8 @@ function vkForm(params) {
 
 app.post('/api/auth/vk/exchange', async (req, res) => {
   try {
+    // обмен кода/токена — чувствительная операция, ограничиваем перебор
+    if (isLimited('vkex:' + req.ip, 30, 3600000)) return res.status(429).json({ error: 'Слишком много попыток. Попробуйте позже' });
     const { code, device_id, code_verifier, access_token: directToken } = req.body || {};
     const client_id = process.env.VK_CLIENT_ID, client_secret = process.env.VK_CLIENT_SECRET;
     if (!client_id || !client_secret) { console.error('VK exchange: нет VK_CLIENT_ID/SECRET в .env'); return res.status(502).json({ error: 'VK auth not configured' }); }
@@ -456,13 +524,165 @@ app.post('/api/auth/vk/exchange', async (req, res) => {
           last_seen = datetime('now','localtime')`,
         [tgId, vkAvatar], (e) => e ? reject(e) : resolve());
     });
+    // Если человек пользовался анонимным аккаунтом и потом вошёл через ВК — переносим прогресс,
+    // чтобы данные не потерялись (это и есть обещанное в интерфейсе «прогресс не потеряется»).
+    let merged = false;
+    if (req.tgUserId && /^anon:/.test(String(req.tgUserId)) && req.tgUserId !== tgId) {
+      await new Promise((resolve) => mergeAnonymousInto(req.tgUserId, tgId, (ok) => { merged = ok; resolve(); }));
+    }
     const session = crypto.randomBytes(32).toString('hex');
     await new Promise((resolve, reject) => {
       db.run("INSERT INTO sessions (token, tg_id, created_at) VALUES (?, ?, ?)",
         [session, tgId, now], (e) => e ? reject(e) : resolve());
     });
-    res.json({ session });
+    res.json({ session, merged });
   } catch (e) { console.error('VK exchange:', e.message); return res.status(502).json({ error: 'VK exchange failed' }); }
+});
+
+/* ================= привязка Telegram-чата к аккаунту ВК/анонимному =================
+   Нужна, чтобы напоминания доходили и тем, кто вошёл не через Telegram:
+   приложение выдаёт одноразовый код, пользователь отправляет боту /start link_<код>,
+   бот записывает chat_id в users.notify_chat_id, и напоминания идут уже туда. */
+function randomLinkCode(len) {
+  const A = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // без 0/O/1/I — код диктуют/копируют
+  const b = crypto.randomBytes(len);
+  let s = '';
+  for (let i = 0; i < len; i++) s += A[b[i] % A.length];
+  return s;
+}
+
+app.post('/api/user/link/telegram', (req, res) => {
+  const tgId = resolveTgId(req);
+  if (!tgId) return res.status(401).json({ error: 'Unauthorized' });
+  const bot = String(process.env.TELEGRAM_USERNAME || '').replace(/^@/, '');
+  if (!bot) return res.status(503).json({ error: 'Telegram-бот не настроен' });
+  if (isLimited('link:' + req.ip, 20, 3600000)) return res.status(429).json({ error: 'Слишком много попыток. Попробуйте позже' });
+  const code = randomLinkCode(10);
+  const nowSec = Math.floor(Date.now() / 1000);
+  db.run("DELETE FROM link_codes WHERE tg_id = ?", [tgId], () => {
+    db.run("DELETE FROM link_codes WHERE created_at < ?", [nowSec - 3600]); // чистка просроченных
+    db.run("INSERT INTO link_codes (code, tg_id, created_at) VALUES (?, ?, ?)", [code, tgId, nowSec], (err) => {
+      if (err) { console.error('link code:', err.message); return res.status(500).json({ error: 'Database error' }); }
+      res.json({ code, bot, link: 'https://t.me/' + bot + '?start=link_' + code });
+    });
+  });
+});
+
+app.post('/api/user/link/telegram/remove', (req, res) => {
+  const tgId = resolveTgId(req);
+  if (!tgId) return res.status(401).json({ error: 'Unauthorized' });
+  if (isTelegramId(tgId)) return res.status(400).json({ error: 'Для Telegram-аккаунта привязка не нужна' });
+  db.run("UPDATE users SET notify_chat_id = NULL WHERE tg_id = ?", [tgId], (err) => {
+    if (err) { console.error('unlink:', err.message); return res.status(500).json({ error: 'Database error' }); }
+    res.json({ status: 'ok' });
+  });
+});
+
+/* ================= перенос прогресса анонимного аккаунта в аккаунт ВК ================= */
+function mergeAnonymousInto(fromId, toId, cb) {
+  if (!fromId || !toId || fromId === toId || !/^anon:/.test(String(fromId))) return cb(false);
+  db.get("SELECT * FROM users WHERE tg_id = ?", [fromId], (e0, src) => {
+    if (e0 || !src) return cb(false);
+    if (!src.goal) return cb(false); // анонимный аккаунт не заполнен — переносить нечего
+    db.get("SELECT * FROM users WHERE tg_id = ?", [toId], (e1, tgt) => {
+      let finished = false;
+      const finish = () => {
+        if (finished) return;
+        finished = true;
+        db.run("DELETE FROM sessions WHERE tg_id = ?", [fromId]);
+        db.run("DELETE FROM users WHERE tg_id = ?", [fromId], () => cb(true));
+      };
+      db.serialize(() => {
+        // вода и вес — с учётом UNIQUE(tg_id, date): дубли аккуратно отбрасываем
+        db.run("INSERT OR IGNORE INTO water_logs (tg_id, date, amount_ml) SELECT ?, date, amount_ml FROM water_logs WHERE tg_id = ?", [toId, fromId]);
+        db.run("DELETE FROM water_logs WHERE tg_id = ?", [fromId]);
+        db.run("INSERT OR IGNORE INTO weight_logs (tg_id, date, weight) SELECT ?, date, weight FROM weight_logs WHERE tg_id = ?", [toId, fromId]);
+        db.run("DELETE FROM weight_logs WHERE tg_id = ?", [fromId]);
+        db.run("UPDATE food_logs SET tg_id = ? WHERE tg_id = ?", [toId, fromId]);
+        db.run("INSERT OR IGNORE INTO user_achievements (tg_id, achievement_id, unlocked_at) SELECT ?, achievement_id, unlocked_at FROM user_achievements WHERE tg_id = ?", [toId, fromId]);
+        db.run("DELETE FROM user_achievements WHERE tg_id = ?", [fromId]);
+        db.run("UPDATE user_programs SET tg_id = ? WHERE tg_id = ?", [toId, fromId]);
+        db.run("DELETE FROM notification_log WHERE tg_id = ?", [fromId]);
+        // профиль переносим только если у аккаунта ВК его ещё нет — чужие данные не затираем
+        if (!tgt || !tgt.goal) {
+          db.run(`UPDATE users SET name = ?, goal = ?, gender = ?, age = ?, height = ?, current_weight = ?,
+              target_weight = ?, calorie_norm = ?, activity_level = ?, meal_count = ? WHERE tg_id = ?`,
+            [src.name, src.goal, src.gender, src.age, src.height, src.current_weight,
+             src.target_weight, src.calorie_norm, src.activity_level, src.meal_count, toId]);
+        }
+        // тренировки: у них есть дочерние подходы — переносим поштучно, чтобы sets не осиротели
+        db.all("SELECT id, program_id, program_day_id, date, duration_minutes, total_volume, notes, completed FROM workout_logs WHERE tg_id = ?", [fromId], (e2, logs) => {
+          const rows = logs || [];
+          let i = 0;
+          const step = () => {
+            if (i >= rows.length) return finish();
+            const L = rows[i++];
+            db.run(`INSERT INTO workout_logs (tg_id, program_id, program_day_id, date, duration_minutes, total_volume, notes, completed)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+              [toId, L.program_id, L.program_day_id, L.date, L.duration_minutes, L.total_volume, L.notes, L.completed == null ? 1 : L.completed],
+              function (e3) {
+                if (e3) { console.error('merge workout:', e3.message); return step(); }
+                const newId = this.lastID;
+                db.run("UPDATE workout_sets SET log_id = ? WHERE log_id = ?", [newId, L.id], () =>
+                  db.run("DELETE FROM workout_logs WHERE id = ?", [L.id], () => step()));
+              });
+          };
+          step();
+        });
+      });
+    });
+  });
+}
+
+/* ================= экспорт данных пользователя (право на доступ, 152-ФЗ ст. 14/20) ================= */
+app.get('/api/user/export', (req, res) => {
+  const tgId = resolveTgId(req);
+  if (!tgId) return res.status(401).json({ error: 'Unauthorized' });
+  db.get("SELECT * FROM users WHERE tg_id = ?", [tgId], (e0, u) => {
+    if (e0) { console.error('export user:', e0.message); return res.status(500).json({ error: 'Database error' }); }
+    if (!u) return res.status(404).json({ error: 'User not found' });
+    db.all(`SELECT fl.timestamp, r.title, r.category, r.calories, r.protein, r.fat, r.carbs
+        FROM food_logs fl LEFT JOIN recipes r ON fl.recipe_id = r.id WHERE fl.tg_id = ? ORDER BY fl.timestamp`, [tgId], (e1, meals) => {
+      db.all("SELECT date, amount_ml FROM water_logs WHERE tg_id = ? ORDER BY date", [tgId], (e2, water) => {
+        db.all("SELECT date, weight FROM weight_logs WHERE tg_id = ? ORDER BY date", [tgId], (e3, weights) => {
+          db.all("SELECT date, duration_minutes, total_volume, notes FROM workout_logs WHERE tg_id = ? ORDER BY date", [tgId], (e4, workouts) => {
+            db.all("SELECT achievement_id FROM user_achievements WHERE tg_id = ?", [tgId], (e5, ach) => {
+              db.all("SELECT program_id, start_date, current_week, current_day, active, completed FROM user_programs WHERE tg_id = ?", [tgId], (e6, progs) => {
+                res.json({
+                  service: 'GuideFit',
+                  exported_at: new Date().toISOString(),
+                  note: 'Копия ваших данных из приложения GuideFit (Политика обработки персональных данных: /privacy.html)',
+                  profile: {
+                    id: u.tg_id,
+                    provider: u.provider || 'tg',
+                    name: u.name,
+                    gender: u.gender,
+                    age: u.age,
+                    height: u.height,
+                    current_weight: u.current_weight,
+                    target_weight: u.target_weight,
+                    goal: u.goal,
+                    activity_level: u.activity_level,
+                    calorie_norm: u.calorie_norm,
+                    meal_count: u.meal_count,
+                    notifications_enabled: !!u.notify_enabled,
+                    created_at: u.created_at,
+                    last_seen: u.last_seen
+                  },
+                  meals: meals || [],
+                  water: water || [],
+                  weights: weights || [],
+                  workouts: workouts || [],
+                  programs: progs || [],
+                  achievements: ach || []
+                });
+              });
+            });
+          });
+        });
+      });
+    });
+  });
 });
 
 /* ================= админка (ADMIN_TOKEN в .env) ================= */
@@ -1124,16 +1344,18 @@ function runReminders() {
   if (!process.env.TELEGRAM_TOKEN) return;
   const today = localDate();
   const hour = new Date().getHours();
-  db.all("SELECT tg_id, name, created_at FROM users WHERE notify_enabled = 1 AND tg_id NOT LIKE '%:%'", [], (err, users) => {
+  db.all("SELECT tg_id, name, created_at, notify_chat_id FROM users WHERE notify_enabled = 1 AND (notify_chat_id IS NOT NULL OR tg_id NOT LIKE '%:%')", [], (err, users) => {
     if (err || !users) return;
     (users || []).forEach(u => {
+      const chat = chatTarget(u);
+      if (!chat) return;
       const who = u.name || 'друг';
       // вес: не записывал 3+ дня
       if (hour === 10) {
         db.get("SELECT MAX(date) d FROM weight_logs WHERE tg_id = ?", [u.tg_id], (e, r) => {
           const last = r?.d || (u.created_at || '').slice(0, 10);
           if (last && dayDiff(today, last) >= 3) {
-            notifyOnce(u.tg_id, 'weight:' + today, today, `⚖️ ${who}, время взвеситься! Открой GuideFit и обнови вес — так статистика будет точной.`);
+            notifyOnce(u.tg_id, chat, 'weight:' + today, today, `⚖️ ${who}, время взвеситься! Открой GuideFit и обнови вес — так статистика будет точной.`);
           }
         });
       }
@@ -1141,7 +1363,7 @@ function runReminders() {
       if (hour === 19) {
         db.get("SELECT MAX(date) d, COUNT(*) c FROM workout_logs WHERE tg_id = ?", [u.tg_id], (e, r) => {
           if (r && r.c > 0 && r.d && dayDiff(today, r.d) >= 3) {
-            notifyOnce(u.tg_id, 'inactive:' + today, today, `🏃 ${who}, тебя не было 3 дня! Даже 15 минут тренировки вернут ритм. Заходи в GuideFit 💪`);
+            notifyOnce(u.tg_id, chat, 'inactive:' + today, today, `🏃 ${who}, тебя не было 3 дня! Даже 15 минут тренировки вернут ритм. Заходи в GuideFit 💪`);
           }
         });
       }
@@ -1151,7 +1373,7 @@ function runReminders() {
             WHERE tg_id = ? AND date(timestamp) = ? AND CAST(strftime('%H', timestamp) AS INTEGER) BETWEEN ? AND ?`,
           [u.tg_id, today, Math.max(hour - 4, 0), hour], (e, r) => {
             if (r && r.c === 0) {
-              notifyOnce(u.tg_id, 'meal' + hour + ':' + today, today, `🍽️ ${who}, приём пищи записан? Загляни в GuideFit — там идеи блюд под твою цель.`);
+              notifyOnce(u.tg_id, chat, 'meal' + hour + ':' + today, today, `🍽️ ${who}, приём пищи записан? Загляни в GuideFit — там идеи блюд под твою цель.`);
             }
           });
       }
@@ -1162,15 +1384,17 @@ function sendWeeklyReports() {
   const now = new Date();
   if (now.getDay() !== 1 || now.getHours() !== 9) return;
   const today = localDate();
-  db.all("SELECT tg_id, name FROM users WHERE notify_enabled = 1 AND tg_id NOT LIKE '%:%'", [], (e, users) => {
+  db.all("SELECT tg_id, name, notify_chat_id FROM users WHERE notify_enabled = 1 AND (notify_chat_id IS NOT NULL OR tg_id NOT LIKE '%:%')", [], (e, users) => {
     if (e || !users) return;
     users.forEach(u => {
+      const chat = chatTarget(u);
+      if (!chat) return;
       db.get("SELECT COUNT(*) c FROM workout_logs WHERE tg_id = ? AND date >= date('now','localtime','-7 days')", [u.tg_id], (e1, w) => {
         db.get("SELECT COUNT(DISTINCT date(timestamp)) c FROM food_logs WHERE tg_id = ? AND date(timestamp) >= date('now','localtime','-7 days')", [u.tg_id], (e2, m) => {
           db.all("SELECT weight FROM weight_logs WHERE tg_id = ? ORDER BY date DESC, id DESC LIMIT 1", [u.tg_id], (e4, wl) => {
             db.all("SELECT weight FROM weight_logs WHERE tg_id = ? ORDER BY date ASC, id ASC LIMIT 1", [u.tg_id], (e5, wf) => {
               const wLine = (wf.length && wl.length) ? (' Вес: ' + wf[0].weight + ' → ' + wl[0].weight + ' кг.') : '';
-              notifyOnce(u.tg_id, 'weekly:' + today, today, '📊 Неделя в GuideFit: тренировок — ' + (w ? w.c : 0) + ', дней с записанной едой — ' + (m ? m.c : 0) + ' из 7.' + wLine + ' Новая неделя — новый шаг к цели!');
+              notifyOnce(u.tg_id, chat, 'weekly:' + today, today, '📊 Неделя в GuideFit: тренировок — ' + (w ? w.c : 0) + ', дней с записанной едой — ' + (m ? m.c : 0) + ' из 7.' + wLine + ' Новая неделя — новый шаг к цели!');
             });
           });
         });

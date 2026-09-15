@@ -1,11 +1,15 @@
 {
   "name": "guidefit",
-  "version": "2.0.0",
-  "description": "GuideFit — Telegram Mini App: питание и тренировки",
+  "version": "2.1.0",
+  "description": "GuideFit — Telegram Mini App и standalone-приложение: питание, вода, вес и тренировки",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
     "dev": "node server.js",
+    "bot": "node bot.js",
+    "check": "node --check server.js && node --check db.js && node --check bot.js && node --check static/sw.js && node --check scripts/backup-db.js",
+    "test": "node --test",
+    "backup": "node scripts/backup-db.js",
     "preheat": "node scripts/preheat-images.js",
     "generate": "node scripts/generate-dishes.js"
   },

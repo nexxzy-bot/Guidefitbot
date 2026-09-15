@@ -8,5 +8,8 @@ server.log
 *.bak-*
 static/*.bak*
 nohup.out
+*.log
 sync.log
 sync2.log
+# резервные копии базы (npm run backup)
+backups/

@@ -1,13 +1,26 @@
 const sqlite3 = require('sqlite3').verbose();
-const db = new sqlite3.Database('./guidefit.db');
+// Путь к базе можно переопределить (тесты и резервное копирование используют отдельный файл)
+const DB_FILE = process.env.DB_PATH || './guidefit.db';
+const db = new sqlite3.Database(DB_FILE);
 const fs = require('fs');
+const crypto = require('crypto');
+
+// v23: WAL + busy timeout — нет блокировок БД при параллельных запросах (сервер + бот + скрипты)
+db.serialize(() => {
+  db.run("PRAGMA journal_mode = WAL");
+  db.run("PRAGMA busy_timeout = 15000");
+});
 
 db.serialize(() => {
+  // Все колонки объявлены сразу — на чистой базе не зависим от порядка ALTER-ов ниже.
+  // notify_chat_id — привязанный Telegram-чат (напоминания для ВК/анонимных аккаунтов).
   db.run(`CREATE TABLE IF NOT EXISTS users (
     tg_id TEXT PRIMARY KEY, name TEXT, goal TEXT, gender TEXT,
     age INTEGER, height INTEGER, current_weight REAL, target_weight REAL,
     calorie_norm INTEGER, activity_level TEXT DEFAULT 'moderate',
-    meal_count INTEGER DEFAULT 4, created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    meal_count INTEGER DEFAULT 4, created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    notify_enabled INTEGER DEFAULT 1, last_seen DATETIME,
+    provider TEXT DEFAULT 'tg', avatar TEXT, notify_chat_id TEXT
   )`);
   db.run(`CREATE TABLE IF NOT EXISTS sessions (
     token TEXT PRIMARY KEY, tg_id TEXT, created_at INTEGER
@@ -16,23 +29,34 @@ db.serialize(() => {
     if (!e2 && cols2 && !cols2.some(c => c.name === 'notify_enabled')) db.run("ALTER TABLE users ADD COLUMN notify_enabled INTEGER DEFAULT 1");
   });
   // админка + мультиавторизация (ВК/Яндекс/Max): последний визит и провайдер (tg_id остаётся единым subject: 'tg:123', 'vk:456', ...)
-  // + фото профиля из VK (avatar)
+  // + фото профиля из VK (avatar) + привязанный Telegram-чат для напоминаний (notify_chat_id)
   db.all("PRAGMA table_info(users)", [], (e3, cols3) => {
     if (!e3 && cols3) {
       if (!cols3.some(c => c.name === 'last_seen')) db.run("ALTER TABLE users ADD COLUMN last_seen DATETIME");
       if (!cols3.some(c => c.name === 'provider')) db.run("ALTER TABLE users ADD COLUMN provider TEXT DEFAULT 'tg'");
       if (!cols3.some(c => c.name === 'avatar')) db.run("ALTER TABLE users ADD COLUMN avatar TEXT");
+      if (!cols3.some(c => c.name === 'notify_chat_id')) db.run("ALTER TABLE users ADD COLUMN notify_chat_id TEXT");
     }
   });
+  // одноразовые коды привязки Telegram-чата к аккаунту ВК/анонимному (вводятся боту командой /start link_<code>)
+  db.run(`CREATE TABLE IF NOT EXISTS link_codes (
+    code TEXT PRIMARY KEY, tg_id TEXT NOT NULL, created_at INTEGER NOT NULL
+  )`);
+  db.run(`CREATE INDEX IF NOT EXISTS idx_link_codes_tg ON link_codes(tg_id)`);
+  // служебные метаданные (например, хэш каталогов — чтобы не пересевать БД на каждом старте)
+  db.run(`CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT)`);
   db.run(`CREATE TABLE IF NOT EXISTS food_logs (
     id INTEGER PRIMARY KEY AUTOINCREMENT, tg_id TEXT, recipe_id INTEGER,
     timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
   )`);
+  // photo_query объявлен прямо в CREATE TABLE: раньше колонка добавлялась только
+  // запоздалым ALTER, и на ЧИСТОЙ базе сидирование каталога падало
+  // (SQLITE_ERROR: table recipes has no column named photo_query).
   db.run(`CREATE TABLE IF NOT EXISTS recipes (
     id INTEGER PRIMARY KEY, title TEXT, category TEXT,
     calories REAL, protein REAL, fat REAL, carbs REAL,
     description TEXT, benefits TEXT, ingredients TEXT,
-    recipe_steps TEXT, image_url TEXT, goals TEXT
+    recipe_steps TEXT, image_url TEXT, goals TEXT, photo_query TEXT
   )`);
   db.all("PRAGMA table_info(recipes)", [], (e, cols) => {
     if (!e && cols && !cols.some(c => c.name === 'photo_query')) db.run("ALTER TABLE recipes ADD COLUMN photo_query TEXT");
@@ -121,81 +145,133 @@ db.serialize(() => {
   db.run(`DELETE FROM user_achievements WHERE id NOT IN (SELECT MIN(id) FROM user_achievements GROUP BY tg_id, achievement_id)`);
   db.run(`CREATE UNIQUE INDEX IF NOT EXISTS uq_userach ON user_achievements(tg_id, achievement_id)`);
 
-  // v9: каталог рецептов пересобирается при каждом старте
+  /* ═══════════ каталоги из JSON ═══════════
+     v25: пересев выполняется ТОЛЬКО если файл-каталог изменился (sha256 в meta).
+     Раньше recipes/programs/yoga сносились и вставлялись заново на каждом старте —
+     это давало пустой каталог в момент рестарта и рвало связь старых food_logs с рецептами.
+     Форсировать пересев можно переменной окружения SEED_FORCE=1. */
   db.run("CREATE TABLE IF NOT EXISTS image_store (recipe_id INTEGER PRIMARY KEY, url TEXT)");
-  db.run("INSERT OR REPLACE INTO image_store (recipe_id, url) SELECT id, image_url FROM recipes WHERE image_url IS NOT NULL AND image_url != ''");
-  db.run("DELETE FROM recipes");
-  if (fs.existsSync('./recipes.json')) {
-    const recipes = JSON.parse(fs.readFileSync('./recipes.json', 'utf8'));
-    const stmt = db.prepare(`INSERT OR IGNORE INTO recipes
-      (id, title, category, calories, protein, fat, carbs, description, benefits, ingredients, recipe_steps, image_url, goals, photo_query)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`);
-    recipes.forEach(r => {
-      const title = r.title || r.name || '';
-      const steps = r.recipe_steps || r.steps || [];
-      stmt.run(r.id, title, r.category, r.calories || 0, r.protein || 0,
-        r.fat || 0, r.carbs || 0, r.description || '', r.benefits || '',
-        JSON.stringify(r.ingredients || []), JSON.stringify(steps),
-        r.image_url || '', JSON.stringify(r.goals || ['lose','gain','maintain']), r.photo || '');
-    });
-    stmt.finalize();
-    // восстанавливаем закэшированные URL (включая локальные /images/...) поверх пересева:
-    // локальный файл всегда побеждает (это обработанный артефакт), remote из JSON — только для новых id
-    db.run(`UPDATE recipes SET image_url = (SELECT url FROM image_store WHERE image_store.recipe_id = recipes.id) WHERE EXISTS (SELECT 1 FROM image_store WHERE image_store.recipe_id = recipes.id AND url IS NOT NULL AND url != '' AND ((recipes.image_url IS NULL OR recipes.image_url = '' OR recipes.image_url = 'empty.jpg') OR image_store.url LIKE '/images/%'))`);
+
+  function fileHash(file) {
+    try { return crypto.createHash('sha256').update(fs.readFileSync(file)).digest('hex').slice(0, 16); }
+    catch (e) { return null; }
   }
-  if (fs.existsSync('./exercises.json')) {
-    const exercises = JSON.parse(fs.readFileSync('./exercises.json', 'utf8'));
-    const stmt = db.prepare(`INSERT OR IGNORE INTO exercises
-      (id, name, location, type, muscle_group, description, difficulty, sets_default, reps_default, rest_seconds, tips)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`);
-    exercises.forEach(e => {
-      stmt.run(e.id, e.name, e.location, e.type, e.muscle_group,
-        e.description, e.difficulty, e.sets_default, e.reps_default, e.rest_seconds, e.tips || '');
-    });
-    stmt.finalize();
-  }
-  // v8: каталог программ пересобирается при каждом старте (история тренировок сохраняется)
-  db.run("DELETE FROM program_exercises");
-  db.run("DELETE FROM program_days");
-  db.run("DELETE FROM programs");
-  // v14: прогресс пользователей сохраняем при рестарте (аудит)
-  if (fs.existsSync('./programs.json')) {
-    const programs = JSON.parse(fs.readFileSync('./programs.json', 'utf8'));
-    const ps = db.prepare(`INSERT OR IGNORE INTO programs
-      (id, name, location, type, goal, duration_weeks, description, difficulty)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)`);
-    programs.forEach(p => ps.run(p.id, p.name, p.location, p.type, p.goal, p.duration_weeks, p.description, p.difficulty));
-    ps.finalize();
-    programs.forEach(p => {
-      if (p.days) p.days.forEach(d => {
-        db.run(`INSERT OR IGNORE INTO program_days (id, program_id, week, day, title, description)
-          VALUES (?, ?, ?, ?, ?, ?)`, [d.id, p.id, d.week, d.day, d.title, d.description || '']);
-        if (d.exercises) d.exercises.forEach(ex => {
-          db.run(`INSERT OR IGNORE INTO program_exercises
-            (program_day_id, exercise_id, sets, reps, rest_seconds, notes)
-            VALUES (?, ?, ?, ?, ?, ?)`,
-            [d.id, ex.exercise_id, ex.sets, ex.reps, ex.rest_seconds, ex.notes || '']);
+  function seedIfChanged(name, file) {
+    if (!fs.existsSync(file)) return;
+    const hash = fileHash(file);
+    if (!hash) return;
+    db.get("SELECT value FROM meta WHERE key = ?", ['seed:' + name], (e, row) => {
+      if (e) return console.error('seed meta:', e.message);
+      const forced = process.env.SEED_FORCE === '1';
+      if (!forced && row && row.value === hash) return; // каталог не менялся
+      try {
+        seeders[name](() => {
+          db.run("INSERT OR REPLACE INTO meta (key, value) VALUES (?, ?)", ['seed:' + name, hash]);
+          console.log('Каталог загружен: ' + name + (forced ? ' (SEED_FORCE)' : ''));
         });
-      });
+      } catch (err) { console.error('seed ' + name + ':', err.message); }
     });
   }
 
-  if (fs.existsSync('./yoga.json')) {
-    const yg = JSON.parse(fs.readFileSync('./yoga.json', 'utf8'));
-    db.run("DELETE FROM yoga_flow_poses");
-    db.run("DELETE FROM yoga_flows");
-    db.run("DELETE FROM yoga_poses");
-    const yp = db.prepare(`INSERT INTO yoga_poses (id, name, how, why) VALUES (?, ?, ?, ?)`);
-    (yg.poses || []).forEach(p => yp.run(p.id, p.name, p.how, p.why));
-    const yf = db.prepare(`INSERT INTO yoga_flows (id, title, focus, level, minutes, description) VALUES (?, ?, ?, ?, ?, ?)`);
-    const yfp = db.prepare(`INSERT INTO yoga_flow_poses (flow_id, pose_id, seconds) VALUES (?, ?, ?)`);
-    (yg.flows || []).forEach(f => {
-      yf.run(f.id, f.title, f.focus, f.level, f.minutes, f.description);
-      (f.poses || []).forEach(pp => yfp.run(f.id, pp.pose_id, pp.seconds));
-    });
-    yp.finalize(); yf.finalize(); yfp.finalize();
-    console.log('Йога загружена: ' + yg.flows.length + ' практик');
-  }
+  const seeders = {
+    recipes: function (done) {
+      db.run("INSERT OR REPLACE INTO image_store (recipe_id, url) SELECT id, image_url FROM recipes WHERE image_url IS NOT NULL AND image_url != ''");
+      const recipes = JSON.parse(fs.readFileSync('./recipes.json', 'utf8'));
+      // UPSERT вместо DELETE+INSERT: id остаются теми же, старые записи дневника не теряют блюдо
+      const stmt = db.prepare(`INSERT INTO recipes
+        (id, title, category, calories, protein, fat, carbs, description, benefits, ingredients, recipe_steps, image_url, goals, photo_query)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ON CONFLICT(id) DO UPDATE SET
+          title=excluded.title, category=excluded.category, calories=excluded.calories,
+          protein=excluded.protein, fat=excluded.fat, carbs=excluded.carbs,
+          description=excluded.description, benefits=excluded.benefits,
+          ingredients=excluded.ingredients, recipe_steps=excluded.recipe_steps,
+          image_url=excluded.image_url, goals=excluded.goals, photo_query=excluded.photo_query`);
+      recipes.forEach(r => {
+        const title = r.title || r.name || '';
+        const steps = r.recipe_steps || r.steps || [];
+        stmt.run(r.id, title, r.category, r.calories || 0, r.protein || 0,
+          r.fat || 0, r.carbs || 0, r.description || '', r.benefits || '',
+          JSON.stringify(r.ingredients || []), JSON.stringify(steps),
+          r.image_url || '', JSON.stringify(r.goals || ['lose','gain','maintain']), r.photo || '');
+      });
+      stmt.finalize(() => {
+        // восстанавливаем закэшированные URL (включая локальные /images/...):
+        // локальный файл всегда побеждает (это обработанный артефакт), remote из JSON — только для новых id
+        db.run(`UPDATE recipes SET image_url = (SELECT url FROM image_store WHERE image_store.recipe_id = recipes.id) WHERE EXISTS (SELECT 1 FROM image_store WHERE image_store.recipe_id = recipes.id AND url IS NOT NULL AND url != '' AND ((recipes.image_url IS NULL OR recipes.image_url = '' OR recipes.image_url = 'empty.jpg') OR image_store.url LIKE '/images/%'))`, [], () => done());
+      });
+    },
+    exercises: function (done) {
+      const exercises = JSON.parse(fs.readFileSync('./exercises.json', 'utf8'));
+      const stmt = db.prepare(`INSERT INTO exercises
+        (id, name, location, type, muscle_group, description, difficulty, sets_default, reps_default, rest_seconds, tips)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ON CONFLICT(id) DO UPDATE SET
+          name=excluded.name, location=excluded.location, type=excluded.type,
+          muscle_group=excluded.muscle_group, description=excluded.description,
+          difficulty=excluded.difficulty, sets_default=excluded.sets_default,
+          reps_default=excluded.reps_default, rest_seconds=excluded.rest_seconds, tips=excluded.tips`);
+      exercises.forEach(e => {
+        stmt.run(e.id, e.name, e.location, e.type, e.muscle_group,
+          e.description, e.difficulty, e.sets_default, e.reps_default, e.rest_seconds, e.tips || '');
+      });
+      stmt.finalize(() => done());
+    },
+    programs: function (done) {
+      db.serialize(() => {
+        db.run("DELETE FROM program_exercises");
+        db.run("DELETE FROM program_days");
+        db.run("DELETE FROM programs");
+        const programs = JSON.parse(fs.readFileSync('./programs.json', 'utf8'));
+        const ps = db.prepare(`INSERT OR IGNORE INTO programs
+          (id, name, location, type, goal, duration_weeks, description, difficulty)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?)`);
+        programs.forEach(p => ps.run(p.id, p.name, p.location, p.type, p.goal, p.duration_weeks, p.description, p.difficulty));
+        ps.finalize();
+        let pending = 0, flushing = false;
+        programs.forEach(p => {
+          if (p.days) p.days.forEach(d => {
+            pending++;
+            db.run(`INSERT OR IGNORE INTO program_days (id, program_id, week, day, title, description)
+              VALUES (?, ?, ?, ?, ?, ?)`, [d.id, p.id, d.week, d.day, d.title, d.description || ''], () => { if (--pending === 0 && flushing) done(); });
+            (d.exercises || []).forEach(ex => {
+              pending++;
+              db.run(`INSERT OR IGNORE INTO program_exercises
+                (program_day_id, exercise_id, sets, reps, rest_seconds, notes)
+                VALUES (?, ?, ?, ?, ?, ?)`,
+                [d.id, ex.exercise_id, ex.sets, ex.reps, ex.rest_seconds, ex.notes || ''], () => { if (--pending === 0 && flushing) done(); });
+            });
+          });
+        });
+        flushing = true;
+        if (pending === 0) done();
+      });
+    },
+    yoga: function (done) {
+      const yg = JSON.parse(fs.readFileSync('./yoga.json', 'utf8'));
+      db.serialize(() => {
+        db.run("DELETE FROM yoga_flow_poses");
+        db.run("DELETE FROM yoga_flows");
+        db.run("DELETE FROM yoga_poses");
+        const yp = db.prepare(`INSERT INTO yoga_poses (id, name, how, why) VALUES (?, ?, ?, ?)`);
+        (yg.poses || []).forEach(p => yp.run(p.id, p.name, p.how, p.why));
+        const yf = db.prepare(`INSERT INTO yoga_flows (id, title, focus, level, minutes, description) VALUES (?, ?, ?, ?, ?, ?)`);
+        const yfp = db.prepare(`INSERT INTO yoga_flow_poses (flow_id, pose_id, seconds) VALUES (?, ?, ?)`);
+        (yg.flows || []).forEach(f => {
+          yf.run(f.id, f.title, f.focus, f.level, f.minutes, f.description);
+          (f.poses || []).forEach(pp => yfp.run(f.id, pp.pose_id, pp.seconds));
+        });
+        yp.finalize(); yf.finalize();
+        yfp.finalize(() => { console.log('Йога загружена: ' + (yg.flows || []).length + ' практик'); done(); });
+      });
+    }
+  };
+
+  seedIfChanged('recipes', './recipes.json');
+  seedIfChanged('exercises', './exercises.json');
+  seedIfChanged('programs', './programs.json');
+  seedIfChanged('yoga', './yoga.json');
+
   const achievements = [
     {id:1, title:'Первый шаг', description:'Завершена первая тренировка', icon:'run', condition_type:'workouts', condition_value:1},
     {id:2, title:'Неделя без пропусков', description:'7 дней тренировок подряд', icon:'flame', condition_type:'workout_streak', condition_value:7},

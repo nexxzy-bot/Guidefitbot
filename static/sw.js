@@ -1,5 +1,12 @@
-const CACHE = 'guidefit-v25';
-self.addEventListener('install', e => { self.skipWaiting(); });
+const CACHE = 'guidefit-v26';
+self.addEventListener('install', e => {
+  e.waitUntil(
+    caches.open(CACHE)
+      .then(c => c.addAll(['/index.html', '/fonts.css', '/fonts/manrope-cyrillic.woff2', '/fonts/manrope-latin.woff2', '/fonts/bebas-neue-latin.woff2']))
+      .catch(() => {})
+      .then(() => self.skipWaiting())
+  );
+});
 self.addEventListener('activate', e => {
   e.waitUntil(caches.keys().then(keys =>
     Promise.all(keys.filter(k => k.indexOf('guidefit-') === 0 && k !== CACHE).map(k => caches.delete(k)))

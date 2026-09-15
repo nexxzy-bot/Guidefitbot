@@ -7,7 +7,10 @@
 <title>GuideFit</title>
 <link rel="manifest" href="/manifest.webmanifest">
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
-<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<!-- Шрифты — локально (см. static/fonts.css): без обращения к fonts.googleapis.com -->
+<link rel="preload" href="/fonts/manrope-cyrillic.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="/fonts/manrope-latin.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="/fonts.css">
 <script>try{var _t=localStorage.getItem("gf_theme");if(_t)document.documentElement.setAttribute("data-theme",_t);}catch(e){}</script>
 <style>
 :root{--bg:#F2F7FC;--bg2:#E7F0F9;--surface:#FFFFFF;--surface2:#F6FAFE;--solid:#EDF4FB;--border:#E1EBF5;--border2:#D3E2F0;--text:#0C2233;--text2:#4A617A;--text3:#5E7386;--accent:#0D9BE8;--accent-dark:#0A7FC4;--accent-dim:#E1F2FC;--accent-text:#FFFFFF;--amber:#F59E0B;--amber-dim:#FEF3DF;--cyan:#06B6D4;--cyan-dim:#DFF7FB;--blue:#06B6D4;--blue-dim:#DFF7FB;--green:#10B981;--green-dim:#DFF7EC;--red:#EF4444;--red-dim:#FDE8E8;--violet:#7C6FF0;--violet-dim:#ECEAFF;--r-sm:12px;--r:22px;--r-lg:24px;--r-xl:28px;--sh:0 12px 32px rgba(12,60,100,.08);--sh-sm:0 4px 14px rgba(12,60,100,.06);--shadow:var(--sh)}
@@ -224,6 +227,7 @@ body{touch-action:manipulation}
     <div id="vkLoginBox" style="display:flex;flex-direction:column;gap:10px"></div>
     <p class="subtle mt2" id="vkLoginMsg" style="display:none"></p>
     <button type="button" id="anonRegBtn" class="pressable" style="margin-top:14px;background:none;border:none;color:var(--accent-dark);font-size:13.5px;font-weight:800;padding:12px" onclick="startAnonymous()">Анонимная регистрация — без номера телефона</button>
+    <p class="subtle" style="font-size:11px;line-height:1.55;margin:14px 4px 0">Продолжая, вы принимаете <a href="/terms.html" target="_blank" rel="noopener" style="color:var(--accent-dark)">Пользовательское соглашение</a> и <a href="/privacy.html" target="_blank" rel="noopener" style="color:var(--accent-dark)">Политику обработки персональных данных</a>. Приложение не заменяет консультацию врача. Разрешено с 12 лет, до 18 — с согласия законного представителя.</p>
   </div>
 </div>
 
@@ -778,7 +782,7 @@ function obNext(){
   if(s === 1){ if(!ob.gender){ showError('Выбери пол'); return; } obGo(2); return; }
   if(s === 2){
     const v = obNum('obAge');
-    if(!v || v < 10 || v > 100){ obNumErr('obAge', 'Возраст: от 10 до 100'); return; }
+    if(!v || v < 12 || v > 100){ obNumErr('obAge', 'Возраст: от 12 до 100'); return; }
     ob.age = Math.round(v); obGo(3); return;
   }
   if(s === 3){
@@ -836,7 +840,7 @@ function obRender(){
   } else if(s === 1){
     h += '<h1 style="margin-bottom:18px">Твой пол</h1><div class="sel-row">' + obCard('male','Мужчина','','gender') + obCard('female','Женщина','','gender') + '</div>';
   } else if(s === 2){
-    h += '<h1 style="margin-bottom:18px">Сколько тебе лет?</h1>' + obField('obAge','Возраст','10–100', ob.age || '');
+    h += '<h1 style="margin-bottom:18px">Сколько тебе лет?</h1>' + obField('obAge','Возраст','12–100', ob.age || '');
   } else if(s === 3){
     h += '<h1 style="margin-bottom:18px">Твой рост</h1>' + obField('obHeight','Рост, см','120–230', ob.height || '');
   } else if(s === 4){
@@ -862,7 +866,8 @@ function obRender(){
       '<p class="muted" style="font-size:14px;line-height:1.6">' + esc(ob.name) + ', ' + gl + ': ' + ob.weight + ' → ' + ob.target + ' кг. Рассчитаем норму и подберём программу.</p></div>' +
       '<label class="pressable" style="display:flex;gap:10px;align-items:flex-start;margin-top:18px;text-align:left;cursor:pointer">' +
       '<input type="checkbox" id="obConsent"' + (ob.consent ? ' checked' : '') + ' onchange="obConsent(this.checked)" style="width:20px;height:20px;margin-top:2px;accent-color:var(--accent);flex-shrink:0">' +
-      '<span style="font-size:12.5px;line-height:1.55">Я соглашаюсь с <a href="/privacy.html" target="_blank" style="color:var(--accent-dark)" onclick="event.stopPropagation()">Политикой обработки персональных данных</a> и <a href="/terms.html" target="_blank" style="color:var(--accent-dark)" onclick="event.stopPropagation()">Пользовательским соглашением</a><br><span class="subtle" style="font-size:11.5px">включая данные о весе, росте и пищевых привычках</span></span></label>';
+      '<span style="font-size:12.5px;line-height:1.55">Я соглашаюсь с <a href="/privacy.html" target="_blank" style="color:var(--accent-dark)" onclick="event.stopPropagation()">Политикой обработки персональных данных</a> и <a href="/terms.html" target="_blank" style="color:var(--accent-dark)" onclick="event.stopPropagation()">Пользовательским соглашением</a> — в том числе на обработку данных о весе, росте и пищевых привычках.<br>' +
+      '<span class="subtle" style="font-size:11.5px">Мне 18 лет или больше; если меньше — согласие дано родителем или законным представителем. Я понимаю, что приложение не заменяет консультацию врача, а рекомендации носят информационный характер.</span></span></label>';
   }
   h += '<div class="flex gap2" style="margin-top:26px">' +
     (s > 0 ? '<button class="btn btn-ghost pressable" style="flex:1" onclick="obBack()">Назад</button>' : '') +
@@ -1527,6 +1532,7 @@ async function woLibDetail(i){
   if(x.description) html += '<p class="muted" style="font-size:12.5px;line-height:1.6;margin-top:10px">' + esc(x.description) + '</p>';
   const tips = Array.isArray(x.tips) ? x.tips : (x.tips ? [x.tips] : []);
   if(tips.length) html += '<p class="subtle" style="font-size:10.5px;font-weight:800;margin:12px 0 6px">Советы</p><ul class="ex-tips">' + tips.map(t => '<li>' + esc(t) + '</li>').join('') + '</ul>';
+  html += '<button class="btn btn-primary btn-block pressable mt3" onclick="startFreeWorkout(' + x.id + ')">' + ic('dumbbell',16) + ' Тренировать это упражнение</button>';
   box.innerHTML = html;
   box.dataset.loaded = '1';
 }
@@ -1606,13 +1612,28 @@ function woRenderPose(){
 function woNextPose(){ clearInterval(yfTimer); if(typeof haptic === 'function') haptic('ok'); yfPoseIdx++; woRenderPose(); }
 function woPrevPose(){ clearInterval(yfTimer); if(yfPoseIdx > 0){ yfPoseIdx--; woRenderPose(); } else { woBackToFlows(); } }
 function woBackToFlows(){ clearInterval(yfTimer); woRenderYoga(document.getElementById('workoutContent')); }
-function woFinishFlow(){
+async function woFinishFlow(){
   const c = document.getElementById('workoutContent');
+  const flow = yfFlow || {};
+  const minutes = Math.max(parseInt(flow.minutes) || 10, 1);
+  /* v25: раньше практика нигде не сохранялась — не попадала ни в статистику, ни в серию, ни в достижения */
+  let saved = false;
+  if(currentUser){
+    try{
+      await api('/api/workout/log', { method:'POST', body:{
+        tg_id: currentUser.tg_id, program_id: null, program_day_id: null,
+        duration_minutes: minutes, notes: 'Йога: ' + (flow.title || ''), sets: []
+      } });
+      saved = true; // достижения и серия пересчитываются на сервере; статистика видна в профиле
+    }catch(e){ saved = false; }
+  }
   c.innerHTML = '<div class="card text-center" style="padding:40px 20px">' +
     '<div style="width:72px;height:72px;border-radius:50%;background:var(--green-dim);color:var(--green);display:flex;align-items:center;justify-content:center;margin:0 auto 16px">' + ic('check',34) + '</div>' +
     '<h2 style="font-size:26px">Практика завершена</h2>' +
-    '<p class="muted mt2" style="font-size:13px">' + esc(yfFlow.title) + ' · ' + yfFlow.minutes + ' мин</p>' +
+    '<p class="muted mt2" style="font-size:13px">' + esc(flow.title || '') + ' · ' + minutes + ' мин</p>' +
+    '<p class="subtle mt2" style="font-size:11.5px">' + (saved ? 'Записано в статистику и серию тренировок' : 'Не удалось записать практику — проверьте соединение') + '</p>' +
     '<button class="btn btn-primary btn-block pressable mt4" onclick="woBackToFlows()">К практикам</button></div>';
+  if(saved) showSuccess('Практика записана: ' + minutes + ' мин');
 }
 </script>
 <style>
@@ -1814,7 +1835,7 @@ async function saveProfileSettings(){
   const val = id => { const el = document.getElementById(id); return el ? el.value.trim() : ''; };
   const num = id => parseFloat(val(id));
   if(val('setName')) body.name = val('setName');
-  const age = num('setAge'); if(age >= 10 && age <= 100) body.age = age;
+  const age = num('setAge'); if(age >= 12 && age <= 100) body.age = age;
   const ht = num('setHeight'); if(ht >= 120 && ht <= 230) body.height = ht;
   const w = num('setWeight'); if(w >= 20 && w <= 400) body.current_weight = w;
   const tw = num('setTarget'); if(tw >= 20 && tw <= 400) body.target_weight = tw;
@@ -1831,6 +1852,45 @@ async function saveProfileSettings(){
   }catch(e){ showToast('Не удалось сохранить', 'err'); }
   finally{ if(saveBtn){ saveBtn.disabled = false; saveBtn.textContent = 'Сохранить'; } }
 }
+function dtShort(d){
+  const s = String(d || '');
+  const m = s.match(/(\d{4})-(\d{2})-(\d{2})/);
+  if(!m) return s;
+  const months = ['янв','фев','мар','апр','мая','июн','июл','авг','сен','окт','ноя','дек'];
+  return String(parseInt(m[3],10)) + ' ' + (months[parseInt(m[2],10)-1] || '') + (m[1] !== String(new Date().getFullYear()) ? ' ' + m[1] : '');
+}
+function statMini(v, l){
+  return '<div style="text-align:center"><div style="font-family:\'Bebas Neue\';font-size:26px;line-height:1.1">' + v + '</div><div class="subtle" style="font-size:10.5px;font-weight:700">' + l + '</div></div>';
+}
+function weeklyReportCard(r){
+  if(!r) return '';
+  const chg = Number(r.weightChange || 0);
+  return '<div class="card mb4"><div class="flex between items-center mb3"><h3 style="font-size:15px">Итоги недели</h3>' +
+    '<span class="badge badge-accent">7 дней</span></div>' +
+    '<div class="flex between items-center">' +
+      statMini(r.totalWorkouts || 0, 'тренировок') +
+      statMini(r.totalMinutes || 0, 'минут') +
+      statMini(r.avgCalories || 0, 'ккал/день') +
+      statMini((chg > 0 ? '+' : '') + chg, 'кг вес') +
+    '</div>' +
+    '<p class="subtle mt2" style="font-size:11.5px;line-height:1.5">Общий объём: ' + Math.round(r.totalVolume || 0) + ' кг. Взвешивайся регулярно — тогда динамика будет точной.</p></div>';
+}
+function workoutHistoryCard(logs){
+  const list = (logs || []).slice(0, 8);
+  if(!list.length) return '<div class="card mb4"><h3 class="mb3">История тренировок</h3><div class="empty">Пока пусто — начни первую тренировку</div></div>';
+  return '<div class="card mb4"><div class="flex between items-center mb3"><h3 style="font-size:15px">История тренировок</h3>' +
+    '<span class="subtle" style="font-size:11px;font-weight:700">последние ' + list.length + '</span></div>' +
+    list.map(function(l){
+      const isYoga = !l.program_name && typeof l.notes === 'string' && l.notes.indexOf('Йога') === 0;
+      const title = l.program_name || (isYoga ? l.notes : 'Свободная тренировка');
+      const icon = isYoga ? 'sparkles' : 'dumbbell';
+      const body = esc(dtShort(l.date)) + ' · ' + (l.duration_minutes || 0) + ' мин' + (l.total_volume ? ' · ' + Math.round(l.total_volume) + ' кг' : '');
+      return '<div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--border)">' +
+        '<div style="width:34px;height:34px;border-radius:11px;background:var(--accent-dim);color:var(--accent);display:flex;align-items:center;justify-content:center;flex-shrink:0">' + ic(icon,16) + '</div>' +
+        '<div style="flex:1;min-width:0"><div style="font-weight:800;font-size:13px">' + esc(title) + '</div>' +
+        '<div class="subtle" style="font-size:11px">' + body + '</div></div></div>';
+    }).join('') + '</div>';
+}
 let _profileLoading = false;
 async function loadProfile(){
   const c = document.getElementById('profileContent'); const tgId = currentUser && currentUser.tg_id; if(!c || !tgId) return;
@@ -1838,8 +1898,12 @@ async function loadProfile(){
   _profileLoading = true;
   c.innerHTML = '<div class="shimmer"></div>';
   try{
-    const [user, weight, ach] = await Promise.all([
-      api('/api/user/' + tgId), api('/api/weight/' + tgId), api('/api/achievements/' + tgId)
+    const [user, weight, ach, report, wlogs] = await Promise.all([
+      api('/api/user/' + tgId),
+      api('/api/weight/' + tgId).catch(function(){ return { history: [] }; }),
+      api('/api/achievements/' + tgId).catch(function(){ return { achievements: [] }; }),
+      api('/api/weekly-report/' + tgId).catch(function(){ return null; }),
+      api('/api/workout/logs/' + tgId).catch(function(){ return { logs: [] }; })
     ]);
     currentUser = user;
     const gt = user.goal === 'lose' ? 'Похудение' : user.goal === 'gain' ? 'Набор' : 'Поддержание';
@@ -1854,8 +1918,10 @@ async function loadProfile(){
         '<div style="font-family:\'Bebas Neue\';font-size:36px;line-height:1">' + user.current_weight + ' <span class="muted" style="font-family:Manrope;font-size:12px;font-weight:700">кг</span></div>' +
         '<p class="subtle" style="font-size:11px;margin-top:3px">цель: ' + user.target_weight + ' кг</p></div>' +
         '<button class="btn btn-primary pressable" style="font-size:12.5px;padding:10px 14px" onclick="navigate(\'stats\')">Добавить взвешивание</button></div></div>' +
+      weeklyReportCard(report) +
+      workoutHistoryCard(wlogs && wlogs.logs) +
       '<div class="flex between items-center mb3"><h3>Достижения</h3><span class="badge badge-amber" id="achCount"></span></div><div id="achList"></div>' +
-      '<button class="btn btn-ghost btn-block pressable mb4" onclick="navigate(\'settings\')" style="display:flex;align-items:center;justify-content:center;gap:8px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 1v4m0 14v4M4.2 4.2l2.8 2.8m10 10 2.8 2.8M1 12h4m14 0h4M4.2 19.8l2.8-2.8m10-10 2.8-2.8"/></svg> Настройки</button>';
+      '<button class="btn btn-ghost btn-block pressable mb4 mt3" onclick="navigate(\'settings\')" style="display:flex;align-items:center;justify-content:center;gap:8px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 1v4m0 14v4M4.2 4.2l2.8 2.8m10 10 2.8 2.8M1 12h4m14 0h4M4.2 19.8l2.8-2.8m10-10 2.8-2.8"/></svg> Настройки</button>';
     try{
       const av = document.getElementById('profAvatar');
       if(av && user.avatar){ av.innerHTML = '<img src="' + esc(user.avatar) + '" referrerpolicy="no-referrer" loading="lazy" decoding="async" alt="">'; }
@@ -1868,6 +1934,18 @@ async function loadProfile(){
     const unlocked = list.filter(a => a.unlocked).length;
     const ac = document.getElementById('achCount');
     if(ac) ac.textContent = unlocked + ' / ' + list.length;
+    // новые достижения показываем всплывашкой в приложении (Telegram-сообщение есть не у всех)
+    try{
+      const key = 'gf_ach_' + tourUid();
+      const prev = localStorage.getItem(key);
+      if(prev !== null){
+        const known = new Set(JSON.parse(prev) || []);
+        list.filter(a => a.unlocked && !known.has(a.id)).forEach(function(a, i){
+          setTimeout(function(){ showSuccess('🏅 Новое достижение: ' + (a.title || '') ); }, 400 + i * 1500);
+        });
+      }
+      localStorage.setItem(key, JSON.stringify(list.filter(a => a.unlocked).map(a => a.id)));
+    }catch(e){}
     document.getElementById('achList').innerHTML = list.map(a =>
       '<div class="ach' + (a.unlocked ? '' : ' locked') + '">' +
       '<div class="ach-ic">' + ic(a.icon || 'trophy', 20) + '</div>' +
@@ -1879,17 +1957,100 @@ async function loadProfile(){
 }
 /* Напоминания рассылает Telegram-бот: у аккаунтов ВК и анонимных чата с ним нет,
    поэтому тумблер им не показываем — иначе интерфейс обещает то, чего не будет. */
-function notifyAvailable(){
+function isTelegramAccount(){
   try{ if(tg && tg.initData) return true; }catch(e){}
   return !!(currentUser && currentUser.provider === 'tg');
 }
+function hasLinkedChat(){ return !!(currentUser && currentUser.notify_chat_id); }
+function notifyAvailable(){ return isTelegramAccount() || hasLinkedChat(); }
 function notifyBlock(){
-  if(!notifyAvailable()){
-    return '<div class="card mb4"><h3 class="mb3">Уведомления</h3>' +
-      '<p class="muted" style="font-size:12.5px;line-height:1.6">Напоминания приёмам пищи, взвешиваниям и недельный отчёт отправляет Telegram-бот. ' +
-      'Чтобы их получать, открой приложение кнопкой из Telegram.</p></div>';
+  let h = '<div class="card mb4"><h3 class="mb3">Уведомления</h3>';
+  if(notifyAvailable()){
+    h += '<button class="btn btn-ghost btn-block pressable" onclick="toggleNotifyUI()" style="display:flex;align-items:center;justify-content:center;gap:8px">' + ic('sparkles',16) + ' <span id="notifyLblSettings">Уведомления: …</span></button>' +
+      '<p class="subtle mt2" style="font-size:11px">Напоминания о приёмах пищи, взвешивании и недельный отчёт по понедельникам.</p>';
+    if(hasLinkedChat() && !isTelegramAccount()){
+      h += '<button class="btn btn-ghost btn-block pressable mt2" onclick="unlinkTelegram()" style="font-size:12.5px;color:var(--text3)">Отвязать Telegram</button>';
+    }
+  } else {
+    h += '<p class="muted" style="font-size:12.5px;line-height:1.6;margin-bottom:12px">Напоминания отправляет Telegram-бот. Подключите его к этому аккаунту — и он будет напоминать о еде, воде и взвешивании.</p>' +
+      '<button class="btn btn-primary btn-block pressable" onclick="linkTelegram()" style="display:flex;align-items:center;justify-content:center;gap:8px">' + ic('sparkles',16) + ' Подключить напоминания</button>';
   }
-  return '<div class="card mb4"><h3 class="mb3">Уведомления</h3><button class="btn btn-ghost btn-block pressable" onclick="toggleNotifyUI()" style="display:flex;align-items:center;justify-content:center;gap:8px">' + ic('sparkles',16) + ' <span id="notifyLblSettings">Уведомления: …</span></button></div>';
+  return h + '<div id="linkBox"></div></div>';
+}
+function copyText(t){
+  try{
+    if(navigator.clipboard && navigator.clipboard.writeText){
+      navigator.clipboard.writeText(t).then(function(){ showSuccess('Скопировано'); }, function(){ showToast('Скопируйте вручную', 'err'); });
+    } else showToast('Скопируйте вручную', 'err');
+  }catch(e){ showToast('Скопируйте вручную', 'err'); }
+}
+async function linkTelegram(){
+  const box = document.getElementById('linkBox');
+  try{
+    if(box) box.innerHTML = '<div class="shimmer" style="height:40px;margin-top:12px"></div>';
+    const d = await api('/api/user/link/telegram', { method:'POST' });
+    if(!d || !d.link) throw new Error('Не удалось получить код');
+    if(box){
+      box.innerHTML = '<div style="background:var(--accent-dim);border-radius:14px;padding:12px;margin-top:12px;text-align:left">' +
+        '<div style="font-size:11.5px;font-weight:800;margin-bottom:6px">Откройте бота и отправьте ему команду:</div>' +
+        '<div style="font-family:monospace;font-size:13px;font-weight:800;word-break:break-all;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:8px">/start link_' + esc(d.code) + '</div>' +
+        '<div style="display:flex;gap:8px;margin-top:10px">' +
+          '<a class="btn btn-primary pressable" style="flex:1;text-decoration:none;text-align:center" href="' + esc(d.link) + '" target="_blank" rel="noopener">Открыть бота</a>' +
+          '<button class="btn btn-ghost pressable" style="flex:1" onclick="checkLink()">Я подключил</button>' +
+        '</div>' +
+        '<button class="btn btn-ghost btn-block pressable mt2" style="font-size:12px" onclick="copyText(\'/start link_' + esc(d.code) + '\')">Скопировать команду</button>' +
+        '<p class="subtle" style="font-size:11px;margin-top:8px">Код действует 1 час и срабатывает один раз.</p>' +
+      '</div>';
+    }
+    showToast('Команда: /start link_' + d.code, 'success');
+  }catch(e){
+    if(box) box.innerHTML = '';
+    showError((e && e.message) || 'Не удалось получить код');
+  }
+}
+async function checkLink(){
+  try{
+    const u = await api('/api/user/' + currentUser.tg_id);
+    currentUser = u;
+    if(hasLinkedChat()){ showSuccess('Готово! Напоминания подключены'); loadSettings(); }
+    else showToast('Привязку не вижу. Отправьте боту команду и нажмите снова', 'err');
+  }catch(e){ showError(e.message); }
+}
+async function unlinkTelegram(){
+  try{
+    await api('/api/user/link/telegram/remove', { method:'POST' });
+    currentUser.notify_chat_id = null;
+    showSuccess('Telegram отвязан');
+    loadSettings();
+  }catch(e){ showError(e.message); }
+}
+async function exportMyData(){
+  try{
+    showToast('Готовим файл…', '');
+    const d = await api('/api/user/export');
+    const blob = new Blob([JSON.stringify(d, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = 'guidefit-dannye.json';
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function(){ URL.revokeObjectURL(url); }, 4000);
+    showSuccess('Файл сформирован');
+  }catch(e){ showError((e && e.message) || 'Не удалось выгрузить данные'); }
+}
+function aboutBlock(){
+  return '<div class="card mb4"><h3 class="mb3">О приложении</h3>' +
+    '<div class="flex between" style="font-size:12.5px;padding:5px 0"><span class="muted">Версия</span><b id="aboutVersion">—</b></div>' +
+    '<div class="flex between" style="font-size:12.5px;padding:5px 0"><span class="muted">Оператор</span><b>ИП Солдатенко Я. П.</b></div>' +
+    '<div class="flex between" style="font-size:12.5px;padding:5px 0"><span class="muted">ОГРНИП</span><b>325246800130330</b></div>' +
+    '<p class="subtle mt2" style="font-size:11px;line-height:1.6">Приложение не является медицинским изделием и не заменяет консультацию врача. Расчёты и программы носят информационный характер. Фото блюд и упражнений — Pexels (бесплатная лицензия). Время и даты — по Москве (UTC+3).</p></div>';
+}
+async function fillAboutVersion(){
+  const el = document.getElementById('aboutVersion');
+  if(!el) return;
+  try{
+    const h = await api('/api/health');
+    if(h && h.version) el.textContent = h.version;
+  }catch(e){}
 }
 function loadSettings(){
   const c = $('settingsContent');
@@ -1912,12 +2073,18 @@ function loadSettings(){
       '<p class="subtle mt2" style="font-size:11.5px">После сохранения норма калорий пересчитается автоматически.</p></div>' +      '<div class="card mb4"><h3 class="mb3">Приёмы пищи в день</h3><div class="flex gap2">' +
       [2,3,4,5,6].map(n => '<button class="chip pressable' + (u.meal_count===n?' active':'') + '" id="mc' + n + '" onclick="setMealCount(' + n + ')">' + n + '</button>').join('') + '</div></div>' +
     notifyBlock() +
+    '<div class="card mb4"><h3 class="mb3">Ваши данные</h3>' +
+      '<button class="btn btn-ghost btn-block pressable" onclick="exportMyData()" style="display:flex;align-items:center;justify-content:center;gap:8px">' + ic('pen',16) + ' Скачать копию данных (JSON)</button>' +
+      '<p class="subtle mt2" style="font-size:11px;line-height:1.55">Профиль, дневник питания, вода, вес, тренировки и достижения — право на доступ к своим данным.</p></div>' +
+    aboutBlock() +
     '<a href="https://t.me/nexxdsgn" target="_blank" rel="noopener" class="btn btn-ghost btn-block pressable" style="text-decoration:none;display:flex;align-items:center;justify-content:center;gap:8px">' + ic('person',16) + ' Написать в поддержку · t.me/nexxdsgn</a>' +
-    '<a href="/privacy.html" target="_blank" rel="noopener" class="btn btn-ghost btn-block pressable mt2" style="text-decoration:none;display:flex;align-items:center;justify-content:center;gap:8px">Политика конфиденциальности</a>' +
+    '<a href="/privacy.html" target="_blank" rel="noopener" class="btn btn-ghost btn-block pressable mt2" style="text-decoration:none;display:flex;align-items:center;justify-content:center;gap:8px">Политика обработки персональных данных</a>' +
+    '<a href="/terms.html" target="_blank" rel="noopener" class="btn btn-ghost btn-block pressable mt2" style="text-decoration:none;display:flex;align-items:center;justify-content:center;gap:8px">Пользовательское соглашение</a>' +
     '<button class="btn btn-ghost btn-block pressable mt2" onclick="doLogout()" style="display:flex;align-items:center;justify-content:center;gap:8px;color:#e0504b"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg> Выйти</button>' +
     '<button class="btn btn-danger btn-block pressable mt2" onclick="doDeleteData()" style="display:flex;align-items:center;justify-content:center;gap:8px">Удалить мои данные</button>';
   const nl = document.getElementById('notifyLblSettings');
   if(nl) nl.textContent = 'Уведомления: ' + ((u.notify_enabled) ? 'включены' : 'выключены');
+  fillAboutVersion();
 }
 function doLogout(){
   if(typeof haptic === 'function') haptic();
@@ -2153,48 +2320,6 @@ function copyShopList(){
 }
 </script>
 <script>
-/* ============ v14 ============ */
-function renderNormBars(u){
-  const box = document.getElementById('macroBars');
-  if(!box) return;
-  const kcal = u.calorie_norm || 2000;
-  const w = parseFloat(u.current_weight) || 70;
-  /* v19: как в calcNorms на сервере — белок 1.8 г/кг (набор 2.0), вода 30 мл/кг */
-  const p = Math.round(w * (u.goal === 'gain' ? 2 : 1.8));
-  const waterNorm = Math.round(w * 30);
-  const f = Math.round(w * 1);
-  let c = Math.round((kcal - p * 4 - f * 9) / 4);
-  if (c < 50) c = 50;
-  const rows = [['Белки', p, 'г', '#0D9BE8'], ['Жиры', f, 'г', '#F59E0B'], ['Углеводы', c, 'г', '#10B981'], ['Вода', waterNorm, 'мл', '#06B6D4']];
-  const maxV = Math.max(p, f, c);
-  box.innerHTML = rows.map(r =>
-    '<div style="margin-bottom:12px"><div class="flex between" style="font-size:12.5px;font-weight:700;margin-bottom:5px"><span>' + r[0] + '</span><span>' + r[1] + ' ' + r[2] + '</span></div>' +
-    '<div class="track"><div class="fill" style="width:' + Math.round(r[1]/maxV*100) + '%;background:' + r[3] + '"></div></div></div>').join('') +
-    '<p class="subtle" style="font-size:11px">' + kcal + ' ккал в день · пересчитывается при изменении веса</p>';
-}
-if (typeof renderHomeDonuts === 'function') {
-const _rhd = renderHomeDonuts;
-renderHomeDonuts = function(){
-  _rhd();
-  setTimeout(function(){
-    const card = document.querySelector('#homeStatGrid .card');
-    if(card && !document.getElementById('wtrUndo')){
-      const bar = card.querySelector('.wtr2-bar');
-      if(bar){
-        const b = document.createElement('button');
-        b.id = 'wtrUndo'; b.className = 'pressable';
-        b.style.cssText = 'position:absolute;right:4px;top:4px;width:26px;height:26px;border-radius:8px;background:var(--surface);border:1px solid var(--border);font-size:16px;font-weight:800;color:var(--text3)';
-        b.textContent = '−';
-        b.onclick = function(ev){ ev.stopPropagation(); undoWater(); };
-        bar.style.position = 'relative';
-        bar.appendChild(b);
-      }
-    }
-  }, 50);
-};
-}
-</script>
-<script>
 try{
   const _lp15 = loadProfile;
   loadProfile = function(){
@@ -2220,7 +2345,7 @@ try{
 }catch(e){}
 async function toggleNotifyUI(){
   if(!currentUser) return;
-  if(!notifyAvailable()){ showToast('Напоминания приходят только в Telegram-боте', 'err'); return; }
+  if(!notifyAvailable()){ showToast('Сначала подключите Telegram-бота', 'err'); return; }
   try{
     const r = await api('/api/notifications/toggle', { method: 'POST', body: { tg_id: currentUser.tg_id } });
     currentUser.notify_enabled = r.notify_enabled;

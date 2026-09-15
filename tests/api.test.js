@@ -1,0 +1,243 @@
+/* Smoke-тесты GuideFit API.
+   Запуск: npm test  (node --test tests/)
+   Тесты поднимают настоящий server.js на случайном порту и ОТДЕЛЬНОЙ временной
+   базе (DB_PATH), поэтому продакшн-данные не затрагиваются. TELEGRAM_TOKEN не
+   задан: проверяем логику сессий VK/анонимных без Telegram.
+
+   Что покрыто: health, заголовки безопасности, отказ без авторизации,
+   анонимная регистрация, визард (валидация возраста), вода и её отмена,
+   дневник питания (проверка каталога), экспорт данных (152-ФЗ),
+   привязка Telegram-чата, тумблер уведомлений, удаление аккаунта
+   вместе с сессией и лимит на анонимные аккаунты. */
+const { test, before, after } = require('node:test');
+const assert = require('node:assert');
+const { spawn } = require('node:child_process');
+const fs = require('node:fs');
+const os = require('node:os');
+const path = require('node:path');
+
+const ROOT = path.resolve(__dirname, '..');
+const PORT = 4710 + Math.floor(Math.random() * 200);
+const BASE = 'http://127.0.0.1:' + PORT;
+const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'gf-test-'));
+const DB = path.join(TMP, 'test.db');
+let child = null;
+
+async function api(url, { method = 'GET', body, token, admin } = {}) {
+  const headers = {};
+  if (body !== undefined) headers['Content-Type'] = 'application/json';
+  if (token) headers['x-session-token'] = token;
+  if (admin) headers['x-admin-token'] = 'test-admin-token';
+  const res = await fetch(BASE + url, { method, headers, body: body === undefined ? undefined : JSON.stringify(body) });
+  let json = null;
+  try { json = await res.json(); } catch (e) {}
+  return { status: res.status, body: json, headers: res.headers };
+}
+
+const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+
+async function waitFor(pred, timeoutMs = 30000, stepMs = 300) {
+  const t0 = Date.now();
+  while (Date.now() - t0 < timeoutMs) {
+    try { if (await pred()) return true; } catch (e) {}
+    await sleep(stepMs);
+  }
+  return false;
+}
+
+before(async () => {
+  child = spawn(process.execPath, ['server.js'], {
+    cwd: ROOT,
+    env: {
+      ...process.env,
+      PORT: String(PORT),
+      DB_PATH: DB,
+      TZ: 'Europe/Moscow',
+      TELEGRAM_TOKEN: '',            // без Telegram: тестируем сессионный путь
+      TELEGRAM_USERNAME: 'gf_test_bot',
+      ADMIN_TOKEN: 'test-admin-token',
+      MINIAPP_URL: 'https://example.test/'
+    },
+    stdio: ['ignore', 'pipe', 'pipe']
+  });
+  child.stdout.on('data', d => process.stdout.write('[server] ' + d));
+  child.stderr.on('data', d => process.stderr.write('[server] ' + d));
+  const up = await waitFor(async () => (await api('/api/health')).status === 200, 40000);
+  assert.ok(up, 'сервер не поднялся на порту ' + PORT);
+});
+
+after(async () => {
+  if (child && child.exitCode === null) { child.kill('SIGKILL'); await sleep(200); }
+  for (const s of ['', '-wal', '-shm']) { try { fs.unlinkSync(DB + s); } catch (e) {} }
+  try { fs.rmSync(TMP, { recursive: true, force: true }); } catch (e) {}
+});
+
+/* ---------- 1. Служебное ---------- */
+test('health: база доступна и версия отдаётся', async () => {
+  const r = await api('/api/health');
+  assert.strictEqual(r.status, 200);
+  assert.strictEqual(r.body.status, 'ok');
+  assert.strictEqual(r.body.db, 'ok');
+  assert.match(String(r.body.version), /^\d+\.\d+\.\d+$/);
+});
+
+test('заголовки безопасности установлены, фрейм для Telegram разрешён', async () => {
+  const r = await api('/api/health');
+  const csp = r.headers.get('content-security-policy') || '';
+  assert.ok(csp.includes("frame-ancestors 'self' https://web.telegram.org"), 'CSP frame-ancestors для Telegram');
+  assert.ok(csp.includes("object-src 'none'"), 'CSP object-src none');
+  assert.strictEqual(r.headers.get('x-content-type-options'), 'nosniff');
+  assert.ok(!r.headers.get('x-frame-options'), 'X-Frame-Options не используется (ломал Mini App)');
+  assert.ok((r.headers.get('strict-transport-security') || '').includes('max-age='), 'HSTS');
+});
+
+test('без сессии приватные данные недоступны', async () => {
+  assert.strictEqual((await api('/api/user/export')).status, 401);
+  assert.strictEqual((await api('/api/user/anon:deadbeef')).status, 401);
+  assert.strictEqual((await api('/api/user/1')).status, 401);
+  assert.strictEqual((await api('/api/auth/me')).status, 401);
+});
+
+/* ---------- 2. Анонимная регистрация и визард ---------- */
+let TOKEN = null;
+let TG_ID = null;
+
+test('анонимная регистрация выдаёт сессию и создаёт пустой профиль', async () => {
+  const r = await api('/api/auth/anonymous', { method: 'POST' });
+  assert.strictEqual(r.status, 200);
+  assert.match(String(r.body.session), /^[0-9a-f]{64}$/);
+  TOKEN = r.body.session;
+
+  const me = await api('/api/auth/me', { token: TOKEN });
+  assert.strictEqual(me.status, 200);
+  assert.match(me.body.tg_id, /^anon:[0-9a-f]{18}$/);
+  TG_ID = me.body.tg_id;
+
+  const user = await api('/api/user/' + TG_ID, { token: TOKEN });
+  assert.strictEqual(user.status, 200);
+  assert.strictEqual(user.body.goal, null, 'до визарда цель пустая');
+  assert.strictEqual(user.body.name, null, 'имя не предзаполняется');
+  assert.strictEqual(user.body.provider, 'anon');
+});
+
+test('визард: валидация полей и возраст не младше 12', async () => {
+  const base = { name: 'Тест', goal: 'lose', gender: 'male', height: 180, current_weight: 80,
+                 target_weight: 75, activity_level: 'moderate', meal_count: 3 };
+
+  const missing = await api('/api/user/init', { method: 'POST', token: TOKEN, body: { name: 'Только имя' } });
+  assert.strictEqual(missing.status, 400, 'неполные данные отвергаются');
+
+  const young = await api('/api/user/init', { method: 'POST', token: TOKEN, body: { ...base, age: 11 } });
+  assert.strictEqual(young.status, 400, 'возраст < 12 отвергается');
+
+  const badGoal = await api('/api/user/init', { method: 'POST', token: TOKEN, body: { ...base, age: 30, goal: 'hack' } });
+  assert.strictEqual(badGoal.status, 400, 'некорректная цель отвергается');
+
+  const ok = await api('/api/user/init', { method: 'POST', token: TOKEN, body: { ...base, age: 30 } });
+  assert.strictEqual(ok.status, 200);
+  assert.ok(ok.body.calorie_norm > 1000, 'норма калорий рассчитана');
+
+  const user = await api('/api/user/' + TG_ID, { token: TOKEN });
+  assert.strictEqual(user.body.age, 30);
+  assert.strictEqual(user.body.name, 'Тест');
+
+  const tooOld = await api('/api/user/update', { method: 'POST', token: TOKEN, body: { age: 101 } });
+  assert.strictEqual(tooOld.status, 400, 'невозможный возраст отвергается при обновлении');
+});
+
+/* ---------- 3. Вода ---------- */
+test('вода: добавление, границы и отмена по одному стакану', async () => {
+  assert.strictEqual((await api('/api/water', { method: 'POST', token: TOKEN, body: { amount: 0 } })).status, 400);
+  assert.strictEqual((await api('/api/water', { method: 'POST', token: TOKEN, body: { amount: 99999 } })).status, 400);
+  assert.strictEqual((await api('/api/water', { method: 'POST', body: { amount: 250 } })).status, 401, 'без сессии нельзя');
+
+  const a1 = await api('/api/water', { method: 'POST', token: TOKEN, body: { amount: 250 } });
+  assert.strictEqual(a1.status, 200);
+  assert.strictEqual(a1.body.total, 250);
+  const a2 = await api('/api/water', { method: 'POST', token: TOKEN, body: { amount: 250 } });
+  assert.strictEqual(a2.body.total, 500);
+
+  const und = await api('/api/water/undo', { method: 'POST', token: TOKEN, body: {} });
+  assert.strictEqual(und.status, 200);
+  assert.ok(und.body.removed, 'стакан снят');
+  assert.strictEqual(und.body.total, 250);
+  assert.strictEqual((await api('/api/water/' + TG_ID, { token: TOKEN })).body.amount, 250);
+
+  const und2 = await api('/api/water/undo', { method: 'POST', token: TOKEN, body: {} });
+  assert.ok(und2.body.removed);
+  const und3 = await api('/api/water/undo', { method: 'POST', token: TOKEN, body: {} });
+  assert.strictEqual(und3.body.removed, 0, 'ниже нуля не уходим');
+  assert.strictEqual(und3.body.total, 0);
+});
+
+/* ---------- 4. Дневник питания ---------- */
+test('дневник питания: мусорный рецепт не пишется в лог', async () => {
+  assert.strictEqual((await api('/api/log-meal', { method: 'POST', token: TOKEN, body: { recipe_id: 'abc' } })).status, 400);
+  assert.strictEqual((await api('/api/log-meal', { method: 'POST', token: TOKEN, body: { recipe_id: 999999 } })).status, 404);
+
+  const seeded = await waitFor(async () => (await api('/api/recipe/1')).status === 200, 40000);
+  assert.ok(seeded, 'каталог рецептов загрузился');
+  const good = await api('/api/log-meal', { method: 'POST', token: TOKEN, body: { recipe_id: 1 } });
+  assert.strictEqual(good.status, 200);
+
+  const today = await api('/api/food-log/today/' + TG_ID, { token: TOKEN });
+  assert.strictEqual(today.status, 200);
+  assert.ok(Array.isArray(today.body.meals) && today.body.meals.length >= 1, 'запись видна в дневнике');
+  assert.ok(today.body.meals[0].title, 'в дневнике блюдо из каталога, а не пустая строка');
+});
+
+/* ---------- 5. Экспорт данных ---------- */
+test('экспорт данных: профиль, вода, питание и тренировки в одном файле', async () => {
+  const w = await api('/api/weight', { method: 'POST', token: TOKEN, body: { weight: 79.5 } });
+  assert.strictEqual(w.status, 200);
+
+  const r = await api('/api/user/export', { token: TOKEN });
+  assert.strictEqual(r.status, 200);
+  assert.strictEqual(r.body.service, 'GuideFit');
+  assert.strictEqual(r.body.profile.id, TG_ID);
+  assert.strictEqual(r.body.profile.age, 30);
+  assert.ok(Array.isArray(r.body.water) && r.body.water.length >= 1);
+  assert.ok(Array.isArray(r.body.meals) && r.body.meals.length >= 1);
+  assert.ok(Array.isArray(r.body.weights) && r.body.weights.length >= 1);
+  assert.ok(!('notify_chat_id' in r.body.profile), 'служебный chat_id не отдаём');
+});
+
+/* ---------- 6. Привязка Telegram и уведомления ---------- */
+test('привязка Telegram-чата: выдаётся одноразовый код и ссылка на бота', async () => {
+  const r = await api('/api/user/link/telegram', { method: 'POST', token: TOKEN, body: {} });
+  assert.strictEqual(r.status, 200);
+  assert.match(r.body.code, /^[A-HJ-NP-Z2-9]{10}$/);
+  assert.strictEqual(r.body.bot, 'gf_test_bot');
+  assert.ok(r.body.link.includes('https://t.me/gf_test_bot?start=link_'));
+  assert.ok(r.body.link.endsWith(r.body.code));
+
+  const rm = await api('/api/user/link/telegram/remove', { method: 'POST', token: TOKEN, body: {} });
+  assert.strictEqual(rm.status, 200);
+});
+
+test('тумблер уведомлений переключается', async () => {
+  const off = await api('/api/notifications/toggle', { method: 'POST', token: TOKEN, body: {} });
+  assert.strictEqual(off.status, 200);
+  const users = await api('/api/admin/users', { admin: true });
+  assert.strictEqual(users.status, 200, 'админка отвечает при верном токене');
+  assert.strictEqual((await api('/api/admin/users')).status, 403, 'без токена админка закрыта');
+
+  const on = await api('/api/notifications/toggle', { method: 'POST', token: TOKEN, body: {} });
+  assert.strictEqual(on.status, 200);
+  assert.notStrictEqual(on.body.notify_enabled, off.body.notify_enabled);
+});
+
+/* ---------- 7. Удаление аккаунта ---------- */
+test('удаление аккаунта закрывает и его сессии', async () => {
+  const del = await api('/api/user/delete', { method: 'POST', token: TOKEN, body: {} });
+  assert.strictEqual(del.status, 200);
+  assert.strictEqual((await api('/api/user/' + TG_ID, { token: TOKEN })).status, 401, 'старый токен больше не работает');
+});
+
+/* ---------- 8. Лимит на анонимные аккаунты (последним: квота исчерпывается) ---------- */
+test('лимит анонимных аккаунтов: после 10 в час приходит 429', async () => {
+  const codes = [];
+  for (let i = 0; i < 15; i++) codes.push((await api('/api/auth/anonymous', { method: 'POST' })).status);
+  assert.ok(codes.includes(200), 'часть запросов проходит');
+  assert.ok(codes.includes(429), 'после лимита приходит 429');
+});
