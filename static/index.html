@@ -504,6 +504,9 @@ async function vkConfigure(){
   const VKID = await vkLoadSdk();
   if(!VKID || !VKID.Config) throw new Error('sdk');
   if(!window.crypto || !crypto.subtle) throw new Error('crypto');
+  /* идемпотентно: повторный init с НОВЫМ code_verifier ломает уже отрисованный виджет
+     (VK отвечает «device_id is invalid» / «invalid code_verifier» на старый challenge) */
+  if(_vkVerifier) return VKID;
   const raw = new Uint8Array(64);
   crypto.getRandomValues(raw);
   _vkVerifier = b64urlBytes(raw);
@@ -557,6 +560,7 @@ async function renderVkWidget(){
     const names = (VKID.OAuthName && VKID.OAuthName.VK && VKID.OAuthName.OK) ? [VKID.OAuthName.VK, VKID.OAuthName.OK] : ['vkid', 'ok_ru'];
     const box = document.getElementById('vkLoginBox');
     if(!box) return;
+    box.innerHTML = ''; // не плодим второй iframe-виджет поверх первого
     const successEv = (VKID.OAuthListInternalEvents && VKID.OAuthListInternalEvents.LOGIN_SUCCESS) || (VKID.WidgetEvents && VKID.WidgetEvents.LOGIN_SUCCESS);
     const errorEv = (VKID.WidgetEvents && VKID.WidgetEvents.ERROR);
     const w = new VKID.OAuthList();

@@ -5,6 +5,13 @@ require('dotenv').config();
 if (!process.env.TZ) process.env.TZ = 'Europe/Moscow';
 const crypto = require('crypto');
 const db = require('./db');
+// Страховка: если db.js отдал пустой объект (битая/недописанная сборка или git-pull в момент старта),
+// раньше это давало шквал «db.run is not a function» и 500 на каждый /api-запрос.
+// Лучше громко упасть при старте — pm2 покажет причину.
+if (!db || typeof db.run !== 'function' || typeof db.get !== 'function' || typeof db.all !== 'function') {
+  console.error('Критично: db.js не вернул соединение с базой (проверь целостность db.js и наличие guidefit.db)');
+  process.exit(1);
+}
 
 const app = express();
 app.use(express.json({ limit: '1mb' }));
