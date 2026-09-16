@@ -218,18 +218,19 @@ body{touch-action:manipulation}
 <!-- ОНБОРДИНГ (пошаговый мастер) -->
 <div class="screen active" id="screen-onboard"><div id="onboardBox" style="padding-top:28px"></div></div>
 
-<!-- ВХОД (standalone-режим без Telegram: VK ID + Одноклассники, либо анонимная регистрация) -->
+<!-- ВХОД (standalone-режим без Telegram: VK ID + Одноклассники) -->
 <div class="screen" id="screen-login">
   <div style="padding-top:48px;text-align:center">
     <div class="badge badge-accent mb2">GuideFit</div>
-    <h1 style="margin-bottom:8px" id="loginTitle">Сохраняй результат</h1>
-    <p class="muted" style="font-size:14px;margin-bottom:24px;line-height:1.55" id="loginSubtitle">Войди через ВК, чтобы прогресс не потерялся. Или зарегистрируйся анонимно — без номера телефона.</p>
+    <h1 style="margin-bottom:8px" id="loginTitle">С возвращением!</h1>
+    <p class="muted" style="font-size:14px;margin-bottom:24px;line-height:1.55" id="loginSubtitle">Войди через ВК или Одноклассники, чтобы продолжить.</p>
     <div id="vkLoginBox" style="display:flex;flex-direction:column;gap:10px"></div>
     <p class="subtle mt2" id="vkLoginMsg" style="display:none"></p>
-    <button type="button" id="anonRegBtn" class="pressable" style="margin-top:14px;background:none;border:none;color:var(--accent-dark);font-size:13.5px;font-weight:800;padding:12px" onclick="startAnonymous()">Анонимная регистрация — без номера телефона</button>
-    <p class="subtle" style="font-size:11px;line-height:1.55;margin:14px 4px 0">Продолжая, вы принимаете <a href="/terms.html" target="_blank" rel="noopener" style="color:var(--accent-dark)">Пользовательское соглашение</a> и <a href="/privacy.html" target="_blank" rel="noopener" style="color:var(--accent-dark)">Политику обработки персональных данных</a>. Приложение не заменяет консультацию врача. Разрешено с 12 лет, до 18 — с согласия законного представителя.</p>
+    <button type="button" id="toRegisterBtn" class="btn btn-ghost pressable" style="margin-top:16px;width:100%" onclick="startRegister()">Создать аккаунт</button>
   </div>
 </div>
+
+
 
 <!-- ГЛАВНАЯ -->
 <div class="screen" id="screen-home">
@@ -449,7 +450,9 @@ async function enterWithSession(tgId, intent){
     currentUser = user;
     if(!user.goal){
       // v25: имя из VK/анонимного входа НЕ подставляем — поле всегда пустое (Telegram-флоу не задет)
-      ob = { step: 0, total: 10, meal_count: user.meal_count || 3, name: '' };
+      // v26: meal_count по умолчанию 2; экран онбординга открываем явно, иначе визард остаётся скрытым
+      ob = { step: 0, total: 11, meal_count: user.meal_count || 2, name: '' };
+      navigate('onboard');
       obRender();
       return;
     }
@@ -459,7 +462,8 @@ async function enterWithSession(tgId, intent){
     navigate('home');
     setTimeout(function(){ if(typeof renderHomeDonuts === 'function'){ try{ renderHomeDonuts(); }catch(e){} } }, 700);
   }catch(e){
-    if(e && e.status === 404){ ob = { step: 0, total: 10, meal_count: 3 }; obRender(); }
+    if(e && e.status === 404){ ob = { step: 0, total: 11, meal_count: 2 }; navigate('onboard'); obRender(); }
+    else if(intent === 'session'){ startRegister(); } // v26: первый запуск без сессии — сразу на регистрацию
     else showLoginScreen();
   }
 }
@@ -468,22 +472,21 @@ function showLoginScreen(){
   try{ $('bottomNav').style.display = 'none'; }catch(e){}
   navigate('login');
   try{
-    const lt = $('loginTitle'), ls = $('loginSubtitle'), ab = $('anonRegBtn'), msg = $('vkLoginMsg');
-    if(lt) lt.textContent = 'Сохраняй результат';
-    if(ls) ls.textContent = 'Войди через ВК, чтобы прогресс не потерялся. Или зарегистрируйся анонимно — без номера телефона.';
+    const lt = $('loginTitle'), ls = $('loginSubtitle'), msg = $('vkLoginMsg');
+    if(lt) lt.textContent = 'С возвращением!';
+    if(ls) ls.textContent = 'Войди через ВК или Одноклассники, чтобы продолжить.';
     if(msg){ msg.style.display = 'none'; msg.textContent = ''; }
-    if(ab){ ab.style.display = ''; ab.disabled = false; ab.textContent = 'Анонимная регистрация — без номера телефона'; }
   }catch(e){}
-  initVkLogin();
+  initVkLogin('vkLoginBox');
 }
 
 const VK_APP_ID = 54770382;
 const VK_REDIRECT = 'https://app.xn--80aag3axnld9b.xn--p1ai/api/auth/vk/callback';
 let _vkVerifier = null;
-function vkFail(t){
-  // ВК недоступен — экран входа остаётся рабочим: анонимная регистрация всегда доступна
-  const box = document.getElementById('vkLoginBox');
-  const msg = document.getElementById('vkLoginMsg');
+function vkFail(t, boxId, msgId){
+  // ВК недоступен — экран входа/регистрации остаётся рабочим (можно продолжить без привязки)
+  const box = document.getElementById(boxId || 'vkLoginBox');
+  const msg = document.getElementById(msgId || 'vkLoginMsg');
   if(box) box.innerHTML = '';
   if(msg){ msg.style.display = ''; msg.textContent = t; }
 }
@@ -547,22 +550,21 @@ async function handleVkRedirect(){
     return true;
   }catch(e){ try{ console.error('VK redirect:', e); }catch(_){} clean(); return false; }
 }
-const VK_UNAVAILABLE = 'Вход через ВК недоступен. Можно продолжить анонимно — без номера телефона.';
-async function initVkLogin(){
-  let providers = {};
-  try{ providers = await api('/api/auth/providers'); }
-  catch(e){ return vkFail(VK_UNAVAILABLE); }
-  if(!providers.vk) return vkFail(VK_UNAVAILABLE);
-  renderVkWidget();
+const VK_UNAVAILABLE = 'Вход через VK и Одноклассники сейчас недоступен. Можно продолжить без привязки — прогресс сохранится на этом устройстве.';
+function initVkLogin(containerId, msgId, onLogin){
+  api('/api/auth/providers')
+    .then(function(p){ if(p && p.vk) renderVkWidget(containerId, msgId, onLogin); else vkFail(VK_UNAVAILABLE, containerId, msgId); })
+    .catch(function(){ vkFail(VK_UNAVAILABLE, containerId, msgId); });
 }
-async function renderVkWidget(){
+async function renderVkWidget(containerId, msgId, onLogin){
+  const fail = function(){ vkFail(VK_UNAVAILABLE, containerId, msgId); };
   let VKID;
   try{ VKID = await vkConfigure(); }
-  catch(e){ return vkFail(VK_UNAVAILABLE); }
+  catch(e){ return fail(); }
   try{
-    if(!VKID.OAuthList) return vkFail(VK_UNAVAILABLE);
+    if(!VKID.OAuthList) return fail();
     const names = (VKID.OAuthName && VKID.OAuthName.VK && VKID.OAuthName.OK) ? [VKID.OAuthName.VK, VKID.OAuthName.OK] : ['vkid', 'ok_ru'];
-    const box = document.getElementById('vkLoginBox');
+    const box = document.getElementById(containerId || 'vkLoginBox');
     if(!box) return;
     box.innerHTML = ''; // не плодим второй iframe-виджет поверх первого
     const successEv = (VKID.OAuthListInternalEvents && VKID.OAuthListInternalEvents.LOGIN_SUCCESS) || (VKID.WidgetEvents && VKID.WidgetEvents.LOGIN_SUCCESS);
@@ -570,35 +572,59 @@ async function renderVkWidget(){
     const w = new VKID.OAuthList();
     const r = w.render({ container: box, oauthList: names, styles: { borderRadius: 10, height: 56 } });
     const emitter = (r && typeof r.on === 'function') ? r : ((typeof w.on === 'function') ? w : null);
-    if(!emitter || !successEv) return vkFail(VK_UNAVAILABLE);
-    emitter.on(successEv, function(p){ onVkLogin(p, 'login'); });
+    if(!emitter || !successEv) return fail();
+    emitter.on(successEv, function(p){ (onLogin || onVkLogin)(p); });
     if(errorEv) emitter.on(errorEv, function(e){ try{ console.error('VK widget:', e); }catch(_){} });
-  }catch(e){ vkFail(VK_UNAVAILABLE); }
+  }catch(e){ fail(); }
 }
-/* v25: анонимная регистрация — без OAuth и без номера телефона.
-   Сервер создаёт юзера tg_id='anon:<hex>' (name=NULL, provider='anon') и сессию;
-   сессия живёт в localStorage, поэтому повторный визит входит автоматически.
-   Если localStorage очищен — аккаунт недостижим (это осознанно: ВК — способ сохранить прогресс). */
-let _anonBusy = false;
-const ANON_BTN_LABEL = 'Анонимная регистрация — без номера телефона';
-async function startAnonymous(){
-  if(_anonBusy) return;
-  _anonBusy = true;
-  const btn = document.getElementById('anonRegBtn');
-  if(btn){ btn.disabled = true; btn.style.opacity = '.5'; btn.textContent = 'Создаём аккаунт…'; }
+/* v26: анонимная «кнопка» заменена полноценной регистрацией — это онбординг-мастер
+   (#screen-onboard): профиль → отдельные согласия с политикой и соглашением (152-ФЗ:
+   согласие ДО начала обработки, включая отдельное согласие на данные о здоровье, ст. 10) →
+   привязка VK/Одноклассники в конце (можно пропустить; аккаунт создаётся после согласий,
+   перенос прогресса делает сервер). */
+let obVkLinked = false;
+function startRegister(){
+  try{ $('bottomNav').style.display = 'none'; }catch(e){}
+  obVkLinked = false;
+  ob = { step: 0, total: 11, meal_count: 2 };
+  navigate('onboard');
+  obRender();
+}
+/* Привязка VK/OK на шаге 9 онбординга: сессия нужна ДО показа виджета, чтобы сервер
+   смог смержить уже введённые данные в VK-аккаунт (mergeAnonymousInto). */
+async function obVkPrepare(){
   try{
-    const d = await api('/api/auth/anonymous', { method:'POST' });
+    if(!tgUid() && !localStorage.getItem('gf_session')){
+      const d = await api('/api/auth/anonymous', { method:'POST' });
+      if(d && d.session){ try{ localStorage.setItem('gf_session', d.session); }catch(e){} }
+    }
+  }catch(e){}
+  initVkLogin('obVkSlot', 'obVkMsg', function(p){ obVkLogin(p); });
+}
+async function obVkLogin(p){
+  try{
+    const code = p && p.code, device_id = p && (p.device_id || p.deviceId);
+    if(!code || !device_id || !_vkVerifier){ showError('Не удалось привязать аккаунт'); return; }
+    const d = await api('/api/auth/vk/exchange', { method:'POST', body:{ code, device_id, code_verifier: _vkVerifier } });
     if(!d || !d.session) throw new Error('Нет сессии');
     try{ localStorage.setItem('gf_session', d.session); }catch(e){}
-    const box = document.getElementById('vkLoginBox');
-    if(box) box.innerHTML = '';
-    await enterWithSession(null, 'register');
-  }catch(e){
-    showError((e && e.message) || 'Не удалось создать аккаунт');
-  }finally{
-    _anonBusy = false;
-    if(btn){ btn.disabled = false; btn.style.opacity = ''; btn.textContent = ANON_BTN_LABEL; }
-  }
+    obVkLinked = true;
+    showSuccess('Аккаунт привязан — прогресс сохранится');
+    obFinish();
+  }catch(e){ showError((e && e.message) || 'Не удалось привязать аккаунт'); }
+}
+/* v26.1: привязка VK/OK из настроек (анонимный аккаунт) — сервер переносит прогресс, дальше входим через VK */
+async function settingsVkLogin(p){
+  try{
+    const code = p && p.code, device_id = p && (p.device_id || p.deviceId);
+    if(!code || !device_id || !_vkVerifier){ showError('Не удалось привязать аккаунт'); return; }
+    const d = await api('/api/auth/vk/exchange', { method:'POST', body:{ code, device_id, code_verifier: _vkVerifier } });
+    if(!d || !d.session) throw new Error('Нет сессии');
+    try{ localStorage.setItem('gf_session', d.session); }catch(e){}
+    const el = document.getElementById('setVkSlot'); if(el) el.innerHTML = '';
+    showSuccess('Аккаунт VK привязан — прогресс перенесён');
+    setTimeout(function(){ location.reload(); }, 1200);
+  }catch(e){ showError((e && e.message) || 'Не удалось привязать аккаунт'); }
 }
 async function onVkLogin(payload, intent){
   try{
@@ -608,8 +634,7 @@ async function onVkLogin(payload, intent){
     const d = await api('/api/auth/vk/exchange', { method:'POST', body:{ code, device_id, code_verifier: _vkVerifier } });
     if(!d || !d.session) throw new Error('Нет сессии');
     try{ localStorage.setItem('gf_session', d.session); }catch(e){}
-    const box = document.getElementById('vkLoginBox');
-    if(box) box.innerHTML = '';
+    ['vkLoginBox','obVkSlot'].forEach(function(id){ const el = document.getElementById(id); if(el) el.innerHTML = ''; });
     await enterWithSession(null, intent || 'login');
   }catch(e){ showError((e && e.message) || 'Не удалось войти через VK'); }
 }
@@ -686,10 +711,15 @@ document.addEventListener('click', e => {
     const active = document.querySelector('.screen.active');
     if(!active) return;
     const id = active.id.replace('screen-','');
+    /* v26.1: открыто обучение (спотлайт-тур) — жесты не переключают вкладки и не перезапускают тур */
+    if(document.getElementById('tourOverlay')) return;
     if(pulling && dy > 90 && Math.abs(dx) < 40 && TABS.includes(id)){ haptic(); navigate(id); return; }
     if(TABS.includes(id) && Math.abs(dx) > 70 && Math.abs(dy) < 40){
-      /* нельзя свайпить из активной тренировки — случайно собьёт незаписанный прогресс */
-      if(id === 'active-workout') return;
+      /* нельзя свайпить из активной тренировки — случайно собьёт незаписанный прогресс;
+         v26: свайпы запрещены и на онбординге/входе (только кнопки), и при быстром
+         вводе воды (tgt-качание по горизонтали читалось как свайп и уводило с экрана) */
+      if(id === 'active-workout' || id === 'onboard' || id === 'login') return;
+      if(e.target && e.target.closest && e.target.closest('#waterCard')) return;
       const i = TABS.indexOf(id);
       const next = TABS[dx < 0 ? Math.min(i+1, TABS.length-1) : Math.max(i-1, 0)];
       if(next !== id){ haptic(); navigate(next); }
@@ -730,14 +760,17 @@ async function initApp(){
       $('bottomNav').style.display = 'flex';
       navigate('home');
     }catch(e){
-      ob = { step: 0, total: 10, meal_count: 3 };
+      ob = { step: 0, total: 11, meal_count: 2 };
+      navigate('onboard');
       obRender();
     }
     return;
-  }
-  // standalone/APK: возврат из VK (vkcode) → сохранённая сессия → иначе экран входа
+  }  // standalone/APK: возврат из VK (vkcode) → сохранённая сессия → иначе сразу регистрация (v26)
   if(await handleVkRedirect()) return;
+
   // v24: сохранённая сессия — если профиль заполнен, экран входа вообще не показывается (сразу дашборд)
+  // v26: сессии нет — сразу на регистрацию (анонимного входа больше нет)
+  try{ if(!localStorage.getItem('gf_session')){ startRegister(); return; } }catch(e){ startRegister(); return; }
   await enterWithSession(null, 'session');
 }
 
@@ -802,13 +835,26 @@ function obNext(){
   }
   if(s === 6){ if(!ob.activity){ showError('Выбери уровень активности'); return; } obGo(7); return; }
   if(s === 7){ if(!ob.goal){ showError('Выбери цель'); return; } obGo(8); return; }
-  if(s === 8){ obGo(9); return; }
+  if(s === 8){ obGo(9); return; } // приёмы пищи: значение уже выбрано (по умолчанию 2)
+  if(s === 9){
+    if(!obConsentOk()){ const e = document.getElementById('obConsentErr'); if(e) e.style.display = 'block'; showError('Отметь все галочки: политику, соглашение и данные о здоровье'); return; }
+    obGo(10); return;
+  }
+}
+function obConsentOk(){ return !!(ob && ob.privacy && ob.terms && ob.health); }
+function obConsentsPayload(){
+  return { privacy: !!(ob && ob.privacy), terms: !!(ob && ob.terms), health: !!(ob && ob.health) };
 }
 async function obFinish(){
-  if(!ob || !ob.consent){ showError('Подтверди согласие с политикой и соглашением'); return; }
+  if(!ob || !obConsentOk()){
+    const e = document.getElementById('obConsentErr');
+    if(e) e.style.display = 'block';
+    showError('Отметь все галочки: политику, соглашение и данные о здоровье');
+    return;
+  }
   const data = { tg_id: myTgId(), name: ob.name, gender: ob.gender, age: ob.age, height: ob.height,
     current_weight: ob.weight, target_weight: ob.target, goal: ob.goal, activity_level: ob.activity,
-    meal_count: ob.meal_count || 3 };
+    meal_count: ob.meal_count || 2, consents: obConsentsPayload() };
   try{
     const r = await api('/api/user/init', { method:'POST', body:data });
     let myId = data.tg_id;
@@ -817,14 +863,12 @@ async function obFinish(){
     renderAvatar(data.name, currentUser.avatar);
     $('bottomNav').style.display = 'flex';
     navigate('home');
-    showSuccess('Готово! Профиль создан');
+    showSuccess('Готово! Регистрация завершена');
   }catch(e){ showError(e.message); }
 }
-function obConsent(v){
+function obConsent(which, v){
   if(!ob) return;
-  ob.consent = v === true;
-  const b = document.getElementById('obStartBtn');
-  if(b){ b.style.opacity = ob.consent ? '' : '.45'; b.style.pointerEvents = ob.consent ? '' : 'none'; }
+  ob[which] = (v === true);
   if(typeof haptic === 'function') haptic();
 }
 function obRender(){
@@ -857,25 +901,41 @@ function obRender(){
       obCard('lose','Похудеть','−500 ккал','goal') + obCard('gain','Набрать','+500 ккал','goal') + obCard('maintain','Поддержать','Баланс','goal') + '</div>';
   } else if(s === 8){
     h += '<h1 style="margin-bottom:18px">Приёмов пищи в день</h1><div class="ob-chips">' +
-      [2,3,4,5,6].map(n => '<button type="button" class="chip pressable ob-meal-chip' + ((ob.meal_count||3)===n?' active':'') + '" onclick="obPick(\'meal_count\',\'' + n + '\')">' + n + '</button>').join('') + '</div>' +
+      [2,3,4,5,6].map(n => '<button type="button" class="chip pressable ob-meal-chip' + ((ob.meal_count||2)===n?' active':'') + '" onclick="obPick(\'meal_count\',\'' + n + '\')">' + n + '</button>').join('') + '</div>' +
       '<p class="subtle mt2" style="font-size:11.5px">Можно изменить позже в настройках</p>';
   } else if(s === 9){
-    const gl = { lose:'Похудение', gain:'Набор', maintain:'Поддержание' }[ob.goal] || '';
-    h += '<div class="text-center" style="padding-top:14px"><div style="width:84px;height:84px;border-radius:28px;background:var(--accent-dim);color:var(--accent);display:flex;align-items:center;justify-content:center;margin:0 auto 16px">' + ic('check',40) + '</div>' +
-      '<h1 style="margin-bottom:10px">Готово!</h1>' +
-      '<p class="muted" style="font-size:14px;line-height:1.6">' + esc(ob.name) + ', ' + gl + ': ' + ob.weight + ' → ' + ob.target + ' кг. Рассчитаем норму и подберём программу.</p></div>' +
-      '<label class="pressable" style="display:flex;gap:10px;align-items:flex-start;margin-top:18px;text-align:left;cursor:pointer">' +
-      '<input type="checkbox" id="obConsent"' + (ob.consent ? ' checked' : '') + ' onchange="obConsent(this.checked)" style="width:20px;height:20px;margin-top:2px;accent-color:var(--accent);flex-shrink:0">' +
-      '<span style="font-size:12.5px;line-height:1.55">Я соглашаюсь с <a href="/privacy.html" target="_blank" style="color:var(--accent-dark)" onclick="event.stopPropagation()">Политикой обработки персональных данных</a> и <a href="/terms.html" target="_blank" style="color:var(--accent-dark)" onclick="event.stopPropagation()">Пользовательским соглашением</a> — в том числе на обработку данных о весе, росте и пищевых привычках.<br>' +
-      '<span class="subtle" style="font-size:11.5px">Мне 18 лет или больше; если меньше — согласие дано родителем или законным представителем. Я понимаю, что приложение не заменяет консультацию врача, а рекомендации носят информационный характер.</span></span></label>';
+    /* v27: согласия — ДО создания аккаунта и ДО привязки VK (152-ФЗ, ст. 9 и 10):
+       обработка не начинается без явных согласий; отдельная галочка — данные о здоровье */
+    const ok = obConsentOk();
+    h += '<h1 style="margin-bottom:8px">Согласия</h1>' +
+      '<p class="muted" style="font-size:13px;line-height:1.55;margin:0 0 18px">Чтобы создать дневник, нужно твоё согласие — каждое отдельное.</p>' +
+      '<label class="pressable" style="display:flex;gap:10px;align-items:flex-start;margin-bottom:14px;text-align:left;cursor:pointer">' +
+      '<input type="checkbox" id="obPrivacy"' + (ob.privacy ? ' checked' : '') + ' onchange="obConsent(\'privacy\',this.checked)" style="width:20px;height:20px;margin-top:2px;accent-color:var(--accent);flex-shrink:0">' +
+      '<span style="font-size:12.5px;line-height:1.55">Я даю согласие на обработку персональных данных и принимаю <a href="/privacy.html" target="_blank" style="color:var(--accent-dark)" onclick="event.stopPropagation()">Политику обработки персональных данных</a>.</span></label>' +
+      '<label class="pressable" style="display:flex;gap:10px;align-items:flex-start;margin-bottom:14px;text-align:left;cursor:pointer">' +
+      '<input type="checkbox" id="obTerms"' + (ob.terms ? ' checked' : '') + ' onchange="obConsent(\'terms\',this.checked)" style="width:20px;height:20px;margin-top:2px;accent-color:var(--accent);flex-shrink:0">' +
+      '<span style="font-size:12.5px;line-height:1.55">Я принимаю <a href="/terms.html" target="_blank" style="color:var(--accent-dark)" onclick="event.stopPropagation()">Пользовательское соглашение</a>.<br>' +
+      '<span class="subtle" style="font-size:11.5px">Приложение для пользователей от 12 лет; если тебе меньше 18 — используй с согласия родителя или законного представителя. Приложение не заменяет консультацию врача.</span></span></label>' +
+      '<label class="pressable" style="display:flex;gap:10px;align-items:flex-start;text-align:left;cursor:pointer">' +
+      '<input type="checkbox" id="obHealth"' + (ob.health ? ' checked' : '') + ' onchange="obConsent(\'health\',this.checked)" style="width:20px;height:20px;margin-top:2px;accent-color:var(--accent);flex-shrink:0">' +
+      '<span style="font-size:12.5px;line-height:1.55">Я даю отдельное согласие на обработку данных о здоровье (вес, рост, калории, дневник питания и тренировок), необходимых для расчётов и работы дневника — <a href="/privacy.html" target="_blank" style="color:var(--accent-dark)" onclick="event.stopPropagation()">подробнее в политике</a>.</span></label>' +
+      (!ok ? '<p class="ob-err" id="obConsentErr" style="display:block">Отметь все галочки, чтобы продолжить</p>' : '');
+  } else {
+    /* v27 финал (шаг 10): привязка VK/Одноклассников — необязательна, аккаунт уже
+       согласован, создаём его только по кнопке «Начинаем!» (obFinish). */
+    h += '<h1 style="margin-bottom:8px">Не потеряй прогресс</h1>' +
+      '<p class="muted" style="font-size:13.5px;line-height:1.6;margin:0 0 16px">Привяжи аккаунт VK и Одноклассники, чтобы входить с любого устройства и не потерять результаты. Можно пропустить и привязать позже в настройках.</p>' +
+      '<div id="obVkSlot" style="display:flex;flex-direction:column;gap:10px;min-height:56px"></div>' +
+      '<p class="subtle mt2" id="obVkMsg" style="display:none"></p>';
   }
   h += '<div class="flex gap2" style="margin-top:26px">' +
     (s > 0 ? '<button class="btn btn-ghost pressable" style="flex:1" onclick="obBack()">Назад</button>' : '') +
-    (s < 9 ? '<button class="btn btn-primary pressable" style="flex:2" onclick="obNext()">' + (s === 0 ? 'Начать' : 'Далее') + '</button>'
-           : '<button id="obStartBtn" class="btn btn-primary pressable" style="flex:2' + (ob.consent ? '' : ';opacity:.45;pointer-events:none') + '" onclick="obFinish()">Начинаем!</button>') +
+    (s === 10 ? '<button id="obStartBtn" class="btn btn-primary pressable" style="flex:2" onclick="obFinish()">Начинаем!</button>' :
+      '<button class="btn btn-primary pressable" style="flex:2" onclick="obNext()">' + (s === 0 ? 'Начать' : 'Далее') + '</button>') +
     '</div>';
   box.innerHTML = h;
   obHydrate(box);
+  if(s === 10){ try{ obVkPrepare(); }catch(e){} }
 }
 
 /* ============ дашборд ============ */
@@ -963,7 +1023,8 @@ function mealSlots(count){
 function renderHomeMeals(data){
   const list = $('homeMealsList');
   const norm = (data.norms && data.norms.calories) || 2000;
-  const count = (data.user && data.user.meal_count) || 4;
+  /* v26: количество слотов — из ответа API (dashboard дублирует meal_count отдельно от user); 2, а не 4 — раньше выбранные 2 приёма показывались как 4 */
+  const count = (data.user && data.user.meal_count) || data.meal_count || 2;
   $('mealCountLbl').textContent = count + ' ' + plural(count, 'приём', 'приёма', 'приёмов') + ' в день';
   const todayMeals = data.todayMeals || [];
   let html = '';
@@ -1656,7 +1717,10 @@ async function woFinishFlow(){
 /* центральная подсказка (шаг без спотлайта: элемента нет на экране) */
 .spot-hint.spot-center{left:50%;top:50%;transform:translate(-50%,-50%);width:calc(100% - 44px);max-width:320px;text-align:center}
 .spot-hint.spot-center:after{display:none}
-.spot-nav{position:absolute;left:0;right:0;bottom:calc(20px + env(safe-area-inset-bottom,0px));display:flex;flex-direction:column;gap:8px;padding:0 22px;z-index:222}
+/* v26.1: кнопки тура — одной строкой и НАД нижним таббаром (раньше панель лежала прямо на нём и перекрывала подсвеченные кнопки) */
+.spot-nav{position:absolute;left:0;right:0;bottom:calc(88px + env(safe-area-inset-bottom,0px));display:flex;flex-direction:row;gap:8px;padding:0 22px;z-index:222}
+/* v26.1: служебную строку виджета VK («или войти через VK с использованием данных из сервиса») не показываем */
+.VkIdSdk_oauth_link_text{display:none!important}
 /* v21: пошаговый онбординг */
 .ob-progress{margin-bottom:20px}
 .ob-dots{display:flex;gap:5px;margin-top:8px}
@@ -2042,7 +2106,7 @@ function aboutBlock(){
     '<div class="flex between" style="font-size:12.5px;padding:5px 0"><span class="muted">Версия</span><b id="aboutVersion">—</b></div>' +
     '<div class="flex between" style="font-size:12.5px;padding:5px 0"><span class="muted">Оператор</span><b>ИП Солдатенко Я. П.</b></div>' +
     '<div class="flex between" style="font-size:12.5px;padding:5px 0"><span class="muted">ОГРНИП</span><b>325246800130330</b></div>' +
-    '<p class="subtle mt2" style="font-size:11px;line-height:1.6">Приложение не является медицинским изделием и не заменяет консультацию врача. Расчёты и программы носят информационный характер. Фото блюд и упражнений — Pexels (бесплатная лицензия). Время и даты — по Москве (UTC+3).</p></div>';
+    '<p class="subtle mt2" style="font-size:11px;line-height:1.6">Возрастная категория: 12+. Приложение не является медицинским изделием и не заменяет консультацию врача. Расчёты и программы носят информационный характер. Фото блюд и упражнений — Pexels (бесплатная лицензия). Время и даты — по Москве (UTC+3).</p></div>';
 }
 async function fillAboutVersion(){
   const el = document.getElementById('aboutVersion');
@@ -2072,6 +2136,12 @@ function loadSettings(){
       '<button class="btn btn-primary btn-block pressable" onclick="saveProfileSettings()">Сохранить</button>' +
       '<p class="subtle mt2" style="font-size:11.5px">После сохранения норма калорий пересчитается автоматически.</p></div>' +      '<div class="card mb4"><h3 class="mb3">Приёмы пищи в день</h3><div class="flex gap2">' +
       [2,3,4,5,6].map(n => '<button class="chip pressable' + (u.meal_count===n?' active':'') + '" id="mc' + n + '" onclick="setMealCount(' + n + ')">' + n + '</button>').join('') + '</div></div>' +
+    /* v26.1: привязка VK/Одноклассников — только для анонимного standalone-аккаунта */
+    (/^anon:/.test(String(u.tg_id || '')) ?
+      '<div class="card mb4"><h3 class="mb3">Аккаунт</h3>' +
+        '<p class="muted" style="font-size:12.5px;line-height:1.55;margin-bottom:12px">Привяжи VK или Одноклассники, чтобы входить с любого устройства и не потерять прогресс.</p>' +
+        '<div id="setVkSlot" style="display:flex;flex-direction:column;gap:10px;min-height:56px"></div>' +
+        '<p class="subtle mt2" id="setVkMsg" style="display:none"></p></div>' : '') +
     notifyBlock() +
     '<div class="card mb4"><h3 class="mb3">Ваши данные</h3>' +
       '<button class="btn btn-ghost btn-block pressable" onclick="exportMyData()" style="display:flex;align-items:center;justify-content:center;gap:8px">' + ic('pen',16) + ' Скачать копию данных (JSON)</button>' +
@@ -2084,6 +2154,12 @@ function loadSettings(){
     '<button class="btn btn-danger btn-block pressable mt2" onclick="doDeleteData()" style="display:flex;align-items:center;justify-content:center;gap:8px">Удалить мои данные</button>';
   const nl = document.getElementById('notifyLblSettings');
   if(nl) nl.textContent = 'Уведомления: ' + ((u.notify_enabled) ? 'включены' : 'выключены');
+  /* v26.1: виджет привязки — в standalone и только пока аккаунт анонимный */
+  try{
+    if(/^anon:/.test(String(u.tg_id || '')) && !tgUid()){
+      initVkLogin('setVkSlot', 'setVkMsg', function(p){ settingsVkLogin(p); });
+    }
+  }catch(e){}
   fillAboutVersion();
 }
 function doLogout(){
@@ -2170,8 +2246,8 @@ function tourShow(){
     // элемента нет на экране — центральная подсказка без спотлайта (чужой блок не подсвечиваем)
     if(!el){ tourCenter(step); return; }
     tourOverlay('<div class="spot-nav">' +
-      '<button class="btn btn-primary btn-block pressable" data-tour="next">Далее</button>' +
-      '<button class="btn btn-ghost btn-block pressable" data-tour="skip" style="font-size:13px">Пропустить обучение</button></div>');
+      '<button class="btn btn-primary pressable" style="flex:2" data-tour="next">Далее</button>' +
+      '<button class="btn btn-ghost pressable" style="flex:1;font-size:13px" data-tour="skip">Пропустить</button></div>');
     tourScrollTo(el);
     tourPosition(step);
     // повторное выравнивание после скролла/ререндера
@@ -2189,7 +2265,7 @@ function tourCenter(step){
     '</div></div>');
   if(typeof haptic === 'function') haptic();
 }
-const TOUR_NAV_H = 132; // высота зоны кнопок тура снизу (не перекрываем подсказкой)
+const TOUR_NAV_H = 150; // зона тура снизу: таббар (~70) + панель кнопок над ним (~46) + отступы — подсказки других шагов не заезжают в неё
 function tourPosition(step){
   try{
     const ov = document.getElementById('tourOverlay');
@@ -2227,6 +2303,12 @@ function tourPosition(step){
     const below = (top >= r.bottom);
     hint.classList.add(below ? 'below' : 'above');
     hint.style.top = top + 'px'; hint.style.left = left + 'px'; hint.style.right = 'auto'; hint.style.bottom = 'auto';
+    /* v26.1: шаг целился в нижний таббар — подсказку ставим НАД панелью кнопок тура (сама панель теперь над таббаром) */
+    if(step.sel && step.sel.indexOf('nav-item') !== -1){
+      hint.classList.remove('below'); hint.classList.add('above');
+      hint.style.top = 'auto';
+      hint.style.bottom = 'calc(148px + env(safe-area-inset-bottom,0px))';
+    }
     hint.style.setProperty('--ax', Math.max(Math.min(r.left + r.width/2 - left - 7, hw - 26), 12) + 'px');
     if(typeof haptic === 'function') haptic();
   }catch(e){}
@@ -2530,7 +2612,8 @@ async function loadWorkouts(){
       {id:'yoga', label:'Йога'},
       {id:'lib', label:'Все упражнения'}
     ];
-    try{ if(typeof woGoal === 'undefined' || woGoal === null){ woGoal = (currentUser && currentUser.goal === 'gain') ? 'strength' : 'fat'; } }catch(e){}
+    /* v26: вкладка по умолчанию — «Жиросжигание» (раньше при цели «Набрать» открывалась «Сила и тонус») */
+    try{ if(typeof woGoal === 'undefined' || woGoal === null){ woGoal = 'fat'; } }catch(e){}
     let html = goals.map(g => '<button class="wo-chip pressable' + (g.id===woGoal?' active':'') + '" onclick="woSetGoal(\'' + g.id + '\')">' + g.label + '</button>').join('');
     if((woGoal === 'fat' || woGoal === 'strength')){
       html += '<span style="width:8px"></span>' +

@@ -36,6 +36,16 @@ async function api(url, { method = 'GET', body, token, admin } = {}) {
 
 const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 
+// Прямое чтение тестовой базы — для проверок, которых не видно через API
+// (например, что удаление аккаунта подчистило свои служебные строки).
+function dbGet(sql, args = []) {
+  const sqlite3 = require('sqlite3');
+  return new Promise((resolve, reject) => {
+    const d = new sqlite3.Database(DB, sqlite3.OPEN_READONLY);
+    d.get(sql, args, (e, row) => { d.close(); e ? reject(e) : resolve(row); });
+  });
+}
+
 async function waitFor(pred, timeoutMs = 30000, stepMs = 300) {
   const t0 = Date.now();
   while (Date.now() - t0 < timeoutMs) {
@@ -121,14 +131,26 @@ test('анонимная регистрация выдаёт сессию и с�
 });
 
 test('визард: валидация полей и возраст не младше 12', async () => {
-  const base = { name: 'Тест', goal: 'lose', gender: 'male', height: 180, current_weight: 80,
-                 target_weight: 75, activity_level: 'moderate', meal_count: 3 };
+  const base = { name: 'Тест', goal: 'lose', gender: 'male', age: 30, height: 180, current_weight: 80,
+                 target_weight: 75, activity_level: 'moderate', meal_count: 3,
+                 consents: { privacy: true, terms: true, health: true } };
 
   const missing = await api('/api/user/init', { method: 'POST', token: TOKEN, body: { name: 'Только имя' } });
   assert.strictEqual(missing.status, 400, 'неполные данные отвергаются');
 
+  // 152-ФЗ: без согласий обработка не начинается — создаём отдельный аккаунт, чтобы не портить TOKEN
+  const noConsent = await api('/api/auth/anonymous', { method: 'POST' });
+  assert.strictEqual(noConsent.status, 200);
+  const noConsentInit = await api('/api/user/init', { method: 'POST', token: noConsent.body.session, body: { ...base, consents: undefined } });
+  assert.strictEqual(noConsentInit.status, 403, 'без согласий профиль не создаётся');
+  const noHealth = await api('/api/user/init', { method: 'POST', token: noConsent.body.session, body: { ...base, consents: { privacy: true, terms: true, health: false } } });
+  assert.strictEqual(noHealth.status, 403, 'без отдельного согласия ст. 10 профиль не создаётся');
+
   const young = await api('/api/user/init', { method: 'POST', token: TOKEN, body: { ...base, age: 11 } });
   assert.strictEqual(young.status, 400, 'возраст < 12 отвергается');
+
+  const noAge = await api('/api/user/init', { method: 'POST', token: TOKEN, body: { ...base, age: undefined } });
+  assert.strictEqual(noAge.status, 400, 'без возраста профиль не создаётся');
 
   const badGoal = await api('/api/user/init', { method: 'POST', token: TOKEN, body: { ...base, age: 30, goal: 'hack' } });
   assert.strictEqual(badGoal.status, 400, 'некорректная цель отвергается');
@@ -140,6 +162,15 @@ test('визард: валидация полей и возраст не мла�
   const user = await api('/api/user/' + TG_ID, { token: TOKEN });
   assert.strictEqual(user.body.age, 30);
   assert.strictEqual(user.body.name, 'Тест');
+  assert.strictEqual(user.body.meal_count, 3, 'meal_count из визарда сохраняется (регресс: на главной показывался дефолт 4)');
+
+  // журнал согласий: согласие зафиксировано сервером (доказуемость, 152-ФЗ ст. 9/10)
+  const consentRow = await dbGet('SELECT privacy, terms, health, doc_version FROM consent_log WHERE tg_id = ?', [TG_ID]);
+  assert.ok(consentRow, 'согласие записано в журнал');
+  assert.strictEqual(consentRow.privacy, 1);
+  assert.strictEqual(consentRow.terms, 1);
+  assert.strictEqual(consentRow.health, 1, 'отдельное согласие на данные о здоровье (ст. 10) зафиксировано');
+  assert.ok(String(consentRow.doc_version).length >= 8, 'версия документов зафиксирована');
 
   const tooOld = await api('/api/user/update', { method: 'POST', token: TOKEN, body: { age: 101 } });
   assert.strictEqual(tooOld.status, 400, 'невозможный возраст отвергается при обновлении');
@@ -232,6 +263,8 @@ test('удаление аккаунта закрывает и его сесси�
   const del = await api('/api/user/delete', { method: 'POST', token: TOKEN, body: {} });
   assert.strictEqual(del.status, 200);
   assert.strictEqual((await api('/api/user/' + TG_ID, { token: TOKEN })).status, 401, 'старый токен больше не работает');
+  const left = await dbGet('SELECT COUNT(*) c FROM consent_log WHERE tg_id = ?', [TG_ID]);
+  assert.strictEqual(left.c, 0, 'журнал согласий удалён вместе с аккаунтом (152-ФЗ, ст. 21)');
 });
 
 /* ---------- 8. Лимит на анонимные аккаунты (последним: квота исчерпывается) ---------- */

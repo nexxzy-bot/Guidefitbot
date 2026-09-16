@@ -43,6 +43,18 @@ db.serialize(() => {
     code TEXT PRIMARY KEY, tg_id TEXT NOT NULL, created_at INTEGER NOT NULL
   )`);
   db.run(`CREATE INDEX IF NOT EXISTS idx_link_codes_tg ON link_codes(tg_id)`);
+  // журнал согласий (152-ФЗ, ст. 9 и 10): что и когда отметил пользователь, версии документов.
+  // Доказательство согласия; удаляется вместе с аккаунтом (/api/user/delete).
+  db.run(`CREATE TABLE IF NOT EXISTS consent_log (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    tg_id TEXT NOT NULL,
+    privacy INTEGER NOT NULL DEFAULT 1,
+    terms INTEGER NOT NULL DEFAULT 1,
+    health INTEGER NOT NULL DEFAULT 1,
+    doc_version TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  )`);
+  db.run(`CREATE INDEX IF NOT EXISTS idx_consent_log_tg ON consent_log(tg_id)`);
   // служебные метаданные (например, хэш каталогов — чтобы не пересевать БД на каждом старте)
   db.run(`CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT)`);
   db.run(`CREATE TABLE IF NOT EXISTS food_logs (

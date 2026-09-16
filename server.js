@@ -93,6 +93,18 @@ function touchSeen(tgId) {
   db.run("UPDATE users SET last_seen = datetime('now','localtime') WHERE tg_id = ?", [tgId], () => {});
 }
 
+/* ================= журнал согласий (152-ФЗ, ст. 9/10) =================
+   Согласие должно быть доказуемым: сохраняем факт, время и версии документов, с которыми
+   пользователь согласился. Записи стираются вместе с аккаунтом (/api/user/delete). */
+const CONSENT_DOC_VERSION = '2026-09-15'; // дата публикации privacy.html / terms.html
+function logConsent(tgId, { privacy = 1, terms = 1, health = 1 } = {}) {
+  if (!tgId) return;
+  db.run("INSERT INTO consent_log (tg_id, privacy, terms, health, doc_version) VALUES (?, ?, ?, ?, ?)",
+    [tgId, privacy ? 1 : 0, terms ? 1 : 0, health ? 1 : 0, CONSENT_DOC_VERSION], (err) => {
+      if (err) console.error('consent log:', err.message);
+    });
+}
+
 /* ================= расчёты ================= */
 const ACTIVITY_MULTIPLIERS = { sedentary: 1.2, light: 1.375, moderate: 1.55, active: 1.725, very_active: 1.9 };
 
@@ -289,9 +301,14 @@ function isLimited(key, max, windowMs) {
 app.post('/api/user/init', (req, res) => {
   const tgId = resolveTgId(req);
   if (!tgId) return res.status(401).json({ error: 'Unauthorized' });
-  const { name, goal, gender, age, height, current_weight, target_weight, activity_level } = req.body;
+  const { name, goal, gender, age, height, current_weight, target_weight, activity_level, meal_count, consents } = req.body;
   if (!name || !goal || !gender || !age || !height || !current_weight) {
     return res.status(400).json({ error: 'Missing fields' });
+  }
+  // 152-ФЗ: обработка (включая запись профиля) начинается только после согласий.
+  // health = отдельное письменное согласие на данные о здоровье (ст. 10).
+  if (!consents || consents.privacy !== true || consents.terms !== true || consents.health !== true) {
+    return res.status(403).json({ error: 'Требуется согласие на обработку персональных данных' });
   }
   if (typeof name !== 'string' || !name.trim() || name.length > 100) {
     return res.status(400).json({ error: 'Invalid values' });
@@ -307,21 +324,26 @@ app.post('/api/user/init', (req, res) => {
     return res.status(400).json({ error: 'Invalid values' });
   }
   const al = activity_level || 'moderate';
+  // v26: количество приёмов пищи из онбординга, 2–6, по умолчанию — 2 (раньше молча терялось и на главной был дефолт 4)
+  const mcParsed = parseInt(meal_count, 10);
+  const mc = (meal_count === undefined || meal_count === null || meal_count === '') ? 2 : mcParsed;
+  if (!(mc >= 2 && mc <= 6)) return res.status(400).json({ error: 'Invalid values' });
   const calorie_norm = calcCalories(current_weight, height, age, gender, al, goal);
   db.run(
-    `INSERT INTO users (tg_id, name, goal, gender, age, height, current_weight, target_weight, calorie_norm, activity_level)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `INSERT INTO users (tg_id, name, goal, gender, age, height, current_weight, target_weight, calorie_norm, activity_level, meal_count)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
      ON CONFLICT(tg_id) DO UPDATE SET
        name=excluded.name, goal=excluded.goal, gender=excluded.gender, age=excluded.age,
        height=excluded.height, current_weight=excluded.current_weight,
        target_weight=excluded.target_weight, calorie_norm=excluded.calorie_norm,
-       activity_level=excluded.activity_level`,
-    [tgId, name, goal, gender, age, height, current_weight, target_weight || current_weight, calorie_norm, al],
+       activity_level=excluded.activity_level, meal_count=excluded.meal_count`,
+    [tgId, name, goal, gender, age, height, current_weight, target_weight || current_weight, calorie_norm, al, mc],
     (err) => {
       if (err) { console.error(err); return res.status(500).json({ error: 'Database error' }); }
       touchSeen(tgId);
+      logConsent(tgId, consents);
       db.get("SELECT avatar FROM users WHERE tg_id = ?", [tgId], (e2, a2) => {
-        res.json({ status: 'ok', calorie_norm, avatar: (!e2 && a2 && a2.avatar) || null });
+        res.json({ status: 'ok', calorie_norm, meal_count: mc, avatar: (!e2 && a2 && a2.avatar) || null });
       });
     }
   );
@@ -392,6 +414,10 @@ app.post('/api/user/delete', (req, res) => {
     db.run("DELETE FROM notification_log WHERE tg_id = ?", [tgId]);
     // сессии тоже удаляем: иначе токен из localStorage продолжает открывать аккаунт
     db.run("DELETE FROM sessions WHERE tg_id = ?", [tgId]);
+    // и неиспользованные коды привязки Telegram (иначе остаётся мусор после удаления)
+    db.run("DELETE FROM link_codes WHERE tg_id = ?", [tgId]);
+    // журнал согласий тоже: без него не остаётся следов ПДн после удаления аккаунта
+    db.run("DELETE FROM consent_log WHERE tg_id = ?", [tgId]);
     db.run("DELETE FROM users WHERE tg_id = ?", [tgId], (err) => {
       if (err) return res.status(500).json({ error: err.message });
       res.json({ status: 'ok' });
@@ -572,9 +598,11 @@ app.post('/api/user/link/telegram/remove', (req, res) => {
   const tgId = resolveTgId(req);
   if (!tgId) return res.status(401).json({ error: 'Unauthorized' });
   if (isTelegramId(tgId)) return res.status(400).json({ error: 'Для Telegram-аккаунта привязка не нужна' });
+  // снимаем привязку и гасим неиспользованные коды — иначе выданный ранее код
+  // оставался бы действующим ещё час и мог снова привязать чат после отвязки
   db.run("UPDATE users SET notify_chat_id = NULL WHERE tg_id = ?", [tgId], (err) => {
     if (err) { console.error('unlink:', err.message); return res.status(500).json({ error: 'Database error' }); }
-    res.json({ status: 'ok' });
+    db.run("DELETE FROM link_codes WHERE tg_id = ?", [tgId], () => res.json({ status: 'ok' }));
   });
 });
 
@@ -590,6 +618,7 @@ function mergeAnonymousInto(fromId, toId, cb) {
         if (finished) return;
         finished = true;
         db.run("DELETE FROM sessions WHERE tg_id = ?", [fromId]);
+        db.run("DELETE FROM link_codes WHERE tg_id = ?", [fromId]);
         db.run("DELETE FROM users WHERE tg_id = ?", [fromId], () => cb(true));
       };
       db.serialize(() => {
@@ -865,6 +894,7 @@ app.post('/api/dashboard', (req, res) => {
                   consumption,
                   norms: calcNorms(user),
                   user,
+                  meal_count: user.meal_count,
                   nextMeal,
                   mealsToday: (meals || []).length,
                   water: water ? water.amount_ml : 0,
