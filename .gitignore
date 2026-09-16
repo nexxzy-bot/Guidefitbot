@@ -13,3 +13,8 @@ sync.log
 sync2.log
 # резервные копии базы (npm run backup)
 backups/
+
+# Android: артефакты сборки и ключ подписи (не коммитить!)
+android/build/
+android/*.apk
+android/*.keystore
