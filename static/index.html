@@ -11,7 +11,9 @@
 <link rel="preload" href="/fonts/manrope-cyrillic.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="/fonts/manrope-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="/fonts.css">
-<script>try{var _t=localStorage.getItem("gf_theme");if(_t)document.documentElement.setAttribute("data-theme",_t);}catch(e){}</script>
+<script>try{var _t=localStorage.getItem("gf_theme");
+if(_t==="sys"||!_t){_t=(window.matchMedia&&window.matchMedia("(prefers-color-scheme: dark)").matches)?"dark":"light";}
+if(_t)document.documentElement.setAttribute("data-theme",_t);}catch(e){}</script>
 <style>
 :root{--bg:#F2F7FC;--bg2:#E7F0F9;--surface:#FFFFFF;--surface2:#F6FAFE;--solid:#EDF4FB;--border:#E1EBF5;--border2:#D3E2F0;--text:#0C2233;--text2:#4A617A;--text3:#5E7386;--accent:#0D9BE8;--accent-dark:#0A7FC4;--accent-dim:#E1F2FC;--accent-text:#FFFFFF;--amber:#F59E0B;--amber-dim:#FEF3DF;--cyan:#06B6D4;--cyan-dim:#DFF7FB;--blue:#06B6D4;--blue-dim:#DFF7FB;--green:#10B981;--green-dim:#DFF7EC;--red:#EF4444;--red-dim:#FDE8E8;--violet:#7C6FF0;--violet-dim:#ECEAFF;--r-sm:12px;--r:22px;--r-lg:24px;--r-xl:28px;--sh:0 12px 32px rgba(12,60,100,.08);--sh-sm:0 4px 14px rgba(12,60,100,.06);--shadow:var(--sh)}
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
@@ -153,6 +155,9 @@ select.input{appearance:none}
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 .toast.err{background:var(--red)}
 .toast.ok{background:var(--green)}
+.modal-wrap{position:fixed;inset:0;background:rgba(9,20,32,.55);display:none;align-items:center;justify-content:center;z-index:240;padding:22px}
+.modal-wrap.show{display:flex}
+.modal-box{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);padding:22px;width:100%;max-width:340px;box-shadow:var(--sh);animation:fadeUp .22s ease}
 .tooltip{position:relative;background:var(--cyan-dim);border:1px solid rgba(6,182,212,.2);color:var(--text);border-radius:18px;padding:13px 14px;font-size:13px;font-weight:600;margin-bottom:14px;display:flex;gap:10px;align-items:center}
 .tooltip b{color:#0891B2}
 .avatar{width:46px;height:46px;border-radius:50%;background:var(--accent);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:18px;overflow:hidden;flex-shrink:0}
@@ -209,6 +214,19 @@ body{touch-action:manipulation}
 <body>
 <div class="app">
 <div class="toast" id="toast"></div>
+<!-- v28: модальные подтверждения вместо нативного confirm() — в Telegram Mini App (особенно iOS)
+     window.confirm может не отображаться и всегда возвращать false: из-за этого «висли» экран
+     тренировки (navigate блокировался) и не работали кнопки удаления данных -->
+<div class="modal-wrap" id="modalWrap" role="dialog" aria-modal="true">
+  <div class="modal-box">
+    <h3 id="modalTitle" style="font-size:18px;margin-bottom:8px">Вы уверены?</h3>
+    <p class="muted" id="modalText" style="font-size:13.5px;line-height:1.6;margin-bottom:18px"></p>
+    <div class="flex gap2">
+      <button class="btn btn-ghost pressable" style="flex:1" id="modalCancel">Отмена</button>
+      <button class="btn pressable" style="flex:1" id="modalOk">Подтвердить</button>
+    </div>
+  </div>
+</div>
 <div class="rest-overlay" id="restOverlay">
   <p class="subtle" style="font-size:12px;font-weight:700;">Отдых между подходами</p>
   <div class="rest-circle"><div class="t" id="restTime">60</div></div>
@@ -235,12 +253,12 @@ body{touch-action:manipulation}
 <!-- ГЛАВНАЯ -->
 <div class="screen" id="screen-home">
   <div class="home-head">
-    <div class="avatar" id="homeAvatar"></div>
-    <div style="flex:1;min-width:0">
+    <div class="avatar pressable" id="homeAvatar" onclick="navigate('profile')" style="cursor:pointer"></div>
+    <div style="flex:1;min-width:0;cursor:pointer" class="pressable" onclick="navigate('profile')">
       <div class="subtle" style="font-size:12px;font-weight:600" id="greetingTime">Привет</div>
       <div style="font-size:18px;font-weight:800" id="dashName">друг</div>
     </div>
-    <button class="icon-btn pressable" onclick="navigate('profile')" aria-label="Настройки"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 1v4m0 14v4M4.2 4.2l2.8 2.8m10 10 2.8 2.8M1 12h4m14 0h4M4.2 19.8l2.8-2.8m10-10 2.8-2.8"/></svg></button>
+    <button class="icon-btn pressable" onclick="navigate('settings')" aria-label="Настройки"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button>
   </div>
   <div id="homeTip"></div>
   <div class="hero-card">
@@ -267,13 +285,14 @@ body{touch-action:manipulation}
     </div>
     <div style="width:46px;height:46px;border-radius:50%;background:var(--accent-dim);display:flex;align-items:center;justify-content:center;color:var(--accent)"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg></div>
   </div>
-  <div class="card mb4 hidden" id="dashProgramCard">
+  <div class="card mb4 hidden pressable" id="dashProgramCard" onclick="openActiveProgram()" style="cursor:pointer">
     <div class="flex between items-center mb2">
       <span class="badge badge-violet">Программа</span>
       <span class="subtle" style="font-size:11px;font-weight:700" id="dashProgramProgress"></span>
     </div>
     <h3 style="font-size:15px" id="dashProgramName">—</h3>
     <div class="track mt3"><div class="fill fill-violet" id="dashProgramBar" style="width:0%"></div></div>
+    <p class="subtle mt2" style="font-size:11px;display:flex;align-items:center;gap:5px">Нажми, чтобы продолжить тренировку <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="m9 18 6-6-6-6"/></svg></p>
   </div>
 </div>
 
@@ -290,14 +309,14 @@ body{touch-action:manipulation}
     <div class="card text-center" style="margin-bottom:0"><div class="subtle" style="font-size:11px;font-weight:700">Тренировка, мин</div><div style="font-weight:800;font-size:17px" id="statsWorkout">—</div></div>
     <div class="card" style="margin-bottom:0"><div class="flex items-center gap2"><div style="width:38px;height:38px;border-radius:13px;background:var(--violet-dim);color:var(--violet);display:flex;align-items:center;justify-content:center;flex-shrink:0"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="M6 13h12v6a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2v-6z"/><path d="M9 13V7h6v6"/><path d="M12 15.5h.01"/></svg></div><div style="flex:1;min-width:0"><div class="subtle" style="font-size:11px;font-weight:700">Вес</div><div style="font-weight:800;font-size:17px" id="statsWeightW">—</div></div></div><div class="flex items-center gap2 mt2"><div style="width:38px;height:38px;border-radius:13px;background:var(--blue-dim);color:var(--blue);display:flex;align-items:center;justify-content:center;flex-shrink:0"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="M12 2.5s6.5 7 6.5 11.5a6.5 6.5 0 0 1-13 0C5.5 9.5 12 2.5 12 2.5z"/></svg></div><div style="flex:1;min-width:0"><div class="subtle" style="font-size:11px;font-weight:700">Вода</div><div style="font-weight:800;font-size:17px" id="statsWeightH">—</div></div></div></div>
   </div>
-  <div class="card mb4" style="margin-top:14px"><h3 class="mb3">Вес</h3><div id="weightChart" style="height:170px"></div>
+  <div class="card mb4" style="margin-top:14px"><h3 class="mb3">Вес</h3><div id="weightChart" style="min-height:170px"></div>
     <div class="flex gap2 mt3"><input type="number" inputmode="decimal" step="0.1" class="input" id="newWeight" placeholder="Вес, кг" style="flex:1" onkeydown="if(event.key==='Enter')saveWeight()"><button class="btn btn-primary" onclick="saveWeight()">Сохранить</button></div></div>
 </div>
 
 <!-- ТРЕНИРОВКИ -->
 <div class="screen" id="screen-workouts">
   <div style="padding:8px 0 18px"><h2>Тренировки</h2></div>
-  <div id="woChips" style="display:flex;gap:8px;overflow-x:auto;margin-bottom:14px;padding-bottom:2px;scrollbar-width:none"></div>
+  <div id="woChips" class="wo-chips" style="display:flex;gap:8px;overflow-x:auto;margin-bottom:14px;padding-bottom:2px;scrollbar-width:none"></div>
   <div id="workoutContent"></div>
 </div>
 
@@ -364,6 +383,11 @@ function goStreak(){
   if(_apId){ openProgram(_apId); return; }
   navigate('workouts');
 }
+/* v28: карточка активной программы на главной — быстрый старт следующей тренировки */
+function openActiveProgram(){
+  if(_apId){ openProgram(_apId); return; }
+  navigate('workouts');
+}
 function plural(n, one, few, many){ n = Math.abs(n)%100; const d = n%10; if(n===1) return one; if(n>1&&n<5) return few; if(n>=5&&n<21) return many; if(d===1) return one; if(d>1&&d<5) return few; return many; }
 function haptic(style){ try{ if(tg && tg.HapticFeedback){ if(style==='ok') tg.HapticFeedback.notificationOccurred('success'); else if(style==='err') tg.HapticFeedback.notificationOccurred('error'); else tg.HapticFeedback.impactOccurred('light'); } }catch(e){} }
 
@@ -418,6 +442,33 @@ function showToast(msg, type){
 }
 function showError(m){ showToast(m,'error'); haptic('err'); }
 function showSuccess(m){ showToast(m,'success'); haptic('ok'); }
+
+/* v28: модальное подтверждение (Promise<boolean>) — замена window.confirm,
+   который в Telegram Mini App на iOS не показывается и вечно отвечает false:
+   это «замораживало» экран тренировки и блокировало удаление данных. */
+function uiConfirm(title, text, okLabel, danger){
+  return new Promise(function(resolve){
+    const wrap = document.getElementById('modalWrap');
+    if(!wrap){ resolve(window.confirm(text || title || '')); return; } // страховка
+    document.getElementById('modalTitle').textContent = title || 'Вы уверены?';
+    document.getElementById('modalText').textContent = text || '';
+    const ok = document.getElementById('modalOk');
+    const cancel = document.getElementById('modalCancel');
+    ok.textContent = okLabel || 'Подтвердить';
+    ok.style.background = danger ? 'var(--red)' : 'var(--accent)';
+    ok.style.color = '#fff';
+    wrap.classList.add('show');
+    const close = function(val){
+      wrap.classList.remove('show');
+      ok.onclick = null; cancel.onclick = null; wrap.onclick = null;
+      resolve(val);
+    };
+    ok.onclick = function(){ haptic(); close(true); };
+    cancel.onclick = function(){ haptic(); close(false); };
+    wrap.onclick = function(e){ if(e.target === wrap) close(false); };
+    try{ ok.focus(); }catch(e){}
+  });
+}
 
 async function api(endpoint, opts = {}){
   const headers = { 'Content-Type':'application/json' };
@@ -652,16 +703,28 @@ function leavingWorkoutOk(screen){
   try{
     const cur = document.querySelector('.screen.active');
     if(_wzExit || !cur || cur.id !== 'screen-active-workout' || screen === 'active-workout') return true;
-    if(!confirm('Прервать тренировку? Записанные подходы не сохранятся.')) return false;
+    if(!window._leavingWzOk) return false; // ожидание модального подтверждения — navigate отложен (v28: без window.confirm, он в Mini App зависал)
+    window._leavingWzOk = false;
     isProgramWorkout = false; currentProgramDay = null;
     return true;
   }catch(e){ return true; }
 }
 function navigate(screen){
   try{
-    if(!leavingWorkoutOk(screen)) return;
+    if(!leavingWorkoutOk(screen)){
+      // v28: подтверждение через модальное окно (window.confirm в Mini App не показывается и вечно false —
+      // из-за этого «зависал» экран тренировки). После ответа — продолжаем переход.
+      uiConfirm('Прервать тренировку?', 'Записанные подходы не сохранятся.', 'Прервать', true).then(function(yes){
+        if(!yes) return;
+        isProgramWorkout = false; currentProgramDay = null;
+        window._leavingWzOk = true;
+        navigate(screen);
+      });
+      return;
+    }
     const cur = document.querySelector('.screen.active');
-    if(cur && cur.id === 'screen-active-workout' && screen !== 'active-workout'){ clearInterval(workoutTimer); workoutTimer = null; }
+    if(cur && cur.id === 'screen-active-workout' && screen !== 'active-workout'){ clearInterval(workoutTimer); workoutTimer = null; if(typeof yfTimer !== 'undefined'){ clearInterval(yfTimer); yfTimer = null; } }
+    if(cur && cur.id === 'screen-settings'){ stopSupportChatPoll(); }
     if(screen !== 'active-workout'){ clearInterval(restTimer); restTimer = null; const ro = document.getElementById('restOverlay'); if(ro) ro.classList.remove('show'); }
     if(screen !== 'workouts' && screen !== 'program' && typeof yfTimer !== 'undefined'){ clearInterval(yfTimer); }
   }catch(e){}
@@ -698,32 +761,23 @@ document.addEventListener('click', e => {
   if(e.target.closest('.btn,.chip,.nav-item,.loc-card,.sel-btn,.meal-add,.icon-btn,.set-check')) haptic();
 }, true);
 
-/* свайп между вкладками + pull-to-refresh */
+/* v28: горизонтальный свайп между разделами УДАЛЁН — навигация только через нижнее меню
+   и явные элементы. Случайные свайпы при скролле/вводе воды уводили с экрана.
+   Pull-to-refresh (обновление экрана) сохранён. */
 (function(){
-  let sx=0, sy=0, st=0, pulling=false;
+  let sy=0, st=0, pulling=false;
   document.addEventListener('touchstart', e => {
-    sx = e.touches[0].clientX; sy = e.touches[0].clientY;
+    sy = e.touches[0].clientY;
     st = Date.now(); pulling = window.scrollY <= 0;
   }, {passive:true});
   document.addEventListener('touchend', e => {
-    const dx = e.changedTouches[0].clientX - sx, dy = e.changedTouches[0].clientY - sy;
+    const dy = e.changedTouches[0].clientY - sy;
     if(Date.now()-st > 600) return;
     const active = document.querySelector('.screen.active');
     if(!active) return;
     const id = active.id.replace('screen-','');
-    /* v26.1: открыто обучение (спотлайт-тур) — жесты не переключают вкладки и не перезапускают тур */
     if(document.getElementById('tourOverlay')) return;
-    if(pulling && dy > 90 && Math.abs(dx) < 40 && TABS.includes(id)){ haptic(); navigate(id); return; }
-    if(TABS.includes(id) && Math.abs(dx) > 70 && Math.abs(dy) < 40){
-      /* нельзя свайпить из активной тренировки — случайно собьёт незаписанный прогресс;
-         v26: свайпы запрещены и на онбординге/входе (только кнопки), и при быстром
-         вводе воды (tgt-качание по горизонтали читалось как свайп и уводило с экрана) */
-      if(id === 'active-workout' || id === 'onboard' || id === 'login') return;
-      if(e.target && e.target.closest && e.target.closest('#waterCard')) return;
-      const i = TABS.indexOf(id);
-      const next = TABS[dx < 0 ? Math.min(i+1, TABS.length-1) : Math.max(i-1, 0)];
-      if(next !== id){ haptic(); navigate(next); }
-    }
+    if(pulling && dy > 90 && TABS.includes(id)){ haptic(); navigate(id); return; }
   }, {passive:true});
 })();
 
@@ -1063,7 +1117,7 @@ async function loadStats(){
       api('/api/stats/' + currentUser.tg_id),
       api('/api/weight/' + currentUser.tg_id).catch(() => ({ history: [] }))
     ]);
-    renderWeightChart(wl.history || []);
+    renderWeightChart((wl.history || []).length ? wl.history : (data.currentWeight ? [{ date: new Date().toISOString().slice(0,10), weight: data.currentWeight }] : []));
     $('statsCals').textContent = Math.round(data.todayCalories);
     $('statsTarget').textContent = data.targetCalories;
     const chart = $('barChart');
@@ -1094,11 +1148,20 @@ async function openProgram(id){
     }catch(e){}
     const contDay = apW ? days.find(x => x.week === apW && x.day === apD) : null;
     const goalNames = {lose:'Похудение', gain:'Набор', maintain:'Поддержание'};
+    /* v28: прогресс для шкалы на кнопке — считаем по ДНЯМ ЖЕ ЭТОЙ программы (не общий) */
+    let prgDone = 0, prgTotal = days.length;
+    if(apW){
+      const totalDays = prgTotal || 1;
+      prgDone = Math.min(Math.max(((apW - 1) * Math.max(Math.round(totalDays / (p.duration_weeks || 1)), 1) + apD - 1), 0), totalDays);
+    }
+    const btnHtml = apW
+      ? '<button class="btn btn-primary btn-block mb4" onclick="startProgramDay(' + contDay.id + ')">Продолжить: неделя ' + apW + ', день ' + apD + '</button>'
+      : '<button id="startProgramBtn" class="btn btn-primary btn-block mb4" onclick="startProgram(' + p.id + ')">Начать программу</button>';
     $('programContent').innerHTML =
       '<div class="card mb4"><h2 style="margin-bottom:4px">' + esc(p.name) + '</h2>' +
       '<p class="muted" style="font-size:13px;line-height:1.5">' + esc(p.description) + '</p>' +
       '<div class="flex gap2 mt3" style="flex-wrap:wrap"><span class="badge badge-violet">' + p.duration_weeks + ' недель</span><span class="badge badge-amber">' + esc(goalNames[p.goal] || p.goal) + '</span><span class="badge badge-green">' + (p.difficulty==='beginner' ? 'Новичок' : 'Средний') + '</span></div></div>' +
-      (contDay ? '<button class="btn btn-primary btn-block mb4" onclick="startProgramDay(' + contDay.id + ')">Продолжить: неделя ' + apW + ', день ' + apD + '</button>' : '<button class="btn btn-primary btn-block mb4" onclick="startProgram(' + p.id + ')">Начать программу</button>') +
+      btnHtml +
       '<h3 class="mb3">Расписание (' + days.length + ' дней)</h3>' +
       days.map(day =>
         '<div class="day-card pressable" onclick="startProgramDay(' + day.id + ')">' +
@@ -1114,11 +1177,27 @@ async function openProgram(id){
   }catch(e){ showError('Ошибка загрузки программы'); }
 }
 
+/* v28: старт программы — кнопка сразу заменяется шкалой прогресса ЭТОЙ программы
+   (раньше кнопка оставалась до повторного захода — непонятно, началась ли программа) */
+function renderProgramStartBar(el, done, total){
+  if(!el) return;
+  const pct = total > 0 ? Math.min(Math.round(done / total * 100), 100) : 0;
+  el.innerHTML = '<div class="card mb4" style="background:var(--accent-dim);border-color:var(--accent)">' +
+    '<div class="flex between items-center mb1"><h3 style="font-size:15px">Программа начата</h3>' +
+    '<span class="subtle" style="font-size:11px;font-weight:800">' + done + ' / ' + total + ' тренировок</span></div>' +
+    '<div class="track"><div class="fill fill-accent" style="width:' + pct + '%"></div></div>' +
+    '<p class="subtle mt2" style="font-size:11px">Выбери день ниже — начнём первую тренировку</p></div>';
+}
 async function startProgram(pid){
   try{
     await api('/api/user/program/start', { method:'POST', body:{ tg_id: currentUser.tg_id, program_id: pid } });
     showSuccess('Программа начата!');
-    loadDashboard();
+    _apId = pid;
+    /* шкала считается по расписанию открытой программы, а не по общему числу дней */
+    const d = await api('/api/program/' + pid);
+    const btn = document.getElementById('startProgramBtn');
+    if(btn) renderProgramStartBar(btn.parentElement, 0, (d.days || []).length);
+    if(typeof loadDashboard === 'function') loadDashboard();
   }catch(e){ showError(e.message); }
 }
 
@@ -1183,13 +1262,14 @@ function startTimer(){
 }
 function toggleTimer(){
   timerPaused = !timerPaused;
-  $('timerBtn').textContent = timerPaused ? 'Продолжить' : 'Пауза';
+  const b = $('timerBtn'); if(b) b.textContent = timerPaused ? 'Продолжить' : 'Пауза'; // v28: guard — на финальном экране кнопки нет
 }
 
-function abortWorkout(){
-  if(!confirm('Завершить без сохранения? Тренировка не запишется.')) return;
+async function abortWorkout(){
+  if(!await uiConfirm('Завершить без сохранения?', 'Тренировка не запишется.', 'Не сохранять', true)) return;
   clearInterval(workoutTimer); workoutTimer = null;
-  skipRest();
+  clearInterval(restTimer); restTimer = null;
+  const ro = document.getElementById('restOverlay'); if(ro) ro.classList.remove('show');
   isProgramWorkout = false; currentProgramDay = null;
   _wzExit = true;
   try{ navigate('workouts'); } finally{ _wzExit = false; }
@@ -1457,7 +1537,7 @@ async function logCurrentMeal(){
 }
 
 async function deleteMeal(logId){
-  if(!confirm('Удалить приём пищи?')) return;
+  if(!await uiConfirm('Удалить приём пищи?', 'Запись исчезнет из дневника за сегодня.', 'Удалить', true)) return;
   try{
     await api('/api/food-log/' + logId + '?tg_id=' + currentUser.tg_id, { method:'DELETE' });
     showSuccess('Удалено');
@@ -1467,31 +1547,39 @@ async function deleteMeal(logId){
 
 /* ============ профиль ============ */
 
+/* v28: график веса. Было: при 1 записи писалось «взвесься ещё раз» и линия не рисовалась вовсе,
+   при 2–3 точках полилиния растягивалась на всю ширину (viewBox 400 при 10px данных).
+   Стало: ширина полотна пропорциональна числу точек — компактный вид за пару дней,
+   который «заполняется» по мере добавления записей и к 10 показаниям занимает всю ширину. */
 function renderWeightChart(history){
   const chart = $('weightChart');
-  if(history.length > 1){
-    const vals = history.slice().reverse();
-    const min = Math.min.apply(null, vals.map(v => v.weight)) - 2;
-    const max = Math.max.apply(null, vals.map(v => v.weight)) + 2;
-    const range = max - min || 1, W = 400, H = 160, pad = 24;
-    const pts = vals.map((v, i) => {
-      const x = pad + (i / (vals.length - 1)) * (W - pad * 2);
-      const y = H - pad - ((v.weight - min) / range) * (H - pad * 2);
-      return x.toFixed(1) + ',' + y.toFixed(1);
-    }).join(' ');
-    let grid = '';
-    for(let i = 0; i <= 3; i++){ const gy = pad + (i / 3) * (H - pad * 2); grid += '<line x1="' + pad + '" y1="' + gy + '" x2="' + (W - pad) + '" y2="' + gy + '" stroke="rgba(12,34,51,.07)"/>'; }
-    chart.innerHTML = '<svg viewBox="0 0 ' + W + ' ' + H + '" style="width:100%;height:100%">' + grid +
-      '<polyline points="' + pts + '" fill="none" stroke="var(--accent)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>' +
-      vals.map((v, i) => {
-        const x = pad + (i / (vals.length - 1)) * (W - pad * 2);
-        const y = H - pad - ((v.weight - min) / range) * (H - pad * 2);
-        return '<circle cx="' + x.toFixed(1) + '" cy="' + y.toFixed(1) + '" r="4.5" fill="var(--surface)" stroke="var(--accent)" stroke-width="2.5"/>';
-      }).join('') + '</svg>' +
-      '<div class="flex between mt2"><span class="subtle" style="font-size:10px;font-weight:700">' + esc(vals[0].date.slice(5)) + '</span><span class="subtle" style="font-size:10px;font-weight:700">' + esc(vals[vals.length-1].date.slice(5)) + '</span></div>';
-  } else if(history.length === 1){
-    chart.innerHTML = '<div class="empty" style="padding:16px">Первая запись: ' + esc(String(history[0].weight)) + ' кг — взвесься ещё раз, появится линия</div>';
-  } else chart.innerHTML = '<div class="empty" style="padding:16px">Записывай вес — здесь появится график</div>';
+  if(!chart) return;
+  const vals = history.slice().reverse(); // старые → новые
+  if(!vals.length){ chart.innerHTML = '<div class="empty" style="padding:16px">Записывай вес — здесь появится график</div>'; return; }
+  const H = 160, padY = 26, dotR = 4.5;
+  // ширина под точки: полное («десятичное») поле ≈ 340px, каждая точка получает равную долю
+  const fullW = 340, slotW = fullW / 10;
+  const W = Math.max(Math.round(vals.length * slotW), 46);
+  const weights = vals.map(v => Number(v.weight)).filter(w => isFinite(w));
+  let min = Math.min.apply(null, weights), max = Math.max.apply(null, weights);
+  if(min === max){ min -= 1; max += 1; } else { const m = (max - min) * 0.15; min -= m; max += m; }
+  const range = max - min || 1;
+  const px = i => vals.length === 1 ? W / 2 : padY * 0.4 + (i / (vals.length - 1)) * (W - padY * 0.8);
+  const py = w => H - padY - ((w - min) / range) * (H - padY * 2);
+  let grid = '';
+  for(let i = 0; i <= 3; i++){ const gy = padY + (i / 3) * (H - padY * 2); grid += '<line x1="0" y1="' + gy.toFixed(1) + '" x2="' + W + '" y2="' + gy.toFixed(1) + '" stroke="rgba(12,34,51,.07)"/>'; }
+  const pts = vals.map((v, i) => px(i).toFixed(1) + ',' + py(Number(v.weight)).toFixed(1)).join(' ');
+  // точки: одна запись — просто крупная отметка (линия не нужна); две и больше — линия
+  const dots = vals.map((v, i) =>
+    '<g><circle cx="' + px(i).toFixed(1) + '" cy="' + py(Number(v.weight)).toFixed(1) + '" r="' + dotR + '" fill="var(--surface)" stroke="var(--accent)" stroke-width="2.5"/>' +
+    '<text x="' + px(i).toFixed(1) + '" y="' + (py(Number(v.weight)) - 10).toFixed(1) + '" text-anchor="middle" font-size="9.5" font-weight="700" fill="var(--text3)" font-family="Manrope,sans-serif">' + Number(v.weight) + '</text></g>'
+  ).join('');
+  chart.innerHTML =
+    '<div style="overflow-x:auto;scrollbar-width:none"><svg width="' + W + '" height="' + H + '" viewBox="0 0 ' + W + ' ' + H + '" style="display:block;margin:0 auto;max-width:100%">' + grid +
+    (vals.length > 1 ? '<polyline points="' + pts + '" fill="none" stroke="var(--accent)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>' : '') +
+    dots + '</svg></div>' +
+    '<div class="flex between mt2"><span class="subtle" style="font-size:10px;font-weight:700">' + esc(String(vals[0].date).slice(5)) + '</span><span class="subtle" style="font-size:10px;font-weight:700">' + esc(String(vals[vals.length-1].date).slice(5)) + '</span></div>' +
+    (vals.length < 10 ? '<p class="subtle mt2" style="font-size:11px;text-align:center">Записей: ' + vals.length + ' из 10 — график заполняется</p>' : '');
 }
 
 async function setMealCount(n){
@@ -1605,7 +1693,7 @@ async function woRenderYoga(c){
     let html = '<p class="subtle mb3" style="font-size:12.5px;line-height:1.6">Йога в этом приложении — инструмент жиросжигания: статические позы нагружают мышцы без ударов по суставам, а практика снижает кортизол — гормон, который заставляет тело запасать жир на животе.</p>';
     yfCache.forEach(f => {
       html += '<div class="prog-card pressable" onclick="woOpenFlow(' + f.id + ')">' +
-        '<div class="flex between items-center"><h3 style="font-size:17px">' + esc(f.title) + '</h3>' +
+        '<div class="flex between items-center" style="gap:10px"><h3 style="font-size:17px">' + esc(f.title) + '</h3>' +
         '<span class="badge ' + (f.focus==='Жиросжигание'?'badge-accent':'badge-violet') + '">' + esc(f.focus) + '</span></div>' +
         '<div class="prog-tags"><span class="badge badge-blue">' + f.minutes + ' мин</span>' +
         '<span class="badge badge-amber">' + esc(f.level) + '</span></div>' +
@@ -1700,10 +1788,15 @@ async function woFinishFlow(){
 <style>
 .wz-dots{display:flex;gap:6px;justify-content:center;margin-bottom:12px}
 .wz-dot{width:9px;height:9px;border-radius:50%}
-.wz-photo{width:100%;height:180px;border-radius:18px;background:var(--solid);display:flex;align-items:center;justify-content:center;color:var(--accent);overflow:hidden;margin-bottom:14px}
+.wz-photo{width:100%;height:220px;border-radius:18px;background:var(--solid);display:flex;align-items:center;justify-content:center;color:var(--accent);overflow:hidden;margin-bottom:14px}
 .wz-photo img{width:100%;height:100%;object-fit:cover}
 .wz-set{width:52px;height:52px;border-radius:16px;border:2px solid var(--border);background:var(--surface);display:flex;align-items:center;justify-content:center;font-family:'Bebas Neue';font-size:20px;color:var(--text3)}
 .wz-set.done{background:var(--green);border-color:var(--green);color:#fff}
+/* v28: единые отступы для однотипных строк-карточек (аудит) */
+.meal-item{margin-bottom:10px}
+.ach{margin-bottom:10px}
+.exlib-item{margin-bottom:10px}
+.exercise-row{margin-bottom:10px}
 .wz-main{min-height:60px;font-size:17px;border-radius:20px}
 .tour-ic{width:64px;height:64px;border-radius:20px;background:var(--accent-dim);color:var(--accent);display:flex;align-items:center;justify-content:center;margin:0 auto 14px}
 .tour-dots{display:flex;gap:6px;justify-content:center;margin:14px 0}
@@ -1717,6 +1810,10 @@ async function woFinishFlow(){
 /* центральная подсказка (шаг без спотлайта: элемента нет на экране) */
 .spot-hint.spot-center{left:50%;top:50%;transform:translate(-50%,-50%);width:calc(100% - 44px);max-width:320px;text-align:center}
 .spot-hint.spot-center:after{display:none}
+/* v28: центральной подсказке — анимация без transform: fadeUp подменял translate(-50%,-50%),
+   и финальная карточка сначала отрисовывалась в углу, затем «переезжала» в центр */
+@keyframes fadeInOnly{from{opacity:0}to{opacity:1}}
+.spot-hint.spot-center{animation:fadeInOnly .22s ease}
 /* v26.1: кнопки тура — одной строкой и НАД нижним таббаром (раньше панель лежала прямо на нём и перекрывала подсвеченные кнопки) */
 .spot-nav{position:absolute;left:0;right:0;bottom:calc(88px + env(safe-area-inset-bottom,0px));display:flex;flex-direction:row;gap:8px;padding:0 22px;z-index:222}
 /* v26.1: служебную строку виджета VK («или войти через VK с использованием данных из сервиса») не показываем */
@@ -1829,17 +1926,21 @@ function tourMaybe(screen){
     // экран главной должен быть реально активен: уход с тренировки может быть отменён в диалоге
     const home = document.getElementById('screen-home');
     if(!home || !home.classList.contains('active')) return;
+    // v28: защита от двойного запуска — navigate('home') вызывается из нескольких мест,
+    // оба таймера доходили до tourShow(), второй удалял и заново создавал оверлей (визуальное «моргание»)
+    if(document.getElementById('tourOverlay') || window._tourStarting) return;
     if(localStorage.getItem('gf_tour_' + tourUid())) return;
+    window._tourStarting = true;
     /* ждём рендер дашборда (waterCard/streakPlate появляются после ответа /api/dashboard), максимум ~3с */
     let tries = 0;
     const tick = function(){
       tries++;
       const ready = !!document.querySelector('#screen-home.active #waterCard');
-      if(ready || tries > 12){ tourIdx = 0; tourShow(); return; }
+      if(ready || tries > 12){ window._tourStarting = false; tourIdx = 0; tourShow(); return; }
       setTimeout(tick, 250);
     };
     tick();
-  }catch(e){}
+  }catch(e){ window._tourStarting = false; }
 }
 try{
   const _navOrig = navigate;
@@ -1869,6 +1970,28 @@ try{
 .th-btn{flex:1;display:flex;align-items:center;justify-content:center;gap:7px;padding:13px;border-radius:15px;background:var(--solid);border:1.5px solid var(--border);font-size:13.5px;font-weight:800;color:var(--text2)}
 .th-btn.active{background:var(--accent);border-color:var(--accent);color:#fff}
 .set-field{margin-bottom:12px}
+/* v28: вкладки настроек, чат поддержки, аккордеон достижений */
+.set-tabs{display:flex;gap:6px;overflow-x:auto;margin-bottom:14px;padding-bottom:2px;scrollbar-width:none}
+.set-tab{flex-shrink:0;padding:10px 15px;border-radius:99px;background:var(--surface);border:1.5px solid var(--border);font-size:12.5px;font-weight:800;color:var(--text2)}
+.set-tab.active{background:var(--accent);border-color:var(--accent);color:#fff;box-shadow:0 6px 14px rgba(13,155,232,.35)}
+.ach-group{background:var(--surface);border:1px solid var(--border);border-radius:16px;margin-bottom:9px;overflow:hidden;box-shadow:var(--sh-sm)}
+.ach-hd{width:100%;display:flex;align-items:center;gap:10px;background:none;border:none;padding:14px 15px;text-align:left;font-family:inherit}
+.ach-hd .ttl{flex:1;font-weight:800;font-size:14px;color:var(--text)}
+.ach-hd .cnt{font-size:11px;font-weight:800;color:var(--text3);white-space:nowrap}
+.ach-hd .arr{color:var(--text3);transition:transform .2s ease;flex-shrink:0}
+.ach-group.open .ach-hd .arr{transform:rotate(90deg)}
+.ach-body{display:none;padding:2px 10px 10px}
+.ach-group.open .ach-body{display:block}
+.chat-wrap{display:flex;flex-direction:column;gap:0;height:calc(100vh - 190px);min-height:340px}
+.chat-msgs{flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:8px;padding:4px 2px 10px}
+.chat-msg{max-width:82%;padding:10px 13px;border-radius:16px;font-size:13.5px;line-height:1.5;white-space:pre-wrap;word-break:break-word}
+.chat-msg.user{align-self:flex-end;background:var(--accent);color:#fff;border-bottom-right-radius:5px}
+.chat-msg.admin{align-self:flex-start;background:var(--solid);color:var(--text);border-bottom-left-radius:5px}
+.chat-msg .tm{display:block;font-size:9.5px;opacity:.7;margin-top:4px;font-weight:700}
+.chat-input-row{display:flex;gap:8px;padding-top:10px;border-top:1px solid var(--border)}
+.chat-input-row input{flex:1;background:var(--surface);border:1.5px solid var(--border);border-radius:15px;padding:12px 14px;font-size:14px;font-weight:600;color:var(--text);outline:none}
+.chat-input-row input:focus{border-color:var(--accent)}
+.chat-send{width:46px;height:46px;border-radius:50%;background:var(--accent);color:#fff;border:none;display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 6px 14px rgba(13,155,232,.35)}
 </style>
 <script>
 try{
@@ -1876,22 +1999,37 @@ try{
   ICONS.moon = '<path d="M20.5 14.5A8.5 8.5 0 1 1 9.5 3.5a7 7 0 0 0 11 11z"/>';
 }catch(e){}
 function getTheme(){ return document.documentElement.getAttribute('data-theme') || 'light'; }
+/* v28: сохранённое значение может быть 'sys' — следуем за системной темой устройства */
+function getThemeSaved(){ try{ return localStorage.getItem('gf_theme') || 'sys'; }catch(e){ return 'sys'; } }
 function setTheme(t, silent){
-  document.documentElement.setAttribute('data-theme', t);
+  let apply = t;
+  if(t === 'sys'){ apply = (window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches) ? 'dark' : 'light'; }
+  document.documentElement.setAttribute('data-theme', apply);
   try{ localStorage.setItem('gf_theme', t); }catch(e){}
   const meta = document.querySelector('meta[name="theme-color"]');
-  if(meta) meta.setAttribute('content', t === 'dark' ? '#0D1319' : '#F2F7FC');
-  const l = document.getElementById('thLight'), d = document.getElementById('thDark');
+  if(meta) meta.setAttribute('content', apply === 'dark' ? '#0D1319' : '#F2F7FC');
+  const l = document.getElementById('thLight'), d = document.getElementById('thDark'), s = document.getElementById('thSys');
   if(l) l.classList.toggle('active', t === 'light');
   if(d) d.classList.toggle('active', t === 'dark');
+  if(s) s.classList.toggle('active', t === 'sys');
   if(!silent && typeof haptic === 'function') haptic();
 }
+/* живая синхронизация: пока выбрано «Как в системе», смена темы устройства тут же перекрашивает приложение */
+try{
+  const _mq = window.matchMedia("(prefers-color-scheme: dark)");
+  const _onSys = function(){
+    if(getThemeSaved() !== 'sys') return;
+    setTheme('sys', true);
+  };
+  if(_mq.addEventListener) _mq.addEventListener('change', _onSys); else if(_mq.addListener) _mq.addListener(_onSys);
+}catch(e){}
 function themeBlock(){
-  const cur = getTheme();
+  const cur = getThemeSaved();
   return '<div class="card mb4"><h3 class="mb3">Тема оформления</h3><div class="flex gap2">' +
     '<button class="th-btn pressable' + (cur==='light'?' active':'') + '" id="thLight" onclick="setTheme(\'light\')">' + ic('sun',17) + ' Светлая</button>' +
     '<button class="th-btn pressable' + (cur==='dark'?' active':'') + '" id="thDark" onclick="setTheme(\'dark\')">' + ic('moon',17) + ' Тёмная</button>' +
-    '</div></div>';
+    '<button class="th-btn pressable' + (cur==='sys'?' active':'') + '" id="thSys" onclick="setTheme(\'sys\')">' + ic('nut',17) + ' Системная</button>' +
+    '</div><p class="subtle mt2" style="font-size:11px">«Системная» — приложение следует настройке тёмной/светлой темы телефона.</p></div>';
 }
 async function saveProfileSettings(){
   if(!currentUser) return;
@@ -1985,7 +2123,8 @@ async function loadProfile(){
       weeklyReportCard(report) +
       workoutHistoryCard(wlogs && wlogs.logs) +
       '<div class="flex between items-center mb3"><h3>Достижения</h3><span class="badge badge-amber" id="achCount"></span></div><div id="achList"></div>' +
-      '<button class="btn btn-ghost btn-block pressable mb4 mt3" onclick="navigate(\'settings\')" style="display:flex;align-items:center;justify-content:center;gap:8px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 1v4m0 14v4M4.2 4.2l2.8 2.8m10 10 2.8 2.8M1 12h4m14 0h4M4.2 19.8l2.8-2.8m10-10 2.8-2.8"/></svg> Настройки</button>';
+      '<button class="btn btn-ghost btn-block pressable mb4 mt3" onclick="openSupportTab()" style="display:flex;align-items:center;justify-content:center;gap:8px">' + ic('person',16) + ' Чат поддержки</button>' +
+      '<button class="btn btn-ghost btn-block pressable mb4 mt2" onclick="navigate(\'settings\')" style="display:flex;align-items:center;justify-content:center;gap:8px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 1v4m0 14v4M4.2 4.2l2.8 2.8m10 10 2.8 2.8M1 12h4m14 0h4M4.2 19.8l2.8-2.8m10-10 2.8-2.8"/></svg> Настройки</button>';
     try{
       const av = document.getElementById('profAvatar');
       if(av && user.avatar){ av.innerHTML = '<img src="' + esc(user.avatar) + '" referrerpolicy="no-referrer" loading="lazy" decoding="async" alt="">'; }
@@ -2010,95 +2149,74 @@ async function loadProfile(){
       }
       localStorage.setItem(key, JSON.stringify(list.filter(a => a.unlocked).map(a => a.id)));
     }catch(e){}
-    document.getElementById('achList').innerHTML = list.map(a =>
-      '<div class="ach' + (a.unlocked ? '' : ' locked') + '">' +
-      '<div class="ach-ic">' + ic(a.icon || 'trophy', 20) + '</div>' +
-      '<div style="flex:1"><div style="font-weight:800;font-size:13.5px">' + esc(a.title || a.name || '') + '</div>' +
-      '<div class="subtle" style="font-size:11.5px;margin-top:2px">' + esc(a.description || '') + '</div></div>' +
-      (a.unlocked ? '' : ic('lock',16)) + '</div>').join('') || '<div class="empty">Пока нет достижений</div>';
+    document.getElementById('achList').innerHTML = achAccordionHtml(list);
+    try{
+      const saved = JSON.parse(localStorage.getItem('gf_ach_open') || '[]');
+      (Array.isArray(saved) ? saved : []).forEach(function(g){ const el = document.getElementById('achgrp-' + g); if(el) el.classList.add('open'); });
+    }catch(e){}
   }catch(e){ c.innerHTML = '<div class="empty">Не удалось загрузить</div>'; }
   _profileLoading = false;
 }
-/* Напоминания рассылает Telegram-бот: у аккаунтов ВК и анонимных чата с ним нет,
-   поэтому тумблер им не показываем — иначе интерфейс обещает то, чего не будет. */
-function isTelegramAccount(){
-  try{ if(tg && tg.initData) return true; }catch(e){}
-  return !!(currentUser && currentUser.provider === 'tg');
+/* v28: достижения — сворачиваемые группы (аккордеон) вместо сплошного списка.
+   Открытые группы запоминаем в localStorage. */
+const ACH_GROUPS = {
+  workouts: { title: 'Тренировки', icon: 'dumbbell' },
+  workout_streak: { title: 'Серии', icon: 'flame' },
+  water_streak: { title: 'Вода', icon: 'droplet' },
+  meals: { title: 'Питание', icon: 'chef' },
+  volume: { title: 'Сила', icon: 'trophy' },
+  other: { title: 'Разное', icon: 'sparkles' }
+};
+function achAccordionHtml(list){
+  if(!list || !list.length) return '<div class="empty">Пока нет достижений</div>';
+  const groups = {};
+  list.forEach(function(a){
+    const g = ACH_GROUPS[a.condition_type] ? a.condition_type : 'other';
+    (groups[g] = groups[g] || []).push(a);
+  });
+  let html = '';
+  Object.keys(ACH_GROUPS).forEach(function(g){
+    const items = groups[g];
+    if(!items || !items.length) return;
+    const un = items.filter(function(a){ return a.unlocked; }).length;
+    html += '<div class="ach-group" id="achgrp-' + g + '">' +
+      '<button type="button" class="ach-hd pressable" onclick="toggleAchGroup(\'' + g + '\')">' +
+        '<span style="width:36px;height:36px;border-radius:12px;background:var(--amber-dim);color:var(--amber);display:flex;align-items:center;justify-content:center;flex-shrink:0">' + ic(ACH_GROUPS[g].icon, 17) + '</span>' +
+        '<span class="ttl">' + ACH_GROUPS[g].title + '</span>' +
+        '<span class="cnt">' + un + ' / ' + items.length + '</span>' +
+        '<span class="arr">' + ic('chevron', 15) + '</span></button>' +
+      '<div class="ach-body">' + items.map(function(a){
+        return '<div class="ach' + (a.unlocked ? '' : ' locked') + '">' +
+          '<div class="ach-ic">' + ic(a.icon || 'trophy', 20) + '</div>' +
+          '<div style="flex:1"><div style="font-weight:800;font-size:13.5px">' + esc(a.title || a.name || '') + '</div>' +
+          '<div class="subtle" style="font-size:11.5px;margin-top:2px">' + esc(a.description || '') + '</div></div>' +
+          (a.unlocked ? '' : ic('lock',16)) + '</div>';
+      }).join('') + '</div></div>';
+  });
+  return html || '<div class="empty">Пока нет достижений</div>';
 }
-function hasLinkedChat(){ return !!(currentUser && currentUser.notify_chat_id); }
-function notifyAvailable(){ return isTelegramAccount() || hasLinkedChat(); }
-function notifyBlock(){
-  let h = '<div class="card mb4"><h3 class="mb3">Уведомления</h3>';
-  if(notifyAvailable()){
-    h += '<button class="btn btn-ghost btn-block pressable" onclick="toggleNotifyUI()" style="display:flex;align-items:center;justify-content:center;gap:8px">' + ic('sparkles',16) + ' <span id="notifyLblSettings">Уведомления: …</span></button>' +
-      '<p class="subtle mt2" style="font-size:11px">Напоминания о приёмах пищи, взвешивании и недельный отчёт по понедельникам.</p>';
-    if(hasLinkedChat() && !isTelegramAccount()){
-      h += '<button class="btn btn-ghost btn-block pressable mt2" onclick="unlinkTelegram()" style="font-size:12.5px;color:var(--text3)">Отвязать Telegram</button>';
-    }
-  } else {
-    h += '<p class="muted" style="font-size:12.5px;line-height:1.6;margin-bottom:12px">Напоминания отправляет Telegram-бот. Подключите его к этому аккаунту — и он будет напоминать о еде, воде и взвешивании.</p>' +
-      '<button class="btn btn-primary btn-block pressable" onclick="linkTelegram()" style="display:flex;align-items:center;justify-content:center;gap:8px">' + ic('sparkles',16) + ' Подключить напоминания</button>';
-  }
-  return h + '<div id="linkBox"></div></div>';
-}
-function copyText(t){
+function toggleAchGroup(g){
+  const el = document.getElementById('achgrp-' + g);
+  if(!el) return;
+  el.classList.toggle('open');
+  if(typeof haptic === 'function') haptic();
   try{
-    if(navigator.clipboard && navigator.clipboard.writeText){
-      navigator.clipboard.writeText(t).then(function(){ showSuccess('Скопировано'); }, function(){ showToast('Скопируйте вручную', 'err'); });
-    } else showToast('Скопируйте вручную', 'err');
-  }catch(e){ showToast('Скопируйте вручную', 'err'); }
+    const open = Array.prototype.map.call(document.querySelectorAll('.ach-group.open'), function(n){ return n.id.replace('achgrp-', ''); });
+    localStorage.setItem('gf_ach_open', JSON.stringify(open));
+  }catch(e){}
 }
-async function linkTelegram(){
-  const box = document.getElementById('linkBox');
-  try{
-    if(box) box.innerHTML = '<div class="shimmer" style="height:40px;margin-top:12px"></div>';
-    const d = await api('/api/user/link/telegram', { method:'POST' });
-    if(!d || !d.link) throw new Error('Не удалось получить код');
-    if(box){
-      box.innerHTML = '<div style="background:var(--accent-dim);border-radius:14px;padding:12px;margin-top:12px;text-align:left">' +
-        '<div style="font-size:11.5px;font-weight:800;margin-bottom:6px">Откройте бота и отправьте ему команду:</div>' +
-        '<div style="font-family:monospace;font-size:13px;font-weight:800;word-break:break-all;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:8px">/start link_' + esc(d.code) + '</div>' +
-        '<div style="display:flex;gap:8px;margin-top:10px">' +
-          '<a class="btn btn-primary pressable" style="flex:1;text-decoration:none;text-align:center" href="' + esc(d.link) + '" target="_blank" rel="noopener">Открыть бота</a>' +
-          '<button class="btn btn-ghost pressable" style="flex:1" onclick="checkLink()">Я подключил</button>' +
-        '</div>' +
-        '<button class="btn btn-ghost btn-block pressable mt2" style="font-size:12px" onclick="copyText(\'/start link_' + esc(d.code) + '\')">Скопировать команду</button>' +
-        '<p class="subtle" style="font-size:11px;margin-top:8px">Код действует 1 час и срабатывает один раз.</p>' +
-      '</div>';
-    }
-    showToast('Команда: /start link_' + d.code, 'success');
-  }catch(e){
-    if(box) box.innerHTML = '';
-    showError((e && e.message) || 'Не удалось получить код');
-  }
-}
-async function checkLink(){
-  try{
-    const u = await api('/api/user/' + currentUser.tg_id);
-    currentUser = u;
-    if(hasLinkedChat()){ showSuccess('Готово! Напоминания подключены'); loadSettings(); }
-    else showToast('Привязку не вижу. Отправьте боту команду и нажмите снова', 'err');
-  }catch(e){ showError(e.message); }
-}
-async function unlinkTelegram(){
-  try{
-    await api('/api/user/link/telegram/remove', { method:'POST' });
-    currentUser.notify_chat_id = null;
-    showSuccess('Telegram отвязан');
-    loadSettings();
-  }catch(e){ showError(e.message); }
-}
+/* v28: файл больше не «формируется в никуда» — получаем одноразовый токен и качаем
+   обычным GET с Content-Disposition (a[download] с blob не работает в webview Telegram) */
 async function exportMyData(){
   try{
     showToast('Готовим файл…', '');
-    const d = await api('/api/user/export');
-    const blob = new Blob([JSON.stringify(d, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
+    const t = await api('/api/user/export/token', { method:'POST', body:{} });
+    if(!t || !t.token) throw new Error('Не удалось подготовить файл');
     const a = document.createElement('a');
-    a.href = url; a.download = 'guidefit-dannye.json';
+    a.href = API + '/api/user/export?download=1&dt=' + encodeURIComponent(t.token);
+    a.rel = 'noopener';
     document.body.appendChild(a); a.click(); a.remove();
-    setTimeout(function(){ URL.revokeObjectURL(url); }, 4000);
-    showSuccess('Файл сформирован');
+    setTimeout(function(){ showSuccess('Файл скачан'); }, 800);
   }catch(e){ showError((e && e.message) || 'Не удалось выгрузить данные'); }
 }
 function aboutBlock(){
@@ -2106,7 +2224,7 @@ function aboutBlock(){
     '<div class="flex between" style="font-size:12.5px;padding:5px 0"><span class="muted">Версия</span><b id="aboutVersion">—</b></div>' +
     '<div class="flex between" style="font-size:12.5px;padding:5px 0"><span class="muted">Оператор</span><b>ИП Солдатенко Я. П.</b></div>' +
     '<div class="flex between" style="font-size:12.5px;padding:5px 0"><span class="muted">ОГРНИП</span><b>325246800130330</b></div>' +
-    '<p class="subtle mt2" style="font-size:11px;line-height:1.6">Возрастная категория: 12+. Приложение не является медицинским изделием и не заменяет консультацию врача. Расчёты и программы носят информационный характер. Фото блюд и упражнений — Pexels (бесплатная лицензия). Время и даты — по Москве (UTC+3).</p></div>';
+    '<p class="subtle mt2" style="font-size:11px;line-height:1.6">Возрастная категория: 12+. Приложение не является медицинским изделием и не заменяет консультацию врача. Расчёты и программы носят информационный характер. Фото блюд и упражнений — Pexels (бесплатная лицензия). Время напоминаний — по выбранному вами часовому поясу.</p></div>';
 }
 async function fillAboutVersion(){
   const el = document.getElementById('aboutVersion');
@@ -2116,53 +2234,238 @@ async function fillAboutVersion(){
     if(h && h.version) el.textContent = h.version;
   }catch(e){}
 }
+/* ================= v28: настройки — вкладки Профиль / Безопасность / О приложении / Поддержка ================= */
+let setTab = 'profile';
+function setTabGo(t){ setTab = t; loadSettings(); }
+function openSupportTab(){ setTab = 'support'; navigate('settings'); }
+/* ---- встроенный чат поддержки (v28): сообщения хранятся на сервере по tg_id,
+        админу приходит уведомление в Telegram, его ответ виден здесь же ---- */
+function supportChatHtml(){
+  return '<div class="card mb4"><h3 class="mb3">Чат поддержки</h3>' +
+    '<p class="subtle" style="font-size:11.5px;margin-bottom:10px">Напишите вопрос — ответ появится здесь. Обычно отвечаем в течение дня.</p>' +
+    '<div class="chat-wrap"><div class="chat-msgs" id="chatMsgs"><div class="empty">Загрузка…</div></div>' +
+    '<div class="chat-input-row"><input id="chatInput" type="text" maxlength="1500" placeholder="Ваше сообщение…" onkeydown="if(event.key===\'Enter\')sendSupportMsg()">' +
+    '<button class="chat-send pressable" onclick="sendSupportMsg()" aria-label="Отправить"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg></button></div></div></div>';
+}
+let _chatLastCount = -1, _chatPollT = null;
+async function loadSupportChat(){
+  const box = document.getElementById('chatMsgs');
+  if(!box) return;
+  try{
+    const d = await api('/api/support/messages');
+    const ms = d.messages || [];
+    if(ms.length === _chatLastCount){ return; } // без изменений — не мигаем перерисовкой
+    _chatLastCount = ms.length;
+    if(!ms.length){ box.innerHTML = '<div class="empty">Пока сообщений нет. Напишите нам!</div>'; }
+    else box.innerHTML = ms.map(function(m){
+      return '<div class="chat-msg ' + (m.sender === 'admin' ? 'admin' : 'user') + '">' + esc(m.text) +
+        (m.time ? '<span class="tm">' + esc(String(m.time).slice(11, 16)) + '</span>' : '') + '</div>';
+    }).join('');
+    box.scrollTop = box.scrollHeight;
+  }catch(e){ box.innerHTML = '<div class="empty">Не удалось загрузить чат</div>'; }
+}
+/* поллинг, пока чат открыт: ответ админа появляется сам, без повторного захода */
+function stopSupportChatPoll(){
+  if(_chatPollT){ clearTimeout(_chatPollT); _chatPollT = null; }
+  _chatLastCount = -1;
+}
+function scheduleSupportChatPoll(){
+  stopSupportChatPoll();
+  _chatPollT = setTimeout(async function poll(){
+    const sc = document.getElementById('screen-settings');
+    if(!sc || !sc.classList.contains('active') || (setTab !== 'support')){ stopSupportChatPoll(); return; }
+    try{ await loadSupportChat(); }catch(e){}
+    scheduleSupportChatPoll();
+  }, 15000);
+}
+async function sendSupportMsg(){
+  const inp = document.getElementById('chatInput');
+  if(!inp) return;
+  const text = inp.value.trim();
+  if(!text){ showError('Введите сообщение'); return; }
+  if(!currentUser){ showError('Войдите, чтобы написать в поддержку'); return; }
+  inp.value = '';
+  try{
+    await api('/api/support/message', { method:'POST', body:{ text } });
+    if(typeof haptic === 'function') haptic('ok');
+    showSuccess('Сообщение отправлено');
+    loadSupportChat();
+  }catch(e){ showError((e && e.message) || 'Не удалось отправить'); inp.value = text; }
+}
+/* ---- push-уведомления (v28): системный запрос разрешения вместо «подключить напоминания».
+        Не чаще 2 push в день; время — по выбранному часовому поясу ---- */
+function pushSupported(){ return typeof Notification !== 'undefined'; }
+function pushEnabled(){ try{ return localStorage.getItem('gf_push') === '1'; }catch(e){ return false; } }
+async function enablePush(){
+  if(!pushSupported()){ showError('Устройство не поддерживает push-уведомления'); return; }
+  let perm = Notification.permission;
+  if(perm === 'default'){
+    try{ perm = await Notification.requestPermission(); }catch(e){ perm = 'denied'; }
+  }
+  if(perm !== 'granted'){ showError('Разрешение на уведомления не выдано'); return; }
+  try{ localStorage.setItem('gf_push', '1'); }catch(e){}
+  if(typeof haptic === 'function') haptic('ok');
+  showSuccess('Push-уведомления включены');
+  scheduleLocalPush();
+  loadSettings();
+}
+function disablePush(){
+  try{ localStorage.setItem('gf_push', '0'); }catch(e){}
+  if(window._pushTimer){ clearTimeout(window._pushTimer); window._pushTimer = null; }
+  showSuccess('Push-уведомления выключены');
+  loadSettings();
+}
+function nextPushAt(){
+  try{
+    const tz = (currentUser && currentUser.timezone) || 'Europe/Moscow';
+    const now = new Date();
+    const h = parseInt(new Intl.DateTimeFormat('en-GB', { hour:'2-digit', hour12:false, timeZone:tz }).format(now), 10);
+    const mk = function(hh){ const d = new Date(now); d.setHours(hh, 0, 0, 0); return d; };
+    if(h < 11) return mk(11);
+    if(h < 20) return mk(20);
+    const d = mk(11); d.setDate(d.getDate() + 1); return d;
+  }catch(e){ return new Date(Date.now() + 3600000); }
+}
+function scheduleLocalPush(){
+  if(!pushSupported() || Notification.permission !== 'granted') return;
+  if(!pushEnabled()) return;
+  if(window._pushTimer){ clearTimeout(window._pushTimer); window._pushTimer = null; }
+  const at = nextPushAt();
+  window._pushTimer = setTimeout(function(){
+    try{
+      const key = 'gf_push_d' + new Date().toISOString().slice(0, 10);
+      const n = parseInt(localStorage.getItem(key) || '0', 10);
+      if(n < 2){
+        localStorage.setItem(key, String(n + 1));
+        new Notification('GuideFit', { body: 'Пора проверить дневник: вода, питание и тренировка 💪', tag: 'guidefit-reminder' });
+      }
+    }catch(e){}
+    scheduleLocalPush();
+  }, Math.max(at.getTime() - Date.now(), 5000));
+}
+try{ if(pushSupported() && Notification.permission === 'granted'){ setTimeout(scheduleLocalPush, 4000); } }catch(e){}
+/* ---- часовой пояс: выбор из списка зон России (без геолокации) ---- */
+const RU_TZ = [
+  ['Europe/Kaliningrad','Калининград (UTC+2)'],
+  ['Europe/Moscow','Москва (UTC+3)'],
+  ['Europe/Samara','Самара (UTC+4)'],
+  ['Asia/Yekaterinburg','Екатеринбург (UTC+5)'],
+  ['Asia/Omsk','Омск (UTC+6)'],
+  ['Asia/Krasnoyarsk','Красноярск (UTC+7)'],
+  ['Asia/Irkutsk','Иркутск (UTC+8)'],
+  ['Asia/Yakutsk','Якутск (UTC+9)'],
+  ['Asia/Vladivostok','Владивосток (UTC+10)'],
+  ['Asia/Magadan','Магадан (UTC+11)'],
+  ['Asia/Kamchatka','Камчатка (UTC+12)']
+];
+async function saveTimezone(v){
+  try{
+    await api('/api/user/update', { method:'POST', body:{ tg_id: currentUser.tg_id, timezone: v } });
+    currentUser.timezone = v;
+    if(typeof haptic === 'function') haptic('ok');
+    showSuccess('Часовой пояс сохранён');
+  }catch(e){ showError(e.message); }
+}
+function pushNotifyBlock(){
+  const on = pushSupported() && Notification.permission === 'granted' && pushEnabled();
+  let h = '<div class="card mb4"><h3 class="mb3">Уведомления</h3>';
+  if(on){
+    h += '<p class="muted" style="font-size:12.5px;line-height:1.55;margin-bottom:12px">Push-напоминания включены: не чаще двух в день, в удобное время по вашему часовому поясу.</p>' +
+      '<button class="btn btn-ghost btn-block pressable" onclick="disablePush()">Выключить push-уведомления</button>';
+  } else {
+    h += '<p class="muted" style="font-size:12.5px;line-height:1.55;margin-bottom:12px">Включите push-напоминания о воде, питании и взвешивании. Не чаще двух раз в день — без спама.</p>' +
+      '<button class="btn btn-primary btn-block pressable" onclick="enablePush()">Включить push-уведомления</button>';
+  }
+  const curTz = (currentUser && currentUser.timezone) || 'Europe/Moscow';
+  h += '<div class="set-field" style="margin-top:16px"><label class="input-label">Ваш часовой пояс</label>' +
+    '<select class="input" onchange="saveTimezone(this.value)">' +
+    RU_TZ.map(function(z){ return '<option value="' + z[0] + '"' + (z[0] === curTz ? ' selected' : '') + '>' + z[1] + '</option>'; }).join('') +
+    '</select><p class="subtle mt2" style="font-size:11px">От часового пояса зависит время напоминаний. Геолокация не используется.</p></div></div>';
+  return h;
+}
 function loadSettings(){
   const c = $('settingsContent');
   if(!c || !currentUser) return;
   const u = currentUser;
-  const goalChips = [['lose','Похудение'],['maintain','Поддержание'],['gain','Набор массы']].map(g =>
-    '<label class="chip pressable' + (u.goal===g[0]?' active':'') + '" style="cursor:pointer"><input type="radio" name="setGoal" value="' + g[0] + '"' + (u.goal===g[0]?' checked':'') + ' style="display:none">' + g[1] + '</label>').join('');
-  c.innerHTML =
-    themeBlock() +
-    '<div class="card mb4"><h3 class="mb3">Мои данные</h3>' +
-      '<div class="set-field"><label class="input-label">Имя</label><input class="input" id="setName" value="' + esc(u.name) + '"></div>' +
-      '<div class="grid2">' +
-        '<div class="set-field"><label class="input-label">Возраст</label><input class="input" type="number" inputmode="numeric" id="setAge" value="' + u.age + '"></div>' +
-        '<div class="set-field"><label class="input-label">Рост, см</label><input class="input" type="number" inputmode="numeric" id="setHeight" value="' + u.height + '"></div>' +
-        '<div class="set-field"><label class="input-label">Вес, кг</label><input class="input" type="number" inputmode="decimal" step="0.1" id="setWeight" value="' + u.current_weight + '"></div>' +
-        '<div class="set-field"><label class="input-label">Целевой вес</label><input class="input" type="number" inputmode="decimal" step="0.1" id="setTarget" value="' + u.target_weight + '"></div>' +
-      '</div>' +
-      '<label class="input-label">Цель</label><div class="flex gap2 mb3" style="flex-wrap:wrap">' + goalChips + '</div>' +
-      '<button class="btn btn-primary btn-block pressable" onclick="saveProfileSettings()">Сохранить</button>' +
-      '<p class="subtle mt2" style="font-size:11.5px">После сохранения норма калорий пересчитается автоматически.</p></div>' +      '<div class="card mb4"><h3 class="mb3">Приёмы пищи в день</h3><div class="flex gap2">' +
-      [2,3,4,5,6].map(n => '<button class="chip pressable' + (u.meal_count===n?' active':'') + '" id="mc' + n + '" onclick="setMealCount(' + n + ')">' + n + '</button>').join('') + '</div></div>' +
-    /* v26.1: привязка VK/Одноклассников — только для анонимного standalone-аккаунта */
-    (/^anon:/.test(String(u.tg_id || '')) ?
-      '<div class="card mb4"><h3 class="mb3">Аккаунт</h3>' +
-        '<p class="muted" style="font-size:12.5px;line-height:1.55;margin-bottom:12px">Привяжи VK или Одноклассники, чтобы входить с любого устройства и не потерять прогресс.</p>' +
-        '<div id="setVkSlot" style="display:flex;flex-direction:column;gap:10px;min-height:56px"></div>' +
-        '<p class="subtle mt2" id="setVkMsg" style="display:none"></p></div>' : '') +
-    notifyBlock() +
-    '<div class="card mb4"><h3 class="mb3">Ваши данные</h3>' +
-      '<button class="btn btn-ghost btn-block pressable" onclick="exportMyData()" style="display:flex;align-items:center;justify-content:center;gap:8px">' + ic('pen',16) + ' Скачать копию данных (JSON)</button>' +
-      '<p class="subtle mt2" style="font-size:11px;line-height:1.55">Профиль, дневник питания, вода, вес, тренировки и достижения — право на доступ к своим данным.</p></div>' +
-    aboutBlock() +
-    '<a href="https://t.me/nexxdsgn" target="_blank" rel="noopener" class="btn btn-ghost btn-block pressable" style="text-decoration:none;display:flex;align-items:center;justify-content:center;gap:8px">' + ic('person',16) + ' Написать в поддержку · t.me/nexxdsgn</a>' +
-    '<a href="/privacy.html" target="_blank" rel="noopener" class="btn btn-ghost btn-block pressable mt2" style="text-decoration:none;display:flex;align-items:center;justify-content:center;gap:8px">Политика обработки персональных данных</a>' +
-    '<a href="/terms.html" target="_blank" rel="noopener" class="btn btn-ghost btn-block pressable mt2" style="text-decoration:none;display:flex;align-items:center;justify-content:center;gap:8px">Пользовательское соглашение</a>' +
-    '<button class="btn btn-ghost btn-block pressable mt2" onclick="doLogout()" style="display:flex;align-items:center;justify-content:center;gap:8px;color:#e0504b"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg> Выйти</button>' +
-    '<button class="btn btn-danger btn-block pressable mt2" onclick="doDeleteData()" style="display:flex;align-items:center;justify-content:center;gap:8px">Удалить мои данные</button>';
-  const nl = document.getElementById('notifyLblSettings');
-  if(nl) nl.textContent = 'Уведомления: ' + ((u.notify_enabled) ? 'включены' : 'выключены');
-  /* v26.1: виджет привязки — в standalone и только пока аккаунт анонимный */
-  try{
-    if(/^anon:/.test(String(u.tg_id || '')) && !tgUid()){
-      initVkLogin('setVkSlot', 'setVkMsg', function(p){ settingsVkLogin(p); });
-    }
-  }catch(e){}
-  fillAboutVersion();
+  const tab = setTab || 'profile';
+  const tabs = [['profile','Профиль'],['security','Безопасность'],['about','О приложении'],['support','Поддержка']]
+    .map(function(t){ return '<button class="set-tab pressable' + (tab===t[0]?' active':'') + '" onclick="setTabGo(\'' + t[0] + '\')">' + t[1] + '</button>'; }).join('');
+  let body = '';
+  if(tab === 'profile'){
+    const goalChips = [['lose','Похудение'],['maintain','Поддержание'],['gain','Набор массы']].map(function(g){
+      return '<label class="chip pressable' + (u.goal===g[0]?' active':'') + '" style="cursor:pointer"><input type="radio" name="setGoal" value="' + g[0] + '"' + (u.goal===g[0]?' checked':'') + ' style="display:none">' + g[1] + '</label>'; }).join('');
+    body =
+      themeBlock() +
+      '<div class="card mb4"><h3 class="mb3">Мои данные</h3>' +
+        '<div class="set-field"><label class="input-label">Имя</label><input class="input" id="setName" value="' + esc(u.name) + '"></div>' +
+        '<div class="grid2">' +
+          '<div class="set-field"><label class="input-label">Возраст</label><input class="input" type="number" inputmode="numeric" id="setAge" value="' + u.age + '"></div>' +
+          '<div class="set-field"><label class="input-label">Рост, см</label><input class="input" type="number" inputmode="numeric" id="setHeight" value="' + u.height + '"></div>' +
+          '<div class="set-field"><label class="input-label">Вес, кг</label><input class="input" type="number" inputmode="decimal" step="0.1" id="setWeight" value="' + u.current_weight + '"></div>' +
+          '<div class="set-field"><label class="input-label">Целевой вес</label><input class="input" type="number" inputmode="decimal" step="0.1" id="setTarget" value="' + u.target_weight + '"></div>' +
+        '</div>' +
+        '<label class="input-label">Цель</label><div class="flex gap2 mb3" style="flex-wrap:wrap">' + goalChips + '</div>' +
+        '<button class="btn btn-primary btn-block pressable" onclick="saveProfileSettings()">Сохранить</button>' +
+        '<p class="subtle mt2" style="font-size:11.5px">После сохранения норма калорий пересчитается автоматически.</p></div>' +
+      '<div class="card mb4"><h3 class="mb3">Приёмы пищи в день</h3><div class="flex gap2">' +
+        [2,3,4,5,6].map(function(n){ return '<button class="chip pressable' + (u.meal_count===n?' active':'') + '" id="mc' + n + '" onclick="setMealCount(' + n + ')">' + n + '</button>'; }).join('') + '</div></div>' +
+      (/^anon:/.test(String(u.tg_id || '')) ?
+        '<div class="card mb4"><h3 class="mb3">Аккаунт</h3>' +
+          '<p class="muted" style="font-size:12.5px;line-height:1.55;margin-bottom:12px">Привяжи VK или Одноклассники, чтобы входить с любого устройства и не потерять прогресс.</p>' +
+          '<div id="setVkSlot" style="display:flex;flex-direction:column;gap:10px;min-height:56px"></div>' +
+          '<p class="subtle mt2" id="setVkMsg" style="display:none"></p></div>' : '') +
+      pushNotifyBlock();
+  } else if(tab === 'security'){
+    body =
+      '<div class="card mb4"><h3 class="mb3">Ваши данные</h3>' +
+        '<button class="btn btn-ghost btn-block pressable" onclick="exportMyData()" style="display:flex;align-items:center;justify-content:center;gap:8px">' + ic('pen',16) + ' Скачать копию данных (JSON)</button>' +
+        '<p class="subtle mt2" style="font-size:11px;line-height:1.55">Профиль, дневник питания, вода, вес, тренировки и достижения — право на доступ к своим данным.</p></div>' +
+      '<div class="card mb4"><h3 class="mb3">Опасная зона</h3>' +
+        '<p class="muted" style="font-size:12.5px;line-height:1.55;margin-bottom:12px">Удаление данных необратимо: дневники, тренировки и прогресс будут стёрты. Перед удалением можно скачать копию данных.</p>' +
+        '<button class="btn btn-danger btn-block pressable" onclick="doDeleteData()">Удалить мои данные</button></div>';
+  } else if(tab === 'about'){
+    body = aboutBlock() +
+      '<a href="/privacy.html" target="_blank" rel="noopener" class="btn btn-ghost btn-block pressable" style="text-decoration:none;display:flex;align-items:center;justify-content:center;gap:8px">Политика обработки персональных данных</a>' +
+      '<a href="/terms.html" target="_blank" rel="noopener" class="btn btn-ghost btn-block pressable mt2" style="text-decoration:none;display:flex;align-items:center;justify-content:center;gap:8px">Пользовательское соглашение</a>';
+  } else {
+    body = supportChatHtml();
+  }
+  c.innerHTML = '<div class="set-tabs">' + tabs + '</div>' + body +
+    '<div class="flex gap2" style="margin-top:24px">' +
+      '<button class="btn btn-ghost pressable" style="flex:1;color:#e0504b" onclick="doLogout()"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg> Выйти</button>' +
+      '<button class="btn btn-danger pressable" style="flex:1" onclick="doDeleteProfile()">Удалить профиль</button>' +
+    '</div>';
+  if(tab === 'support'){ loadSupportChat(); scheduleSupportChatPoll(); }
+  if(tab === 'profile'){
+    try{
+      if(/^anon:/.test(String(u.tg_id || '')) && !tgUid()){
+        initVkLogin('setVkSlot', 'setVkMsg', function(p){ settingsVkLogin(p); });
+      }
+    }catch(e){}
+  }
+  if(tab === 'about') fillAboutVersion();
 }
-function doLogout(){
+/* v28: удаление профиля (внизу настроек) — с модальным подтверждением */
+async function doDeleteProfile(){
+  if(!currentUser) return;
+  const ok = await uiConfirm('Удалить профиль?', 'Вы уверены? Это действие нельзя отменить. Аккаунт и все данные будут удалены безвозвратно.', 'Удалить профиль', true);
+  if(!ok) return;
+  try{
+    await api('/api/user/delete', { method:'POST', body:{ tg_id: currentUser.tg_id } });
+    try{ localStorage.clear(); }catch(e){}
+    try{ if(sessionStorage) sessionStorage.clear(); }catch(e){}
+    location.reload();
+  }catch(e){ showError(e.message); }
+}
+async function doLogout(){
+  /* v28: подтверждение выхода. Для анонимного аккаунта (без VK/OK) выход реально
+     отрезает доступ к данным — предупреждаем явно. window.confirm заменён модальным окном. */
+  const anon = currentUser && /^anon:/.test(String(currentUser.tg_id || ''));
+  const vkLinked = !!(currentUser && currentUser.provider === 'vk');
+  if(anon || (!vkLinked && !tgUid())){
+    const ok = await uiConfirm('Выйти из аккаунта?', 'Вы уверены, что хотите выйти? Ваши данные будут недоступны без повторной авторизации.', 'Выйти', true);
+    if(!ok) return;
+  }
   if(typeof haptic === 'function') haptic();
   try{ localStorage.clear(); }catch(e){}
   try{ if(sessionStorage) sessionStorage.clear(); }catch(e){}
@@ -2170,7 +2473,10 @@ function doLogout(){
 }
 async function doDeleteData(){
   if(!currentUser) return;
-  if(!confirm('Все ваши данные будут удалены безвозвратно. Продолжить?')) return;
+  /* v28: обязательное модальное подтверждение перед необратимым удалением
+     (window.confirm в Mini App не показывался — кнопка «не работала») */
+  const ok = await uiConfirm('Удалить мои данные?', 'Вы уверены? Это действие нельзя отменить. Все дневники, тренировки и прогресс будут удалены безвозвратно.', 'Удалить всё', true);
+  if(!ok) return;
   try{
     await api('/api/user/delete', { method:'POST', body:{ tg_id: currentUser.tg_id } });
     try{ localStorage.clear(); }catch(e){}
@@ -2185,7 +2491,7 @@ try{
       const lab = e.target.closest('label.chip'); if(lab) lab.classList.add('active');
     }
   });
-  setTheme(getTheme(), true);
+  setTheme(getThemeSaved(), true);
 }catch(e){}
 </script>
 <script>
@@ -2240,6 +2546,8 @@ function tourOverlay(inner){
 }
 function tourShow(){
   try{
+    // v28: внешний запуск — только если тур ещё не показан (иначе два вызова моргали оверлеем)
+    if(tourIdx === 0 && document.getElementById('tourOverlay')) return;
     const step = TOUR_STEPS[tourIdx];
     if(!step){ tourFinal(); return; }
     const el = tourEl(step);
@@ -2409,36 +2717,19 @@ try{
     setTimeout(function(){
       const c = document.getElementById('profileContent');
       if(!c || document.getElementById('supportCard')) return;
+      /* v28: ссылка на t.me заменена встроенным чатом поддержки (Настройки → Поддержка) */
       const card = document.createElement('div');
       card.className = 'card mb4'; card.id = 'supportCard';
-      const canNotify = (typeof notifyAvailable === 'function') ? notifyAvailable() : true;
       card.innerHTML = '<h3 class="mb3">Помощь</h3>' +
-        '<a href="https://t.me/nexxdsgn" target="_blank" rel="noopener" class="btn btn-ghost btn-block pressable" style="text-decoration:none;display:flex;align-items:center;gap:8px">' + ic('person',16) + ' Написать в поддержку · t.me/nexxdsgn</a>' +
-        (canNotify
-          ? '<button class="btn btn-ghost btn-block pressable mt2" onclick="toggleNotifyUI()" style="display:flex;align-items:center;gap:8px">' + ic('sparkles',16) + ' <span id="notifyLbl">Уведомления: …</span></button>' +
-            '<p class="subtle mt2" style="font-size:11px">Напоминания о приёмах пищи, взвешивании и недельный отчёт по понедельникам.</p>'
-          : '<p class="subtle mt2" style="font-size:11px;line-height:1.6">Напоминания и недельный отчёт приходят в Telegram-боте — они доступны при запуске приложения из Telegram.</p>');
+        '<button class="btn btn-ghost btn-block pressable" onclick="openSupportTab()" style="display:flex;align-items:center;justify-content:center;gap:8px">' + ic('person',16) + ' Чат поддержки</button>' +
+        '<p class="subtle mt2" style="font-size:11px;line-height:1.6">Вопросы и предложения — прямо в приложении, ответ придёт в чат.</p>';
       c.appendChild(card);
-      const l = document.getElementById('notifyLbl');
-      if(l) l.textContent = 'Уведомления: ' + ((currentUser && currentUser.notify_enabled) ? 'включены' : 'выключены');
     }, 250);
     return r;
   };
 }catch(e){}
-async function toggleNotifyUI(){
-  if(!currentUser) return;
-  if(!notifyAvailable()){ showToast('Сначала подключите Telegram-бота', 'err'); return; }
-  try{
-    const r = await api('/api/notifications/toggle', { method: 'POST', body: { tg_id: currentUser.tg_id } });
-    currentUser.notify_enabled = r.notify_enabled;
-    if(typeof haptic === 'function') haptic('ok');
-    showSuccess('Уведомления ' + (r.notify_enabled ? 'включены' : 'выключены'));
-    ['notifyLblSettings','notifyLbl'].forEach(function(id){
-      const l = document.getElementById(id);
-      if(l) l.textContent = 'Уведомления: ' + (r.notify_enabled ? 'включены' : 'выключены');
-    });
-  }catch(e){ showToast('Не удалось переключить', 'err'); }
-}
+/* v28: тумблер Telegram-напоминаний и привязка бота удалены вместе с их UI —
+   заменены на push-уведомления (Настройки → Профиль) и встроенный чат поддержки. */
 </script>
 <style>
 .pg-bar{height:10px;border-radius:99px;background:var(--solid);overflow:hidden;margin-top:8px}
@@ -2451,6 +2742,11 @@ async function toggleNotifyUI(){
 .wz-photo{height:220px}
 .ex-photo{width:72px;height:72px}
 .exlib-thumb{width:60px;height:60px}
+.prog-card{position:relative;border-radius:20px;padding:18px;transition:transform .12s ease,box-shadow .2s ease}
+.prog-card:active{transform:scale(.985)}
+.prog-card.active-prog{border:1.5px solid var(--accent);background:linear-gradient(135deg,var(--accent-dim),var(--surface) 60%)}
+.prog-card.active-prog:before{content:'';position:absolute;left:0;top:16px;bottom:16px;width:4px;border-radius:99px;background:var(--accent)}
+.wo-chips{position:sticky;top:calc(8px + env(safe-area-inset-top,0px));z-index:5;background:var(--bg);padding:4px 0 8px;margin-top:-4px}
 /* v20: БЖУ внутри hero-карточки */
 .bju-toggle{display:inline-flex;align-items:center;gap:5px;margin-top:9px;padding:5px 10px;border-radius:12px;background:rgba(255,255,255,.16);font-size:12.5px;font-weight:800;color:#fff;cursor:pointer;transition:background .2s}
 .bju-toggle:active{background:rgba(255,255,255,.26)}
@@ -2593,14 +2889,17 @@ try{
   };
 }catch(e){}
 let woLevel = 'all';
+/* v28: карточка программы — палитра приложения, бейджи вместо текстовых тегов */
 function progCardHtml(p){
+  const diffCls = p.difficulty==='beginner'?'badge-green':'badge-amber';
   return '<div class="prog-card pressable" onclick="openProgram(' + p.id + ')">' +
-    '<div class="flex between items-center"><h3 style="font-size:17px">' + esc(p.name) + '</h3>' +
-    '<span class="badge ' + (p.difficulty==='beginner'?'badge-green':'badge-amber') + '">' + (p.difficulty==='beginner'?'Легко':'Средне') + '</span></div>' +
+    '<div class="flex between items-center" style="gap:10px"><h3 style="font-size:17px">' + esc(p.name) + '</h3>' +
+    '<span class="badge ' + diffCls + '">' + (p.difficulty==='beginner'?'Легко':'Средне') + '</span></div>' +
     '<div class="prog-tags">' +
     '<span class="badge badge-accent">' + p.duration_weeks + ' нед</span>' +
     '<span class="badge badge-blue">' + esc(p.location==='home'?'Дома':p.location==='gym'?'В зале':'На улице') + '</span>' +
-    '<span class="badge badge-violet">' + (p.type==='hiit'?'HIIT':p.type==='cardio'?'Кардио':p.type==='strength'?'Силовая':'Микс') + '</span></div>' +
+    '<span class="badge badge-violet">' + (p.type==='hiit'?'HIIT':p.type==='cardio'?'Кардио':p.type==='strength'?'Силовая':'Микс') + '</span>' +
+    '<span class="badge ' + diffCls + '">' + (p.difficulty==='beginner'?'Для новичков':'Средний уровень') + '</span></div>' +
     '<p class="muted" style="font-size:12.5px;line-height:1.6">' + esc(p.description) + '</p></div>';
 }
 async function loadWorkouts(){
@@ -2624,6 +2923,10 @@ async function loadWorkouts(){
   const c = document.getElementById('workoutContent');
   if(!c) return;
   c.innerHTML = '<div class="shimmer"></div><div class="shimmer"></div>';
+  const WO_SUBS = {
+    fat: 'Главный фокус приложения. Новичкам — начните с «Лёгкого старта» или «Мягкого утра».',
+    strength: 'Силовые тренировки на тонус. Мышцы — главный расходник калорий в покое.'
+  };
   if(woGoal === 'yoga'){ woRenderYoga(c); return; }
   if(woGoal === 'lib'){ woRenderLib(c); return; }
   try{
@@ -2644,13 +2947,11 @@ async function loadWorkouts(){
     }catch(e){}
     if(woLevel !== 'all') list = list.filter(p => p.difficulty === woLevel);
     list.sort(function(a, b){ return a.id - b.id; });
-    let html = '<p class="subtle mb3" style="font-size:12.5px;line-height:1.6">' + (woGoal==='fat'
-      ? 'Главный фокус приложения. Новичкам — начните с «Лёгкого старта» или «Мягкого утра».'
-      : 'Силовые тренировки на тонус. Мышцы — главный расходник калорий в покое.') + '</p>';
+    let html = '<p class="subtle mb3" style="font-size:12.5px;line-height:1.6">' + (WO_SUBS[woGoal] || '') + '</p>';
     if(!list.length && !active) html += '<div class="empty">Ничего не найдено</div>';
     if(active){
       const apd = apTotal || active.total_days || (active.days && active.days.length) || 0;
-      html += '<div class="prog-card pressable" style="border:1.5px solid var(--accent)" onclick="openProgram(' + active.id + ')">' +
+      html += '<div class="prog-card pressable active-prog" onclick="openProgram(' + active.id + ')">' +
         '<div class="flex between items-center"><h3 style="font-size:17px">' + esc(active.name) + '</h3>' +
         '<span class="badge badge-accent">Твоя программа</span></div>' +
         '<div class="prog-tags"><span class="badge badge-accent">' + active.duration_weeks + ' нед</span>' +

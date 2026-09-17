@@ -4,6 +4,8 @@ require('dotenv').config();
 // По умолчанию — Москва: без этого сервер живёт в UTC и день пользователя переключался в 03:00 МСК.
 if (!process.env.TZ) process.env.TZ = 'Europe/Moscow';
 const crypto = require('crypto');
+const fs = require('fs');
+const path = require('path');
 const db = require('./db');
 // Страховка: если db.js отдал пустой объект (битая/недописанная сборка или git-pull в момент старта),
 // раньше это давало шквал «db.run is not a function» и 500 на каждый /api-запрос.
@@ -16,6 +18,10 @@ if (!db || typeof db.run !== 'function' || typeof db.get !== 'function' || typeo
 // Версия приложения — из package.json (показывается в «О приложении» и /api/health)
 let APP_VERSION = '2.0.0';
 try { APP_VERSION = require('./package.json').version || APP_VERSION; } catch (e) {}
+
+// v28: Telegram-id администратора — уведомления о новых сообщениях чата поддержки.
+// Добавьте числовой ADMIN_ID в .env (id аккаунта, которому бот может писать).
+const ADMIN_ID = String(process.env.ADMIN_ID || '');
 
 const app = express();
 // Приложение стоит за nginx (app.xn--80aag3axnld9b.xn--p1ai → localhost:3000).
@@ -285,6 +291,19 @@ app.get('/api/health', (req, res) => {
   });
 });
 
+// Версия для Android-обёртки (RuStore: пользователь должен получать уведомление
+// о новой версии с рекомендацией обновиться через RuStore).
+// MIN_VERSION/FORCE_UPDATE можно задать в .env при критичных обновлениях.
+app.get('/api/app-version', (req, res) => {
+  res.json({
+    latest: APP_VERSION,
+    min: process.env.MIN_VERSION || APP_VERSION,
+    force: process.env.FORCE_UPDATE === '1',
+    store: 'https://www.rustore.ru/catalog/app/ru.guidefit.app',
+    message: ''
+  });
+});
+
 // Общий лимитер для чувствительных запросов (в памяти, без внешних зависимостей):
 // true — лимит исчерпан. Один и тот же ключ = один bucket.
 const limiterBuckets = new Map();
@@ -370,7 +389,7 @@ app.post('/api/user/update', (req, res) => {
     if (err) return res.status(500).json({ error: err.message });
     if (!user) return res.status(404).json({ error: 'User not found' });
     const fields = {};
-    ['current_weight', 'target_weight', 'goal', 'activity_level', 'name', 'age', 'height'].forEach(k => {
+    ['current_weight', 'target_weight', 'goal', 'activity_level', 'name', 'age', 'height', 'timezone'].forEach(k => {
       if (req.body[k] !== undefined) fields[k] = req.body[k];
     });
     if (fields.current_weight !== undefined && !(fields.current_weight >= 20 && fields.current_weight <= 400)) return res.status(400).json({ error: 'Invalid values' });
@@ -380,6 +399,10 @@ app.post('/api/user/update', (req, res) => {
     if (fields.goal !== undefined && !['lose', 'maintain', 'gain'].includes(fields.goal)) return res.status(400).json({ error: 'Invalid values' });
     if (fields.activity_level !== undefined && !['sedentary', 'light', 'moderate', 'active', 'very_active'].includes(fields.activity_level)) return res.status(400).json({ error: 'Invalid values' });
     if (fields.name !== undefined && (typeof fields.name !== 'string' || !fields.name.trim() || fields.name.length > 30)) return res.status(400).json({ error: 'Invalid values' });
+    if (fields.timezone !== undefined) {
+      const tzv = String(fields.timezone);
+      if (!tzv || tzv.length > 64 || !/^[A-Za-z0-9_\-+/]+$/.test(tzv)) return res.status(400).json({ error: 'Invalid values' });
+    }
     if (req.body.meal_count !== undefined) {
       const mc = parseInt(req.body.meal_count);
       if (mc >= 2 && mc <= 6) fields.meal_count = mc;
@@ -412,6 +435,7 @@ app.post('/api/user/delete', (req, res) => {
     db.run("DELETE FROM user_programs WHERE tg_id = ?", [tgId]);
     db.run("DELETE FROM user_achievements WHERE tg_id = ?", [tgId]);
     db.run("DELETE FROM notification_log WHERE tg_id = ?", [tgId]);
+    db.run("DELETE FROM support_messages WHERE tg_id = ?", [tgId]);
     // сессии тоже удаляем: иначе токен из localStorage продолжает открывать аккаунт
     db.run("DELETE FROM sessions WHERE tg_id = ?", [tgId]);
     // и неиспользованные коды привязки Telegram (иначе остаётся мусор после удаления)
@@ -664,9 +688,27 @@ function mergeAnonymousInto(fromId, toId, cb) {
 }
 
 /* ================= экспорт данных пользователя (право на доступ, 152-ФЗ ст. 14/20) ================= */
-app.get('/api/user/export', (req, res) => {
+// v28: одноразовый токен скачивания — файл отдаётся обычным GET с Content-Disposition,
+// поэтому скачивание работает и в webview Telegram (где a[download] для blob часто запрещён)
+const exportTokens = new Map();
+app.post('/api/user/export/token', (req, res) => {
   const tgId = resolveTgId(req);
   if (!tgId) return res.status(401).json({ error: 'Unauthorized' });
+  const t = crypto.randomBytes(24).toString('hex');
+  exportTokens.set(t, { tgId, exp: Date.now() + 120000 });
+  if (exportTokens.size > 1000) { const kill = Math.floor(exportTokens.size / 2); let i = 0; for (const k of exportTokens.keys()) { if (i++ >= kill) break; exportTokens.delete(k); } }
+  res.json({ token: t });
+});
+app.get('/api/user/export', (req, res) => {
+  let tgId = null;
+  const dtTok = String(req.query.dt || '');
+  if (dtTok) {
+    const rec = exportTokens.get(dtTok);
+    if (rec && rec.exp > Date.now()) { tgId = rec.tgId; exportTokens.delete(dtTok); }
+  }
+  if (!tgId) tgId = resolveTgId(req);
+  if (!tgId) return res.status(401).json({ error: 'Unauthorized' });
+  if (req.query.download) res.setHeader('Content-Disposition', 'attachment; filename="guidefit-dannye.json"');
   db.get("SELECT * FROM users WHERE tg_id = ?", [tgId], (e0, u) => {
     if (e0) { console.error('export user:', e0.message); return res.status(500).json({ error: 'Database error' }); }
     if (!u) return res.status(404).json({ error: 'User not found' });
@@ -773,6 +815,76 @@ app.get('/api/admin/user/:id', requireAdmin, (req, res) => {
   });
 });
 
+/* ================= админка: диалоги поддержки (v28) ================= */
+app.get('/api/admin/support/threads', requireAdmin, (req, res) => {
+  db.all(`SELECT sm.tg_id, u.name,
+      (SELECT text FROM support_messages m2 WHERE m2.tg_id = sm.tg_id ORDER BY m2.id DESC LIMIT 1) AS last_text,
+      (SELECT datetime(m3.created_at,'localtime') FROM support_messages m3 WHERE m3.tg_id = sm.tg_id ORDER BY m3.id DESC LIMIT 1) AS last_time
+    FROM support_messages sm LEFT JOIN users u ON u.tg_id = sm.tg_id
+    GROUP BY sm.tg_id ORDER BY MAX(sm.id) DESC LIMIT 200`, [], (err, rows) => {
+    if (err) return res.status(500).json({ error: err.message });
+    res.json({ threads: rows || [] });
+  });
+});
+
+app.get('/api/admin/support/thread/:id', requireAdmin, (req, res) => {
+  const id = String(req.params.id || '');
+  db.all("SELECT id, sender, text, datetime(created_at,'localtime') AS time FROM support_messages WHERE tg_id = ? ORDER BY id ASC LIMIT 500", [id], (err, rows) => {
+    if (err) return res.status(500).json({ error: err.message });
+    db.get("SELECT name FROM users WHERE tg_id = ?", [id], (e2, u) => {
+      res.json({ tg_id: id, name: (u && u.name) || '', messages: rows || [] });
+    });
+  });
+});
+
+app.post('/api/admin/support/reply', requireAdmin, (req, res) => {
+  const id = String(req.body?.tg_id || '');
+  const text = String(req.body?.text || '').trim();
+  if (!id || !text) return res.status(400).json({ error: 'Missing fields' });
+  if (text.length > 1500) return res.status(400).json({ error: 'Слишком длинное сообщение' });
+  db.run("INSERT INTO support_messages (tg_id, sender, text) VALUES (?, 'admin', ?)", [id, text], function (err) {
+    if (err) return res.status(500).json({ error: err.message });
+    // ответ сразу дублируем в Telegram пользователю (если известен его чат)
+    db.get("SELECT notify_chat_id FROM users WHERE tg_id = ?", [id], (e2, u) => {
+      const chat = u ? chatTarget(u) : null;
+      if (chat) sendTelegram(chat, '💬 Ответ поддержки GuideFit:\n\n' + text);
+    });
+    res.json({ status: 'ok', id: this.lastID });
+  });
+});
+
+/* ================= чат поддержки (встроенный) =================
+   v28: сообщения пользователя хранятся в БД с привязкой к tg_id; админу (ADMIN_ID)
+   уходит уведомление в Telegram; ответ админа появляется в чате приложения. */
+async function notifyAdmin(text) {
+  if (ADMIN_ID && isTelegramId(ADMIN_ID) && process.env.TELEGRAM_TOKEN) await sendTelegram(ADMIN_ID, text);
+}
+
+app.post('/api/support/message', (req, res) => {
+  const tgId = resolveTgId(req);
+  if (!tgId) return res.status(401).json({ error: 'Unauthorized' });
+  const text = String(req.body?.text || '').trim();
+  if (!text) return res.status(400).json({ error: 'Пустое сообщение' });
+  if (text.length > 1500) return res.status(400).json({ error: 'Слишком длинное сообщение' });
+  if (isLimited('support:' + tgId, 20, 3600000)) return res.status(429).json({ error: 'Слишком много сообщений. Попробуйте позже' });
+  db.run("INSERT INTO support_messages (tg_id, sender, text) VALUES (?, 'user', ?)", [tgId, text], function (err) {
+    if (err) return res.status(500).json({ error: err.message });
+    db.get("SELECT name FROM users WHERE tg_id = ?", [tgId], (e, u) => {
+      if (!e) notifyAdmin('💬 Новое сообщение в поддержке GuideFit\nОт: ' + ((u && u.name) || 'Без имени') + ' (' + tgId + ')\n\n' + text);
+    });
+    res.json({ status: 'ok', id: this.lastID });
+  });
+});
+
+app.get('/api/support/messages', (req, res) => {
+  const tgId = resolveTgId(req);
+  if (!tgId) return res.status(401).json({ error: 'Unauthorized' });
+  db.all("SELECT id, sender, text, datetime(created_at,'localtime') AS time FROM support_messages WHERE tg_id = ? ORDER BY id DESC LIMIT 100", [tgId], (err, rows) => {
+    if (err) return res.status(500).json({ error: err.message });
+    res.json({ messages: (rows || []).reverse() });
+  });
+});
+
 /* ================= Pexels фото ================= */
 async function fetchPexelsPhoto(query) {
   const key = process.env.PEXELS_API_KEY;
@@ -793,20 +905,25 @@ async function fetchPexelsPhoto(query) {
   }
 }
 
-app.get('/api/recipe-image/:id', async (req, res) => {
-  db.get("SELECT title, image_url, photo_query FROM recipes WHERE id = ?", [req.params.id], async (err, row) => {
-    if (err) return res.status(500).json({ error: err.message });
-    if (!row) return res.status(404).json({ error: 'Not found' });
-    const hasReal = row.image_url && row.image_url.length > 3 && row.image_url !== 'empty.jpg';
-    if (hasReal) return res.json({ image_url: row.image_url, cached: true });
-    const url = await fetchPexelsPhoto(row.photo_query || (row.title + ' food dish'));
-    if (url) {
-      db.run("UPDATE recipes SET image_url = ? WHERE id = ?", [url, req.params.id],
-        (err2) => { if (err2) console.error('cache err:', err2.message); });
-      return res.json({ image_url: url, cached: false });
-    }
-    res.json({ image_url: '', cached: false });
-  });
+app.get('/api/ex-photo', async (req, res) => {
+  try{
+    const q = String(req.query.q || '').slice(0, 80);
+    if(!q) return res.json({ url: null });
+    const slug = crypto.createHash('md5').update(q).digest('hex').slice(0, 16) + '.webp';
+    const localPath = path.join(IMG_DIR, slug);
+    const localUrl = '/images/cache/' + slug;
+    // 1) уже скачано ранее — отдаём локальный файл, Pexels не трогаем
+    if (fs.existsSync(localPath)) return res.json({ url: localUrl, cached: true });
+    const key = process.env.PEXELS_API_KEY;
+    if(!key) return res.json({ url: null });
+    const r = await fetch('https://api.pexels.com/v1/search?query=' + encodeURIComponent(q) + '&per_page=1&orientation=landscape', { headers: { Authorization: key } });
+    const d = await r.json();
+    const url = (d.photos && d.photos[0]) ? d.photos[0].src.medium : null;
+    if(!url) return res.json({ url: null });
+    // 2) первый запрос — скачиваем, сжимаем в webp и сохраняем на диск
+    const local = await cacheImageLocally(url, q);
+    res.json({ url: local || url, cached: !!local });
+  }catch(e){ res.json({ url: null }); }
 });
 
 /* ================= статистика и дашборд ================= */
@@ -1370,43 +1487,59 @@ app.get('/api/achievements/:tgId', (req, res) => {
 });
 
 /* ================= напоминания (раз в 30 мин) ================= */
+// v28: локальное время пользователя по ВЫБРАННОМУ часовому поясу (без геолокации)
+function userLocalHour(tz) {
+  try { return parseInt(new Intl.DateTimeFormat('en-GB', { hour: '2-digit', hour12: false, timeZone: tz }).format(new Date()), 10); }
+  catch (e) { return new Date().getHours(); }
+}
+function userLocalDate(tz) {
+  try { return new Intl.DateTimeFormat('en-CA', { timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date()); }
+  catch (e) { return localDate(); }
+}
+
 function runReminders() {
   if (!process.env.TELEGRAM_TOKEN) return;
-  const today = localDate();
-  const hour = new Date().getHours();
-  db.all("SELECT tg_id, name, created_at, notify_chat_id FROM users WHERE notify_enabled = 1 AND (notify_chat_id IS NOT NULL OR tg_id NOT LIKE '%:%')", [], (err, users) => {
+  db.all("SELECT tg_id, name, created_at, notify_chat_id, timezone FROM users WHERE notify_enabled = 1 AND (notify_chat_id IS NOT NULL OR tg_id NOT LIKE '%:%')", [], (err, users) => {
     if (err || !users) return;
     (users || []).forEach(u => {
       const chat = chatTarget(u);
       if (!chat) return;
+      const tz = u.timezone || 'Europe/Moscow';
+      const today = userLocalDate(tz);
+      const hour = userLocalHour(tz);
       const who = u.name || 'друг';
-      // вес: не записывал 3+ дня
-      if (hour === 10) {
-        db.get("SELECT MAX(date) d FROM weight_logs WHERE tg_id = ?", [u.tg_id], (e, r) => {
-          const last = r?.d || (u.created_at || '').slice(0, 10);
-          if (last && dayDiff(today, last) >= 3) {
-            notifyOnce(u.tg_id, chat, 'weight:' + today, today, `⚖️ ${who}, время взвеситься! Открой GuideFit и обнови вес — так статистика будет точной.`);
-          }
-        });
-      }
-      // без тренировок 3 дня
-      if (hour === 19) {
-        db.get("SELECT MAX(date) d, COUNT(*) c FROM workout_logs WHERE tg_id = ?", [u.tg_id], (e, r) => {
-          if (r && r.c > 0 && r.d && dayDiff(today, r.d) >= 3) {
-            notifyOnce(u.tg_id, chat, 'inactive:' + today, today, `🏃 ${who}, тебя не было 3 дня! Даже 15 минут тренировки вернут ритм. Заходи в GuideFit 💪`);
-          }
-        });
-      }
-      // приёмы пищи: в 9, 13, 17, 20 — если за последние 4 часа ничего не записано
-      if ([9, 13, 17, 20].includes(hour)) {
-        db.get(`SELECT COUNT(*) c FROM food_logs
-            WHERE tg_id = ? AND date(timestamp) = ? AND CAST(strftime('%H', timestamp) AS INTEGER) BETWEEN ? AND ?`,
-          [u.tg_id, today, Math.max(hour - 4, 0), hour], (e, r) => {
-            if (r && r.c === 0) {
-              notifyOnce(u.tg_id, chat, 'meal' + hour + ':' + today, today, `🍽️ ${who}, приём пищи записан? Загляни в GuideFit — там идеи блюд под твою цель.`);
+      // v28: не чаще 2 напоминаний в день на пользователя — считаем уже отправленные за сегодня
+      db.get("SELECT COUNT(DISTINCT type) c FROM notification_log WHERE tg_id = ? AND date = ?", [u.tg_id, today], (ec, rc) => {
+        if (ec) return;
+        if ((rc?.c || 0) >= 2) return;
+        // вес: не записывал 3+ дня
+        if (hour === 10) {
+          db.get("SELECT MAX(date) d FROM weight_logs WHERE tg_id = ?", [u.tg_id], (e, r) => {
+            const last = r?.d || (u.created_at || '').slice(0, 10);
+            if (last && dayDiff(today, last) >= 3) {
+              notifyOnce(u.tg_id, chat, 'weight:' + today, today, `⚖️ ${who}, время взвеситься! Открой GuideFit и обнови вес — так статистика будет точной.`);
             }
           });
-      }
+        }
+        // без тренировок 3 дня
+        if (hour === 19) {
+          db.get("SELECT MAX(date) d, COUNT(*) c FROM workout_logs WHERE tg_id = ?", [u.tg_id], (e, r) => {
+            if (r && r.c > 0 && r.d && dayDiff(today, r.d) >= 3) {
+              notifyOnce(u.tg_id, chat, 'inactive:' + today, today, `🏃 ${who}, тебя не было 3 дня! Даже 15 минут тренировки вернут ритм. Заходи в GuideFit 💪`);
+            }
+          });
+        }
+        // приёмы пищи: в 9, 13, 17, 20 — если за последние 4 часа ничего не записано
+        if ([9, 13, 17, 20].includes(hour)) {
+          db.get(`SELECT COUNT(*) c FROM food_logs
+              WHERE tg_id = ? AND date(timestamp) = ? AND CAST(strftime('%H', timestamp) AS INTEGER) BETWEEN ? AND ?`,
+            [u.tg_id, today, Math.max(hour - 4, 0), hour], (e, r) => {
+              if (r && r.c === 0) {
+                notifyOnce(u.tg_id, chat, 'meal' + hour + ':' + today, today, `🍽️ ${who}, приём пищи записан? Загляни в GuideFit — там идеи блюд под твою цель.`);
+              }
+            });
+        }
+      });
     });
   });
 }
@@ -1456,21 +1589,56 @@ app.use((err, req, res, next) => {
   res.status(500).json({ error: 'Internal error' });
 });
 
-// --- Фото упражнений через Pexels (ключ в .env: PEXELS_API_KEY) ---
-const photoCache = {};
-app.get('/api/ex-photo', async (req, res) => {
-  try{
-    const q = String(req.query.q || '').slice(0, 80);
-    if(!q) return res.json({ url: null });
-    if(photoCache[q]) return res.json(photoCache[q]);
-    const key = process.env.PEXELS_API_KEY;
-    if(!key) return res.json({ url: null });
-    const r = await fetch('https://api.pexels.com/v1/search?query=' + encodeURIComponent(q) + '&per_page=1&orientation=landscape', { headers: { Authorization: key } });
-    const d = await r.json();
-    const url = (d.photos && d.photos[0]) ? d.photos[0].src.medium : null;
-    if(url){ photoCache[q] = { url: url }; const ks = Object.keys(photoCache); if(ks.length > 300) delete photoCache[ks[0]]; }
-    res.json({ url: url });
-  }catch(e){ res.json({ url: null }); }
+// --- Фото упражнений/рецептов через Pexels (ключ в .env: PEXELS_API_KEY) ---
+// v28: кеш на диске (static/images/cache, webp через sharp). Pexels API дёргается
+// только ОДИН раз на конкретный запрос фото; повторные отдаём локально.
+let sharpLib = null;
+try { sharpLib = require('sharp'); } catch (e) { sharpLib = null; }
+const IMG_DIR = path.join(__dirname, 'static', 'images', 'cache');
+
+async function cacheImageLocally(remoteUrl, slugBase) {
+  try {
+    const slug = crypto.createHash('md5').update(String(slugBase || remoteUrl)).digest('hex').slice(0, 16) + '.webp';
+    const localPath = path.join(IMG_DIR, slug);
+    const localUrl = '/images/cache/' + slug;
+    if (fs.existsSync(localPath)) return localUrl;
+    const imgRes = await fetch(remoteUrl, { signal: AbortSignal.timeout(10000) });
+    if (!imgRes.ok) return null;
+    const buf = Buffer.from(await imgRes.arrayBuffer());
+    let out = buf;
+    if (sharpLib) out = await sharpLib(buf).resize(640, 480, { fit: 'inside' }).webp({ quality: 78 }).toBuffer();
+    fs.mkdirSync(IMG_DIR, { recursive: true });
+    fs.writeFileSync(localPath, out);
+    return localUrl;
+  } catch (e) { console.error('img cache:', e.message); return null; }
+}
+
+app.get('/api/recipe-image/:id', async (req, res) => {
+  db.get("SELECT title, image_url, photo_query FROM recipes WHERE id = ?", [req.params.id], async (err, row) => {
+    if (err) return res.status(500).json({ error: err.message });
+    if (!row) return res.status(404).json({ error: 'Not found' });
+    const hasReal = row.image_url && row.image_url.length > 3 && row.image_url !== 'empty.jpg';
+    if (hasReal) {
+      // уже локально — отдаём как есть
+      if (String(row.image_url).startsWith('/images/cache/')) return res.json({ image_url: row.image_url, cached: true });
+      // удалённый URL (Pexels) — переносим в локальный кеш, чтобы не тянуть повторно
+      const local = await cacheImageLocally(row.image_url, row.photo_query || row.title || row.image_url);
+      if (local) {
+        db.run("UPDATE recipes SET image_url = ? WHERE id = ?", [local, req.params.id], () => {});
+        return res.json({ image_url: local, cached: true });
+      }
+      return res.json({ image_url: row.image_url, cached: true });
+    }
+    const url = await fetchPexelsPhoto(row.photo_query || (row.title + ' food dish'));
+    if (url) {
+      const local = await cacheImageLocally(url, row.photo_query || row.title || url);
+      const finalUrl = local || url;
+      db.run("UPDATE recipes SET image_url = ? WHERE id = ?", [finalUrl, req.params.id],
+        (err2) => { if (err2) console.error('cache err:', err2.message); });
+      return res.json({ image_url: finalUrl, cached: !!local });
+    }
+    res.json({ image_url: '', cached: false });
+  });
 });
 
 // --- Йога ---

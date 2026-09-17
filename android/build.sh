@@ -6,8 +6,9 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 SDK="${ANDROID_HOME:-/opt/android-sdk}"
-BT="$SDK/build-tools/34.0.0"
-PLAT="$SDK/platforms/android-34/android.jar"
+API="${GUIDEFIT_API:-35}"
+BT="$SDK/build-tools/35.0.0"
+PLAT="$SDK/platforms/android-$API/android.jar"
 SRC="$ROOT/android/app/src/main"
 OUT="$ROOT/android/build"
 KEYSTORE="${GUIDEFIT_KEYSTORE:-$ROOT/android/guidefit-release.keystore}"

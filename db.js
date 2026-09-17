@@ -36,6 +36,8 @@ db.serialize(() => {
       if (!cols3.some(c => c.name === 'provider')) db.run("ALTER TABLE users ADD COLUMN provider TEXT DEFAULT 'tg'");
       if (!cols3.some(c => c.name === 'avatar')) db.run("ALTER TABLE users ADD COLUMN avatar TEXT");
       if (!cols3.some(c => c.name === 'notify_chat_id')) db.run("ALTER TABLE users ADD COLUMN notify_chat_id TEXT");
+      // v28: часовой пояс пользователя (выбор из списка, без геолокации) — от него зависят часы напоминаний
+      if (!cols3.some(c => c.name === 'timezone')) db.run("ALTER TABLE users ADD COLUMN timezone TEXT");
     }
   });
   // одноразовые коды привязки Telegram-чата к аккаунту ВК/анонимному (вводятся боту командой /start link_<code>)
@@ -125,6 +127,15 @@ db.serialize(() => {
     tg_id TEXT NOT NULL, type TEXT NOT NULL, date TEXT NOT NULL,
     UNIQUE(tg_id, type, date)
   )`);
+  // v28: встроенный чат поддержки — сообщения пользователя и ответы поддержки, привязаны к tg_id
+  db.run(`CREATE TABLE IF NOT EXISTS support_messages (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    tg_id TEXT NOT NULL,
+    sender TEXT NOT NULL DEFAULT 'user',
+    text TEXT NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  )`);
+  db.run(`CREATE INDEX IF NOT EXISTS idx_support_tg ON support_messages(tg_id)`);
 
   db.run(`CREATE INDEX IF NOT EXISTS idx_food_logs_tg ON food_logs(tg_id)`);
   db.run(`CREATE INDEX IF NOT EXISTS idx_workout_logs_tg ON workout_logs(tg_id)`);

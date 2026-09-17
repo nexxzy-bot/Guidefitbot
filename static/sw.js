@@ -1,4 +1,4 @@
-const CACHE = 'guidefit-v28';
+const CACHE = 'guidefit-v29';
 self.addEventListener('install', e => {
   e.waitUntil(
     caches.open(CACHE)
@@ -22,10 +22,10 @@ self.addEventListener('fetch', e => {
       const copy = res.clone();
       caches.open(CACHE).then(c => c.put('/index.html', copy));
       return res;
-    }).catch(() => caches.match('/index.html')));
+    })).catch(() => caches.match('/index.html'));
     return;
   }
-  // остальное (фото и т.п.) — stale-while-revalidate
+  // остальное (фото и т.п.) — stale-while-revalidate; локальные фото тоже кэшируем
   e.respondWith(caches.open(CACHE).then(cache =>
     cache.match(e.request).then(cached => {
       const fresh = fetch(e.request).then(res => {

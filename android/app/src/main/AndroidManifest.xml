@@ -3,7 +3,7 @@
     package="ru.guidefit.app">
     <!-- versionCode/versionName задаёт build.sh из package.json -->
 
-    <uses-sdk android:minSdkVersion="24" android:targetSdkVersion="34" />
+    <uses-sdk android:minSdkVersion="24" android:targetSdkVersion="35" />
 
     <uses-permission android:name="android.permission.INTERNET" />
     <!-- GitHub-редактируемая версия: обновляется скриптом android/build.sh (versionCode/versionName) -->
