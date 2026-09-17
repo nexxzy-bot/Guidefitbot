@@ -21,3 +21,6 @@ android/*.keystore
 
 # Локальный кеш фото (Pexels → webp), генерируется на сервере
 static/images/cache/
+
+static/*.apk
+android/*.apk
