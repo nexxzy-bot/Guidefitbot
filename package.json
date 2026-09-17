@@ -7,7 +7,7 @@
     "start": "node server.js",
     "dev": "node server.js",
     "bot": "node bot.js",
-    "check": "node --check server.js && node --check db.js && node --check bot.js && node --check static/sw.js && node --check scripts/backup-db.js",
+    "check": "node --check server.js && node --check db.js && node --check bot.js && node --check static/sw.js && node --check scripts/backup-db.js && node scripts/check-frontend.js",
     "test": "node --test",
     "backup": "node scripts/backup-db.js",
     "preheat": "node scripts/preheat-images.js",

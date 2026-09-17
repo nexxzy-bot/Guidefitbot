@@ -1049,14 +1049,14 @@ function obRender(){
       '<p class="muted" style="font-size:13px;line-height:1.55;margin:0 0 18px">Чтобы создать дневник, нужно твоё согласие — каждое отдельное.</p>' +
       '<label class="pressable" style="display:flex;gap:10px;align-items:flex-start;margin-bottom:14px;text-align:left;cursor:pointer">' +
       '<input type="checkbox" id="obPrivacy"' + (ob.privacy ? ' checked' : '') + ' onchange="obConsent(\'privacy\',this.checked)" style="width:20px;height:20px;margin-top:2px;accent-color:var(--accent);flex-shrink:0">' +
-      '<span style="font-size:12.5px;line-height:1.55">Я даю согласие на обработку персональных данных и принимаю <a href="javascript:void(0)" style="color:var(--accent-dark)" onclick="event.stopPropagation();openDoc('/privacy.html')">Политику обработки персональных данных</a>.</span></label>' +
+      '<span style="font-size:12.5px;line-height:1.55">Я даю согласие на обработку персональных данных и принимаю <a href="javascript:void(0)" style="color:var(--accent-dark)" onclick="event.stopPropagation();openDoc(\'/privacy.html\')">Политику обработки персональных данных</a>.</span></label>' +
       '<label class="pressable" style="display:flex;gap:10px;align-items:flex-start;margin-bottom:14px;text-align:left;cursor:pointer">' +
       '<input type="checkbox" id="obTerms"' + (ob.terms ? ' checked' : '') + ' onchange="obConsent(\'terms\',this.checked)" style="width:20px;height:20px;margin-top:2px;accent-color:var(--accent);flex-shrink:0">' +
-      '<span style="font-size:12.5px;line-height:1.55">Я принимаю <a href="javascript:void(0)" style="color:var(--accent-dark)" onclick="event.stopPropagation();openDoc('/terms.html')">Пользовательское соглашение</a>.<br>' +
+      '<span style="font-size:12.5px;line-height:1.55">Я принимаю <a href="javascript:void(0)" style="color:var(--accent-dark)" onclick="event.stopPropagation();openDoc(\'/terms.html\')">Пользовательское соглашение</a>.<br>' +
       '<span class="subtle" style="font-size:11.5px">Приложение для пользователей от 12 лет; если тебе меньше 18 — используй с согласия родителя или законного представителя. Приложение не заменяет консультацию врача.</span></span></label>' +
       '<label class="pressable" style="display:flex;gap:10px;align-items:flex-start;text-align:left;cursor:pointer">' +
       '<input type="checkbox" id="obHealth"' + (ob.health ? ' checked' : '') + ' onchange="obConsent(\'health\',this.checked)" style="width:20px;height:20px;margin-top:2px;accent-color:var(--accent);flex-shrink:0">' +
-      '<span style="font-size:12.5px;line-height:1.55">Я даю отдельное согласие на обработку данных о здоровье (вес, рост, калории, дневник питания и тренировок), необходимых для расчётов и работы дневника — <a href="javascript:void(0)" style="color:var(--accent-dark)" onclick="event.stopPropagation();openDoc('/privacy.html')">подробнее в политике</a>.</span></label>' +
+      '<span style="font-size:12.5px;line-height:1.55">Я даю отдельное согласие на обработку данных о здоровье (вес, рост, калории, дневник питания и тренировок), необходимых для расчётов и работы дневника — <a href="javascript:void(0)" style="color:var(--accent-dark)" onclick="event.stopPropagation();openDoc(\'/privacy.html\')">подробнее в политике</a>.</span></label>' +
       (!ok ? '<p class="ob-err" id="obConsentErr" style="display:block">Отметь все галочки, чтобы продолжить</p>' : '');
   } else {
     /* v27 финал (шаг 10): привязка VK/Одноклассников — необязательна, аккаунт уже
@@ -2665,8 +2665,8 @@ function loadSettings(){
         '<button class="btn btn-danger btn-block pressable" onclick="doDeleteData()">Удалить мои данные</button></div>';
   } else if(tab === 'about'){
     body = aboutBlock() +
-      '<a href="javascript:void(0)" rel="noopener" class="btn btn-ghost btn-block pressable" style="text-decoration:none;display:flex;align-items:center;justify-content:center;gap:8px" onclick="openDoc('/privacy.html')">Политика обработки персональных данных</a>' +
-      '<a href="javascript:void(0)" rel="noopener" class="btn btn-ghost btn-block pressable mt2" style="text-decoration:none;display:flex;align-items:center;justify-content:center;gap:8px" onclick="openDoc('/terms.html')">Пользовательское соглашение</a>';
+      '<a href="javascript:void(0)" rel="noopener" class="btn btn-ghost btn-block pressable" style="text-decoration:none;display:flex;align-items:center;justify-content:center;gap:8px" onclick="openDoc(\'/privacy.html\')">Политика обработки персональных данных</a>' +
+      '<a href="javascript:void(0)" rel="noopener" class="btn btn-ghost btn-block pressable mt2" style="text-decoration:none;display:flex;align-items:center;justify-content:center;gap:8px" onclick="openDoc(\'/terms.html\')">Пользовательское соглашение</a>';
   } else {
     body = supportChatHtml();
   }
