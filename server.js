@@ -289,6 +289,8 @@ app.use((req, res, next) => {
   res.setHeader('Permissions-Policy', 'geolocation=(), microphone=(), camera=(), payment=()');
   res.setHeader('Strict-Transport-Security', 'max-age=15552000; includeSubDomains');
   res.setHeader('Cross-Origin-Opener-Policy', 'same-origin-allow-popups');
+  // аудит: админку нельзя встроить в iframe (clickjacking с автоподстановкой токена)
+  if (req.path === '/admin.html') res.setHeader('X-Frame-Options', 'DENY');
   next();
 });
 const rlHits = new Map();
@@ -1067,11 +1069,15 @@ app.post('/api/dashboard', (req, res) => {
 app.post('/api/meal', (req, res) => {
   const { category, goal, exclude_id } = req.body;
   if (!category) return res.status(400).json({ error: 'Missing category' });
+  // аудит: goal попадал в LIKE '%...%' без экранирования (%/_ от клиента = слепая инъекция
+  // в LIKE-паттерн и перебор данных). Категории цели — фиксированный набор, валидируем.
+  const GOALS = new Set(['lose', 'maintain', 'gain']);
+  const goalSafe = (typeof goal === 'string' && GOALS.has(goal)) ? goal : null;
   const maxK = parseFloat(req.body.max_calories);
   const pick = (withCap, withExclude) => {
     let sql2 = "SELECT * FROM recipes WHERE category = ?";
     const p2 = [category];
-    if (goal) { sql2 += " AND (goals LIKE ? OR goals IS NULL OR goals = '')"; p2.push('%' + goal + '%'); }
+    if (goalSafe) { sql2 += " AND (goals LIKE ? OR goals IS NULL OR goals = '')"; p2.push('%' + goalSafe + '%'); }
     if (withExclude && exclude_id) { sql2 += " AND id != ?"; p2.push(exclude_id); }
     if (withCap && maxK > 0) { sql2 += " AND calories <= ?"; p2.push(Math.round(maxK * 1.15)); }
     sql2 += " ORDER BY RANDOM() LIMIT 1";

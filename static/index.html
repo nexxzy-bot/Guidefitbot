@@ -913,7 +913,14 @@ async function initApp(){
   if('serviceWorker' in navigator){ navigator.serviceWorker.register('/sw.js').catch(()=>{}); }
   try{
     const sq = new URLSearchParams(window.location.search).get('session');
-    if(sq){ try{ localStorage.setItem('gf_session', sq); }catch(e){} try{ history.replaceState(null, '', location.pathname); }catch(e){} }
+    if(sq){
+      /* аудит: защита от фиксации сессии — подменить сессию ссылкой можно только на
+         устройстве без своей сохранённой сессии и только в правильном формате (64 hex) */
+      if(/^[a-f0-9]{64}$/.test(sq) && !localStorage.getItem('gf_session')){
+        try{ localStorage.setItem('gf_session', sq); }catch(e){}
+      }
+      try{ history.replaceState(null, '', location.pathname); }catch(e){}
+    }
   }catch(e){}
   if(tgUid()){
     // штатный вход через Telegram — без изменений

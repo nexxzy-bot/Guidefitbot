@@ -4,6 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex,nofollow">
+<!-- аудит: токен админа живёт только в памяти открытой вкладки (не в sessionStorage,
+     который переживает закрытие вкладки при «восстановлении сессии» браузера) -->
 <title>GuideFit — Админка</title>
 <style>
 :root{--bg:#F2F7FC;--surface:#fff;--border:#E1EBF5;--text:#0C2233;--text2:#4A617A;--text3:#5E7386;--accent:#0D9BE8;--green:#10B981;--amber:#F59E0B;--red:#EF4444}
@@ -90,7 +92,7 @@ ul.log{list-style:none;font-size:12.5px}ul.log li{padding:5px 0;border-bottom:1p
   </div>
 </div>
 <script>
-let TOK = sessionStorage.getItem('gf_admin') || '';
+let TOK = ''; // аудит: токен больше не сохраняется в sessionStorage — только в памяти вкладки
 let offset = 0; const LIMIT = 50; let total = 0;
 const PROVIDERS = { tg:'Telegram', vk:'VK', anon:'Аноним', yandex:'Яндекс', max:'Max' };
 function esc(s){ return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
@@ -106,7 +108,6 @@ async function login(){
   if(!TOK) return;
   try{
     await call('/api/admin/stats');
-    sessionStorage.setItem('gf_admin', TOK);
     document.getElementById('gate').style.display = 'none';
     document.getElementById('app').style.display = '';
     loadStats(); loadUsers(0);
@@ -137,7 +138,7 @@ async function loadUsers(off){
       '<td>' + u.workouts + '</td><td>' + u.meals + '</td><td>' + (u.calorie_norm || '—') + '</td></tr>'
     ).join('') || '<tr><td colspan="8" class="sub" style="text-align:center;padding:20px">Ничего не найдено</td></tr>';
     document.getElementById('pgInfo').textContent = (total ? (offset + 1) + '–' + Math.min(offset + LIMIT, total) : '0') + ' из ' + total;
-  }catch(e){ if(e.message.indexOf('Нет доступа') === 0){ sessionStorage.removeItem('gf_admin'); location.reload(); } }
+  }catch(e){ if(e.message.indexOf('Нет доступа') === 0){ TOK = ''; location.reload(); } }
 }
 function page(d){ const n = offset + d * LIMIT; if(n < 0 || (d > 0 && n >= total)) return; loadUsers(n); }
 async function detail(id){
@@ -202,7 +203,7 @@ async function sendAdminReply(){
     openThread(SUP_SEL);
   }catch(e){ alert('Ошибка сети при отправке ответа'); }
 }
-if(TOK){ document.getElementById('token').value = TOK; login(); }
+/* аудит: автологина нет — токен каждый раз вводится вручную (см. комментарий выше) */
 </script>
 </body>
 </html>
