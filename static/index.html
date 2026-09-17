@@ -2036,7 +2036,11 @@ async function woFinishFlow(){
 .tour-ic{width:64px;height:64px;border-radius:20px;background:var(--accent-dim);color:var(--accent);display:flex;align-items:center;justify-content:center;margin:0 auto 14px}
 .tour-dots{display:flex;gap:6px;justify-content:center;margin:14px 0}
 /* v22: спотлайт-обучение */
-.spot-overlay{position:fixed;inset:0;background:rgba(9,20,32,.6);z-index:220}
+/* v30: оверлей прозрачный — затемнение даёт ТОЛЬКО тень «дыры» (spot-hole).
+   Раньше фон rgba(9,20,32,.6) затемнял и подсвечиваемый блок: дыра не пробивала оверлей. */
+.spot-overlay{position:fixed;inset:0;background:transparent;z-index:220}
+/* v30: центральная подсказка (шаг без спотлайта/финал) — лёгкое затемнение фона для фокуса */
+.spot-overlay.spot-dim{background:rgba(9,20,32,.6)}
 /* во время обучения скролл страницы запрещён: оверлей гасит touch-скролл и колёсико,
    программный scrollIntoView к подсвечиваемому элементу продолжает работать */
 .spot-overlay{touch-action:none;overscroll-behavior:contain}
@@ -2046,7 +2050,9 @@ html.tour-lock, html.tour-lock body{overflow:hidden !important;overscroll-behavi
 @keyframes holePulse{0%,100%{outline-color:var(--accent)}50%{outline-color:rgba(41,169,242,.35)}}
 .spot-hint{position:absolute;z-index:222;background:var(--surface);border-radius:18px;padding:16px;box-shadow:var(--sh);max-width:300px;animation:fadeUp .25s ease}
 .spot-hint:after{content:'';position:absolute;width:14px;height:14px;background:var(--surface);transform:rotate(45deg);left:var(--ax,24px)}
-.spot-hint.above:after{bottom:-7px}
+/* v30: для подсказки НАД элементом (нижнее меню) хвост считаем от ПРАВОГО края (--axr):
+   left:var(--ax) уводил стрелку к левому краю экрана — «указывала сама на себя» */
+.spot-hint.above:after{bottom:-7px;left:auto;right:var(--axr,24px)}
 .spot-hint.below:after{top:-7px}
 /* центральная подсказка (шаг без спотлайта: элемента нет на экране) */
 .spot-hint.spot-center{left:50%;top:50%;transform:translate(-50%,-50%);width:calc(100% - 44px);max-width:320px;text-align:center}
@@ -2167,7 +2173,20 @@ function tourScrollLock(on){
     document.body.classList.toggle('tour-lock', !!on);
   }catch(e){}
 }
-function tourClose(){ tourScrollLock(false); const ov = document.getElementById('tourOverlay'); if(ov) ov.remove(); }
+/* v30: при закрытии снимаем слушатели scroll/resize/orientationchange */
+function tourClose(){
+  tourScrollLock(false);
+  const ov = document.getElementById('tourOverlay');
+  if(!ov) return;
+  if(ov._onReflow){
+    try{
+      window.removeEventListener('scroll', ov._onReflow, true);
+      window.removeEventListener('resize', ov._onReflow);
+      window.removeEventListener('orientationchange', ov._onReflow);
+    }catch(e){}
+  }
+  ov.remove();
+}
 function tourSkip(){ tourDone(); tourClose(); }
 function tourMaybe(screen){
   try{
@@ -2853,6 +2872,17 @@ function tourOverlay(inner){
     else if(act === 'skip') tourSkip();
   });
   document.body.appendChild(ov);
+  /* v30: скролл/ресайз/поворот — пересчёт положения дыры и подсказки,
+     иначе после прокрутки спотлайт оставался на старом месте */
+  ov._onReflow = function(){
+    /* центральный шаг (spot-dim) пере-позиционировать нечего */
+    if(ov.classList.contains('spot-dim')) return;
+    const s = TOUR_STEPS[tourIdx];
+    if(s) tourPosition(s);
+  };
+  window.addEventListener('scroll', ov._onReflow, true);
+  window.addEventListener('resize', ov._onReflow);
+  window.addEventListener('orientationchange', ov._onReflow);
   return ov;
 }
 function tourShow(){
@@ -2876,13 +2906,14 @@ function tourShow(){
 }
 /* Шаг без спотлайта: подсказка по центру экрана */
 function tourCenter(step){
-  tourOverlay('<div class="spot-hint spot-center">' +
+  const cov = tourOverlay('<div class="spot-hint spot-center">' +
     '<h3 style="font-size:15.5px;margin-bottom:6px">' + step.t + '</h3>' +
     '<p class="muted" style="font-size:12.5px;line-height:1.55">' + step.d + '</p>' + tourDots() +
     '<div class="flex gap2" style="margin-top:14px">' +
       '<button class="btn btn-primary pressable" style="flex:1" data-tour="next">Далее</button>' +
       '<button class="btn btn-ghost pressable" style="flex:1;font-size:13px" data-tour="skip">Пропустить</button>' +
     '</div></div>');
+  if(cov) cov.classList.add('spot-dim');
   if(typeof haptic === 'function') haptic();
 }
 const TOUR_NAV_H = 150; // зона тура снизу: таббар (~70) + панель кнопок над ним (~46) + отступы — подсказки других шагов не заезжают в неё
@@ -2928,20 +2959,38 @@ function tourPosition(step){
     let left = r.left + r.width/2 - hw/2;
     left = Math.min(Math.max(left, 12), Math.max(vw - hw - 12, 12));
     const below = (top >= r.bottom);
-    hint.classList.add(below ? 'below' : 'above');
+    const cx = r.left + r.width/2;
+    hint.classList.toggle('below', below);
+    hint.classList.toggle('above', !below);
     hint.style.top = top + 'px'; hint.style.left = left + 'px'; hint.style.right = 'auto'; hint.style.bottom = 'auto';
     /* v29.1: частный случай для таббара убран — универсальная логика уже не даёт подсказке
        заезжать в зону кнопок «Далее/Пропустить» (ceil = vh - TOUR_NAV_H) */
-    hint.style.setProperty('--ax', Math.max(Math.min(r.left + r.width/2 - left - 7, hw - 26), 12) + 'px');
+    /* v30: хвост-«стрелка» указывает ровно на элемент для любого шага:
+       below — хвост от левого края (--ax); above — от правого (--axr) */
+    if(below){
+      hint.style.setProperty('--ax', Math.max(Math.min(cx - left - 7, hw - 26), 12) + 'px');
+      hint.style.setProperty('--axr', '');
+    }else{
+      hint.style.setProperty('--axr', Math.max(Math.min(left + hw - cx - 7, hw - 26), 12) + 'px');
+      hint.style.setProperty('--ax', '');
+    }
+    /* v30: ГЛАВНЫЙ фикс — у «дыры» спотлайта задаются координаты и размер.
+       Раньше .spot-hole оставался 0×0 в левом верхнем углу, а его box-shadow
+       200vmax затемнял ВЕСЬ экран, включая подсвечиваемый блок. */
+    cut.style.top = (r.top - pad) + 'px';
+    cut.style.left = (r.left - pad) + 'px';
+    cut.style.width = (r.width + pad*2) + 'px';
+    cut.style.height = (r.height + pad*2) + 'px';
     if(typeof haptic === 'function') haptic();
   }catch(e){}
 }
 function tourFinal(){
-  tourOverlay('<div class="spot-hint spot-center">' +
+  const fov = tourOverlay('<div class="spot-hint spot-center">' +
     '<div class="tour-ic">' + ic('sparkles',30) + '</div>' +
     '<h2 style="font-size:22px">Начинаем!</h2>' +
     '<p class="muted mt2" style="font-size:13.5px;line-height:1.6">Всё настроено. GuideFit всё посчитает — просто пользуйся.</p>' + tourDots() +
     '<button class="btn btn-primary btn-block pressable mt3" data-tour="skip">Начинаем!</button></div>');
+  if(fov) fov.classList.add('spot-dim');
 }
 function tourNext(){
   if(typeof haptic === 'function') haptic();
