@@ -1,6 +1,6 @@
 {
   "name": "guidefit",
-  "version": "2.3.1",
+  "version": "2.3.2",
   "description": "GuideFit — Telegram Mini App и standalone-приложение: питание, вода, вес и тренировки",
   "main": "server.js",
   "scripts": {

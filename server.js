@@ -187,7 +187,27 @@ function notifyOnce(accountId, chatId, type, dateStr, text) {
     });
 }
 
+/* ================= уведомления админу ================= */
+// Новая регистрация: сообщение в ТГ админу (ADMIN_ID) + строка в чат поддержки (видна в админ-панели).
+// Ошибки не должны мешать регистрации — всё в try/catch.
+function notifyAdminNewUser(tgId, name) {
+  try {
+    if (!process.env.ADMIN_ID) return;
+    const text = '🆕 Новая регистрация в GuideFit: ' + (name || 'без имени') + ' (ID ' + tgId + ')';
+    sendTelegram(process.env.ADMIN_ID, text);
+    const sender = isTelegramId(tgId) ? String(tgId) : null;
+    db.run("INSERT INTO support_messages (tg_id, sender, text) VALUES (?, ?, ?)",
+      [tgId, sender, text], function (e) {
+        if (e) console.error('notifyAdminNewUser db:', e.message);
+      });
+  } catch (e) { console.error('notifyAdminNewUser:', e.message); }
+}
+
 /* ================= достижения ================= */
+function bumpAchievements(tg_id) {
+  try { checkAchievements(tg_id); } catch (e) { console.error('bumpAchievements:', e.message); }
+}
+
 function checkAchievements(tg_id) {
   if (!tg_id || tg_id === 'demo_user') return;
   db.get("SELECT current_weight, tg_id, notify_chat_id FROM users WHERE tg_id = ?", [tg_id], (err, u) => {
@@ -361,6 +381,10 @@ app.post('/api/user/init', (req, res) => {
       if (err) { console.error(err); return res.status(500).json({ error: 'Database error' }); }
       touchSeen(tgId);
       logConsent(tgId, consents);
+      // v29: уведомление админу (и дубль в админку) о новой регистрации — только для реально новых аккаунтов
+      db.get("SELECT changes FROM users WHERE tg_id = ?", [tgId], (ec, _c) => {
+        if (!ec) notifyAdminNewUser(tgId, name);
+      });
       db.get("SELECT avatar FROM users WHERE tg_id = ?", [tgId], (e2, a2) => {
         res.json({ status: 'ok', calorie_norm, meal_count: mc, avatar: (!e2 && a2 && a2.avatar) || null });
       });
@@ -393,7 +417,7 @@ app.post('/api/user/update', (req, res) => {
       if (req.body[k] !== undefined) fields[k] = req.body[k];
     });
     if (fields.current_weight !== undefined && !(fields.current_weight >= 20 && fields.current_weight <= 400)) return res.status(400).json({ error: 'Invalid values' });
-    if (fields.target_weight !== undefined && !(fields.target_weight >= 20 && fields.target_weight <= 400)) return res.status(400).json({ error: 'Invalid values' });
+    if (fields.target_weight !== undefined && fields.target_weight !== null && !(fields.target_weight >= 20 && fields.target_weight <= 400)) return res.status(400).json({ error: 'Invalid values' });
     if (fields.age !== undefined && !(fields.age >= 12 && fields.age <= 100)) return res.status(400).json({ error: 'Invalid values' });
     if (fields.height !== undefined && !(fields.height >= 120 && fields.height <= 230)) return res.status(400).json({ error: 'Invalid values' });
     if (fields.goal !== undefined && !['lose', 'maintain', 'gain'].includes(fields.goal)) return res.status(400).json({ error: 'Invalid values' });
@@ -1086,7 +1110,7 @@ app.post('/api/log-meal', (req, res) => {
     db.run("INSERT INTO food_logs (tg_id, recipe_id, timestamp) VALUES (?, ?, datetime('now','localtime'))",
       [tgId, recipe_id], (err) => {
         if (err) return res.status(500).json({ error: err.message });
-        checkAchievements(tgId);
+        bumpAchievements(tgId);
         touchSeen(tgId);
         res.json({ status: 'ok' });
       });
@@ -1334,7 +1358,7 @@ app.post('/api/workout/log', (req, res) => {
     function (err) {
       if (err) return res.status(500).json({ error: err.message });
       const logId = this.lastID;
-      const done = () => { checkAchievements(tgId); res.json({ status: 'ok', log_id: logId, total_volume: _totalVolume }); };
+      const done = () => { bumpAchievements(tgId); res.json({ status: 'ok', log_id: logId, total_volume: _totalVolume }); };
       if (_cleanSets.length > 0) {
         const stmt = db.prepare(`INSERT INTO workout_sets (log_id, exercise_id, set_number, reps, weight)
             VALUES (?, ?, ?, ?, ?)`);
@@ -1416,7 +1440,7 @@ app.post('/api/water', (req, res) => {
   const today = localDate();
   const respondWithTotal = () => {
     db.get("SELECT amount_ml FROM water_logs WHERE tg_id = ? AND date = ?", [tgId, today], (e, r) => {
-      checkAchievements(tgId);
+      bumpAchievements(tgId);
       res.json({ status: 'ok', total: r ? r.amount_ml : amount });
     });
   };
@@ -1450,6 +1474,7 @@ app.post('/api/weight', (req, res) => {
     [tgId, localDate(), weight], (err) => {
       if (err) return res.status(500).json({ error: err.message });
       db.get("SELECT gender, height, age, activity_level, goal FROM users WHERE tg_id = ?", [tgId], (e2, u) => {
+        bumpAchievements(tgId);
         const norm = (e2 || !u) ? null : calcCalories(weight, u.height, u.age, u.gender, u.activity_level, u.goal);
         if (norm) {
           db.run("UPDATE users SET current_weight = ?, calorie_norm = ? WHERE tg_id = ?", [weight, norm, tgId]);
@@ -1476,6 +1501,9 @@ app.get('/api/achievements/:tgId', (req, res) => {
   const tgId = resolveTgId(req);
   if (!tgId) return res.status(401).json({ error: 'Unauthorized' });
   checkAchievements(tgId); // ленивая разблокировка на случай пропущенных событий
+  // v29: разблокировка достижений сразу после значимых событий (тренировка/вес/вода/дневник),
+  // а не только при заходе в профиль — баг «засчитывается только после входа во вкладку профиль»
+  bumpAchievements(tgId);
   db.all("SELECT * FROM achievements", [], (err, allAch) => {
     if (err) return res.status(500).json({ error: err.message });
     db.all("SELECT achievement_id FROM user_achievements WHERE tg_id = ?", [tgId], (err, userAch) => {

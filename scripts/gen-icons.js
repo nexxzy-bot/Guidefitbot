@@ -47,4 +47,14 @@ const svg = (size) => `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" h
   const buf512 = Buffer.from(svg(512));
   await sharp(buf512, { density: 300 }).resize(512, 512).png({ compressionLevel: 9 }).toFile(path.join(root, 'android', 'ic-store-512.png'));
   console.log('✓ ic-store-512.png (для консоли RuStore)');
+
+  // Сплэш-экран 1080×1920: тот же знак, что у лаунчера, умеренного размера,
+  // по центру на системном светлом фоне (совпадает с фоном сплэша в MainActivity)
+  const W = 1080, H = 1920, icon = 240;
+  const iconPng = await sharp(Buffer.from(svg(icon)), { density: 300 }).resize(icon, icon).png().toBuffer();
+  await sharp({ create: { width: W, height: H, channels: 4, background: '#F2F7FC' } })
+    .composite([{ input: iconPng, left: Math.round((W - icon) / 2), top: Math.round((H - icon) / 2) }])
+    .png({ compressionLevel: 9 })
+    .toFile(path.join(outDir, 'drawable', 'splash.png'));
+  console.log('✓ drawable/splash.png (1080×1920, знак 240px по центру)');
 })();
