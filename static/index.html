@@ -523,14 +523,18 @@ function uiConfirm(title, text, okLabel, danger){
 }
 
 /* Открытие юридических документов внутри приложения (оверлей + iframe).
-   Не использует history/navigation — поэтому «Назад» из документа не выбрасывает
-   из регистрации/онбординга в начало (баг в Telegram WebView и APK). */
+   v29.1: контекст возврата — из регистрации «Назад» ведёт на шаг 10 онбординга,
+   из приложения — в «Настройки». Системная «Назад» Android закрывает документ,
+   а не приложение/онбординг (pushState + popstate). */
+let _docContext = 'settings';
+let _docBack = 'settings';
 const DOC_TITLES = {
   '/privacy.html': 'Политика обработки персональных данных',
   '/terms.html': 'Пользовательское соглашение'
 };
 function openDoc(path){
   try{ haptic(); }catch(e){}
+  _docBack = _docContext || 'settings';
   let ov = document.getElementById('docOverlay');
   if(!ov){
     ov = document.createElement('div');
@@ -539,20 +543,35 @@ function openDoc(path){
     ov.innerHTML = '<div class="doc-topbar"><button id="docBack" type="button"></button><span id="docTitle"></span></div>' +
                    '<iframe class="doc-frame" id="docFrame" title="Документ"></iframe>';
     document.body.appendChild(ov);
-    document.getElementById('docBack').addEventListener('click', closeDoc);
   }
   document.getElementById('docTitle').textContent = DOC_TITLES[path] || 'Документ';
   document.getElementById('docBack').innerHTML = ic('chevronL', 20) + '<span>Назад</span>';
+  document.getElementById('docBack').onclick = function(){ closeDoc(); };
   document.getElementById('docFrame').src = path;
   requestAnimationFrame(function(){ ov.classList.add('show'); });
+  /* Системная «Назад» (Android) закрывает документ, а не приложение/онбординг */
+  try{
+    if(!window._docPopHandler){
+      window._docPopHandler = function(){ closeDoc(false); };
+      window.addEventListener('popstate', window._docPopHandler);
+    }
+    history.pushState({ gfdoc: true }, '', location.href);
+    window._docStatePushed = true;
+  }catch(e){}
 }
-function closeDoc(){
+function closeDoc(back){
   const ov = document.getElementById('docOverlay');
   if(!ov) return;
   ov.classList.remove('show');
   const f = document.getElementById('docFrame');
   setTimeout(function(){ if(f) f.src = 'about:blank'; }, 250);
+  try{ if(window._docStatePushed){ history.back(); window._docStatePushed = false; } }catch(e){}
+  if(back === false) return; // закрытие из popstate: навигацию не дублируем
+  /* шаг согласий отображается как «шаг 10 из 11», внутренний индекс — 9 */
+  if(_docBack === 'obStep10'){ if(typeof obGo === 'function') obGo(9); }
+  else if(_docBack === 'settings' && typeof navigate === 'function'){ const ss = document.getElementById('screen-settings'); if(ss && !ss.classList.contains('active')) navigate('settings'); }
 }
+window._closeDoc = closeDoc;
 
 async function api(endpoint, opts = {}){
   const headers = { 'Content-Type':'application/json' };
@@ -787,6 +806,8 @@ function leavingWorkoutOk(screen){
   try{
     const cur = document.querySelector('.screen.active');
     if(_wzExit || !cur || cur.id !== 'screen-active-workout' || screen === 'active-workout') return true;
+    /* v29.1: тренировка только что сохранена — выходим без вопроса «Прервать?» */
+    if(window._wzFinished){ window._wzFinished = false; isProgramWorkout = false; currentProgramDay = null; return true; }
     if(!window._leavingWzOk) return false; // ожидание модального подтверждения — navigate отложен (v28: без window.confirm, он в Mini App зависал)
     window._leavingWzOk = false;
     isProgramWorkout = false; currentProgramDay = null;
@@ -830,7 +851,13 @@ function navigate(screen){
   if(screen==='workouts') loadWorkouts();
   if(screen==='nutrition') loadNutrition();
   if(screen==='profile') loadProfile();
-  if(screen==='settings') loadSettings();
+  if(screen==='settings'){
+    /* v29.1: открывая настройки обычной навигацией — показываем вкладку «Профиль»;
+       openSupportTab() помечает переход и сохраняет свою вкладку */
+    if(window._setTabKeep !== true) setTab = 'profile';
+    window._setTabKeep = false;
+    loadSettings();
+  }
 }
 if(tg && tg.BackButton){
   tg.BackButton.onClick(()=>{
@@ -941,7 +968,24 @@ function obField(id, label, ph, val){
     '<input type="number" inputmode="decimal" step="0.1" class="input" id="' + id + '" value="' + (val || '') + '" placeholder="' + ph + '">' +
     '<div class="ob-err" id="' + id + 'Err"></div></div>';
 }
-function obGo(n){ ob.step = n; obRender(); }
+function obGo(n){
+  ob.step = n;
+  /* v29.1: шаг 10 — «якорь» для системной «Назад» (Android): пока юзер в онбординге,
+     каждая «Назад» возвращает на шаг 10, а не выходит из приложения/на авторизацию */
+  try{
+    if(n === 10){
+      if(!window._obGuardInstalled){
+        window._obGuardInstalled = true;
+        window.addEventListener('popstate', function(){
+          /* шаги согласий (инд. 9) и VK (инд. 10) — системная «Назад» остаётся в онбординге */
+          if(ob && ob.step >= 9){ setTimeout(function(){ obGo(ob.step); }, 0); }
+        });
+      }
+      if(!window._obStatePushed){ history.pushState({ gfob: 10 }, '', location.href); window._obStatePushed = true; }
+    }
+  }catch(e){}
+  obRender();
+}
 function obBack(){ if(ob.step > 0){ obGo(ob.step - 1); } }
 function obNext(){
   const s = ob.step;
@@ -998,6 +1042,8 @@ async function obFinish(){
     let myId = data.tg_id;
     if(!tgUid()){ try{ const me = await api('/api/auth/me'); if(me && me.tg_id) myId = me.tg_id; }catch(e){} }
     currentUser = { ...data, tg_id: myId, calorie_norm: r.calorie_norm, meal_count: data.meal_count, avatar: r.avatar || (currentUser && currentUser.avatar) || null };
+    /* v29.1: guard шага 10 больше не нужен — снимаем якорь истории */
+    try{ if(window._obStatePushed){ window._obStatePushed = false; history.back(); } }catch(e){}
     renderAvatar(data.name, currentUser.avatar);
     $('bottomNav').style.display = 'flex';
     navigate('home');
@@ -1049,14 +1095,14 @@ function obRender(){
       '<p class="muted" style="font-size:13px;line-height:1.55;margin:0 0 18px">Чтобы создать дневник, нужно твоё согласие — каждое отдельное.</p>' +
       '<label class="pressable" style="display:flex;gap:10px;align-items:flex-start;margin-bottom:14px;text-align:left;cursor:pointer">' +
       '<input type="checkbox" id="obPrivacy"' + (ob.privacy ? ' checked' : '') + ' onchange="obConsent(\'privacy\',this.checked)" style="width:20px;height:20px;margin-top:2px;accent-color:var(--accent);flex-shrink:0">' +
-      '<span style="font-size:12.5px;line-height:1.55">Я даю согласие на обработку персональных данных и принимаю <a href="javascript:void(0)" style="color:var(--accent-dark)" onclick="event.stopPropagation();openDoc(\'/privacy.html\')">Политику обработки персональных данных</a>.</span></label>' +
+      '<span style="font-size:12.5px;line-height:1.55">Я даю согласие на обработку персональных данных и принимаю <a href="javascript:void(0)" style="color:var(--accent-dark)" onclick="event.stopPropagation();_docContext=\'obStep10\';openDoc(\'/privacy.html\')">Политику обработки персональных данных</a>.</span></label>' +
       '<label class="pressable" style="display:flex;gap:10px;align-items:flex-start;margin-bottom:14px;text-align:left;cursor:pointer">' +
       '<input type="checkbox" id="obTerms"' + (ob.terms ? ' checked' : '') + ' onchange="obConsent(\'terms\',this.checked)" style="width:20px;height:20px;margin-top:2px;accent-color:var(--accent);flex-shrink:0">' +
-      '<span style="font-size:12.5px;line-height:1.55">Я принимаю <a href="javascript:void(0)" style="color:var(--accent-dark)" onclick="event.stopPropagation();openDoc(\'/terms.html\')">Пользовательское соглашение</a>.<br>' +
+      '<span style="font-size:12.5px;line-height:1.55">Я принимаю <a href="javascript:void(0)" style="color:var(--accent-dark)" onclick="event.stopPropagation();_docContext=\'obStep10\';openDoc(\'/terms.html\')">Пользовательское соглашение</a>.<br>' +
       '<span class="subtle" style="font-size:11.5px">Приложение для пользователей от 12 лет; если тебе меньше 18 — используй с согласия родителя или законного представителя. Приложение не заменяет консультацию врача.</span></span></label>' +
       '<label class="pressable" style="display:flex;gap:10px;align-items:flex-start;text-align:left;cursor:pointer">' +
       '<input type="checkbox" id="obHealth"' + (ob.health ? ' checked' : '') + ' onchange="obConsent(\'health\',this.checked)" style="width:20px;height:20px;margin-top:2px;accent-color:var(--accent);flex-shrink:0">' +
-      '<span style="font-size:12.5px;line-height:1.55">Я даю отдельное согласие на обработку данных о здоровье (вес, рост, калории, дневник питания и тренировок), необходимых для расчётов и работы дневника — <a href="javascript:void(0)" style="color:var(--accent-dark)" onclick="event.stopPropagation();openDoc(\'/privacy.html\')">подробнее в политике</a>.</span></label>' +
+      '<span style="font-size:12.5px;line-height:1.55">Я даю отдельное согласие на обработку данных о здоровье (вес, рост, калории, дневник питания и тренировок), необходимых для расчётов и работы дневника — <a href="javascript:void(0)" style="color:var(--accent-dark)" onclick="event.stopPropagation();_docContext=\'obStep10\';openDoc(\'/privacy.html\')">подробнее в политике</a>.</span></label>' +
       (!ok ? '<p class="ob-err" id="obConsentErr" style="display:block">Отметь все галочки, чтобы продолжить</p>' : '');
   } else {
     /* v27 финал (шаг 10): привязка VK/Одноклассников — необязательна, аккаунт уже
@@ -1398,11 +1444,12 @@ async function finishWorkout(isProgram){
         const p = await api('/api/user/program/progress', { method:'POST', body:{ tg_id: currentUser.tg_id } });
         if(p.completed) setTimeout(() => showSuccess('Программа завершена!'), 1200);
         /* v29: возвращаемся в открытую программу (день подсветится зелёным, шкала обновится) */
-        isProgramWorkout = false; currentProgramDay = null; _wzExit = true;
+        window._wzFinished = true; isProgramWorkout = false; currentProgramDay = null; _wzExit = true;
         try{ openProgram(doneProgramId); } finally{ _wzExit = false; }
         return;
       }catch(e2){ /* день программы без активной программы — тренировка сохранена, это ок */ }
     }
+    window._wzFinished = true;
     isProgramWorkout = false; currentProgramDay = null;
     _wzExit = true;
     try{ navigate('workouts'); } finally{ _wzExit = false; }
@@ -1995,7 +2042,8 @@ async function woFinishFlow(){
 .spot-overlay{touch-action:none;overscroll-behavior:contain}
 .spot-overlay .spot-hint{touch-action:auto}
 html.tour-lock, html.tour-lock body{overflow:hidden !important;overscroll-behavior:none}
-.spot-hole{position:absolute;border-radius:22px;box-shadow:0 0 0 200vmax rgba(9,20,32,.78);pointer-events:none;z-index:221;transition:all .2s ease}
+.spot-hole{position:absolute;border-radius:22px;box-shadow:0 0 0 200vmax rgba(9,20,32,.78);pointer-events:none;z-index:221;transition:all .2s ease;outline:2.5px solid var(--accent);outline-offset:2px;animation:holePulse 1.6s ease infinite}
+@keyframes holePulse{0%,100%{outline-color:var(--accent)}50%{outline-color:rgba(41,169,242,.35)}}
 .spot-hint{position:absolute;z-index:222;background:var(--surface);border-radius:18px;padding:16px;box-shadow:var(--sh);max-width:300px;animation:fadeUp .25s ease}
 .spot-hint:after{content:'';position:absolute;width:14px;height:14px;background:var(--surface);transform:rotate(45deg);left:var(--ax,24px)}
 .spot-hint.above:after{bottom:-7px}
@@ -2309,7 +2357,9 @@ function profCoreHtml(user){
     '<button class="btn btn-primary pressable" style="font-size:12.5px;padding:10px 14px" onclick="navigate(\'stats\')">Добавить взвешивание</button></div></div>';
 }
 function profButtonsHtml(){
-  return '<button class="btn btn-ghost btn-block pressable mb4 mt3" onclick="openSupportTab()" style="display:flex;align-items:center;justify-content:center;gap:8px">' + ic('person',16) + ' Чат поддержки</button>' +
+  return '<div class="card mb4" id="profWeightChartCard"><h3 class="mb2">Взвешивание</h3><div id="profWeightChart"></div>' +
+    '<button class="btn btn-ghost btn-block pressable mt2" onclick="navigate(\'stats\')" style="font-size:13px">Все данные и запись веса</button></div>' +
+    '<button class="btn btn-ghost btn-block pressable mb4 mt3" onclick="openSupportTab()" style="display:flex;align-items:center;justify-content:center;gap:8px">' + ic('person',16) + ' Чат поддержки</button>' +
     '<button class="btn btn-ghost btn-block pressable mb4 mt2" onclick="navigate(\'settings\')" style="display:flex;align-items:center;justify-content:center;gap:8px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 1v4m0 14v4M4.2 4.2l2.8 2.8m10 10 2.8 2.8M1 12h4m14 0h4M4.2 19.8l2.8-2.8m10-10 2.8-2.8"/></svg> Настройки</button>';
 }
 function setProfAvatar(user){
@@ -2345,7 +2395,20 @@ async function loadProfile(){
   }).catch(function(){});
 
   api('/api/weight/' + tgId).catch(function(){ return { history: [] }; }).then(function(wl){
-    renderWeightHeader(((wl && wl.history) || []).slice().reverse());
+    const hist = ((wl && wl.history) || []).slice().reverse();
+    renderWeightHeader(hist);
+    /* v29.1: тот же график веса и в профиле */
+    const pc = document.getElementById('profWeightChart');
+    if(pc){
+      const save = $('weightChart');
+      const tmp = document.createElement('div');
+      tmp.id = 'weightChart';
+      document.body.appendChild(tmp);
+      renderWeightChart(hist, currentUser && currentUser.current_weight);
+      pc.innerHTML = tmp.innerHTML;
+      tmp.remove();
+      if(save) save.id = 'weightChart';
+    }
   }).catch(function(){});
 
   api('/api/achievements/' + tgId).catch(function(){ return { achievements: [] }; }).then(function(ach){
@@ -2440,12 +2503,17 @@ function tgOpenLink(url){
   }catch(e){}
   window.open(url, '_blank', 'noopener');
 }
-function openLastExport(){
+/* v29.1: одноразовый токен живёт 2 минуты — «последняя ссылка» всегда выдаёт СВЕЖУЮ,
+   иначе старая ссылка уже недействительна и открывается ошибка вместо файла */
+async function openLastExport(){
   try{
-    const url = localStorage.getItem('gf_last_export');
-    if(!url){ showToast('Сначала запроси копию данных', ''); return; }
+    showToast('Готовим файл…', '');
+    const t = await api('/api/user/export/token', { method:'POST', body:{} });
+    if(!t || !t.token) throw new Error('Не удалось подготовить файл');
+    const url = API + '/api/user/export?download=1&dt=' + encodeURIComponent(t.token);
+    try{ localStorage.setItem('gf_last_export', url); }catch(e){}
     tgOpenLink(url);
-  }catch(e){ showToast('Сначала запроси копию данных', ''); }
+  }catch(e){ showError((e && e.message) || 'Не удалось выгрузить данные'); }
 }
 async function exportMyData(){
   try{
@@ -2476,7 +2544,7 @@ async function fillAboutVersion(){
 /* ================= v28: настройки — вкладки Профиль / Безопасность / О приложении / Поддержка ================= */
 let setTab = 'profile';
 function setTabGo(t){ setTab = t; loadSettings(); }
-function openSupportTab(){ setTab = 'support'; navigate('settings'); }
+function openSupportTab(){ setTab = 'support'; window._setTabKeep = true; navigate('settings'); }
 /* ---- встроенный чат поддержки (v28): сообщения хранятся на сервере по tg_id,
         админу приходит уведомление в Telegram, его ответ виден здесь же ---- */
 function supportChatHtml(){
@@ -2627,7 +2695,8 @@ function loadSettings(){
   if(!c || !currentUser) return;
   const u = currentUser;
   const tab = setTab || 'profile';
-  const tabs = [['profile','Профиль'],['security','Безопасность'],['about','О приложении'],['support','Поддержка']]
+  /* v29.1: порядок вкладок — Профиль → Безопасность → Поддержка → О приложении */
+  const tabs = [['profile','Профиль'],['security','Безопасность'],['support','Поддержка'],['about','О приложении']]
     .map(function(t){ return '<button class="set-tab pressable' + (tab===t[0]?' active':'') + '" onclick="setTabGo(\'' + t[0] + '\')">' + t[1] + '</button>'; }).join('');
   let body = '';
   if(tab === 'profile'){
@@ -2665,8 +2734,8 @@ function loadSettings(){
         '<button class="btn btn-danger btn-block pressable" onclick="doDeleteData()">Удалить мои данные</button></div>';
   } else if(tab === 'about'){
     body = aboutBlock() +
-      '<a href="javascript:void(0)" rel="noopener" class="btn btn-ghost btn-block pressable" style="text-decoration:none;display:flex;align-items:center;justify-content:center;gap:8px" onclick="openDoc(\'/privacy.html\')">Политика обработки персональных данных</a>' +
-      '<a href="javascript:void(0)" rel="noopener" class="btn btn-ghost btn-block pressable mt2" style="text-decoration:none;display:flex;align-items:center;justify-content:center;gap:8px" onclick="openDoc(\'/terms.html\')">Пользовательское соглашение</a>';
+      '<a href="javascript:void(0)" rel="noopener" class="btn btn-ghost btn-block pressable" style="text-decoration:none;display:flex;align-items:center;justify-content:center;gap:8px" onclick=\"_docContext=\'settings\';openDoc(\'/privacy.html\')">Политика обработки персональных данных</a>' +
+      '<a href="javascript:void(0)" rel="noopener" class="btn btn-ghost btn-block pressable mt2" style="text-decoration:none;display:flex;align-items:center;justify-content:center;gap:8px" onclick=\"_docContext=\'settings\';openDoc(\'/terms.html\')">Пользовательское соглашение</a>';
   } else {
     body = supportChatHtml();
   }
@@ -2822,8 +2891,12 @@ function tourPosition(step){
     const ov = document.getElementById('tourOverlay');
     if(!ov) return;
     const el = tourEl(step);
-    // элемент исчез (сменился экран) — переходим на центральную подсказку
-    if(!el){ tourCenter(step); return; }
+    // элемент мог быть ещё не отрисован (анимации появления) — повторяем попытку, а не прыгаем в центр
+    if(!el){
+      if(!ov._retried){ ov._retried = true; setTimeout(function(){ tourPosition(step); }, 260); return; }
+      tourCenter(step); return;
+    }
+    ov._retried = false;
     // функцию зовут повторно (после скролла) — обновляем координаты СУЩЕСТВУЮЩЕЙ карточки,
     // а не пересоздаём её: пересоздание и было причиной «моргания» карточки обучения
     if(ov._builtFor !== tourIdx){
@@ -2857,12 +2930,8 @@ function tourPosition(step){
     const below = (top >= r.bottom);
     hint.classList.add(below ? 'below' : 'above');
     hint.style.top = top + 'px'; hint.style.left = left + 'px'; hint.style.right = 'auto'; hint.style.bottom = 'auto';
-    /* v26.1: шаг целился в нижний таббар — подсказку ставим НАД панелью кнопок тура (сама панель теперь над таббаром) */
-    if(step.sel && step.sel.indexOf('nav-item') !== -1){
-      hint.classList.remove('below'); hint.classList.add('above');
-      hint.style.top = 'auto';
-      hint.style.bottom = 'calc(148px + env(safe-area-inset-bottom,0px))';
-    }
+    /* v29.1: частный случай для таббара убран — универсальная логика уже не даёт подсказке
+       заезжать в зону кнопок «Далее/Пропустить» (ceil = vh - TOUR_NAV_H) */
     hint.style.setProperty('--ax', Math.max(Math.min(r.left + r.width/2 - left - 7, hw - 26), 12) + 'px');
     if(typeof haptic === 'function') haptic();
   }catch(e){}
@@ -2956,24 +3025,8 @@ function copyShopList(){
 }
 </script>
 <script>
-try{
-  const _lp15 = loadProfile;
-  loadProfile = function(){
-    const r = _lp15.apply(this, arguments);
-    setTimeout(function(){
-      const c = document.getElementById('profileContent');
-      if(!c || document.getElementById('supportCard')) return;
-      /* v28: ссылка на t.me заменена встроенным чатом поддержки (Настройки → Поддержка) */
-      const card = document.createElement('div');
-      card.className = 'card mb4'; card.id = 'supportCard';
-      card.innerHTML = '<h3 class="mb3">Помощь</h3>' +
-        '<button class="btn btn-ghost btn-block pressable" onclick="openSupportTab()" style="display:flex;align-items:center;justify-content:center;gap:8px">' + ic('person',16) + ' Чат поддержки</button>' +
-        '<p class="subtle mt2" style="font-size:11px;line-height:1.6">Вопросы и предложения — прямо в приложении, ответ придёт в чат.</p>';
-      c.appendChild(card);
-    }, 250);
-    return r;
-  };
-}catch(e){}
+/* v29.1: патч «Помощь»-карточки в профиле удалён — кнопка чата поддержки теперь есть
+   в самом профиле (profButtonsHtml) и во вкладке «Поддержка» настроек; дубликат убран. */
 /* v28: тумблер Telegram-напоминаний и привязка бота удалены вместе с их UI —
    заменены на push-уведомления (Настройки → Профиль) и встроенный чат поддержки. */
 </script>

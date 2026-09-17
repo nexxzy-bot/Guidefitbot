@@ -1470,7 +1470,10 @@ app.post('/api/weight', (req, res) => {
   const { weight } = req.body;
   if (!weight || !(weight >= 20) || weight > 400) return res.status(400).json({ error: 'Invalid weight' });
   touchSeen(tgId);
-  db.run("INSERT OR REPLACE INTO weight_logs (tg_id, date, weight) VALUES (?, ?, ?)",
+  /* v29.1: одна запись на день (уникальный индекс) — повторное взвешивание перезаписывает,
+     история прошлых дней сохраняется; INSERT OR REPLACE теперь работает корректно */
+  db.run("INSERT INTO weight_logs (tg_id, date, weight) VALUES (?, ?, ?) " +
+    "ON CONFLICT(tg_id, date) DO UPDATE SET weight = excluded.weight",
     [tgId, localDate(), weight], (err) => {
       if (err) return res.status(500).json({ error: err.message });
       db.get("SELECT gender, height, age, activity_level, goal FROM users WHERE tg_id = ?", [tgId], (e2, u) => {

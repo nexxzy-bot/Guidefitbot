@@ -1,4 +1,4 @@
-const CACHE = 'guidefit-v31';
+const CACHE = 'guidefit-v32';
 self.addEventListener('install', e => {
   e.waitUntil(
     caches.open(CACHE)

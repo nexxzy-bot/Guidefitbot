@@ -114,6 +114,9 @@ db.serialize(() => {
   db.run(`CREATE TABLE IF NOT EXISTS weight_logs (
     id INTEGER PRIMARY KEY AUTOINCREMENT, tg_id TEXT, date TEXT, weight REAL
   )`);
+  /* v29.1: одна запись веса на аккаунт за день (день = ключ графика; иначе дубли ломают оси) */
+  db.run("DELETE FROM weight_logs WHERE id NOT IN (SELECT MIN(id) FROM weight_logs GROUP BY tg_id, date)");
+  db.run("CREATE UNIQUE INDEX IF NOT EXISTS idx_weight_day ON weight_logs(tg_id, date)");
   db.run(`CREATE TABLE IF NOT EXISTS achievements (
     id INTEGER PRIMARY KEY, title TEXT, description TEXT, icon TEXT,
     condition_type TEXT, condition_value INTEGER
