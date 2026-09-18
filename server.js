@@ -415,7 +415,7 @@ app.post('/api/user/update', (req, res) => {
     if (err) return res.status(500).json({ error: err.message });
     if (!user) return res.status(404).json({ error: 'User not found' });
     const fields = {};
-    ['current_weight', 'target_weight', 'goal', 'activity_level', 'name', 'age', 'height', 'timezone'].forEach(k => {
+    ['current_weight', 'target_weight', 'goal', 'activity_level', 'name', 'age', 'height', 'timezone', 'fitness_level'].forEach(k => {
       if (req.body[k] !== undefined) fields[k] = req.body[k];
     });
     if (fields.current_weight !== undefined && !(fields.current_weight >= 20 && fields.current_weight <= 400)) return res.status(400).json({ error: 'Invalid values' });
@@ -424,6 +424,11 @@ app.post('/api/user/update', (req, res) => {
     if (fields.height !== undefined && !(fields.height >= 120 && fields.height <= 230)) return res.status(400).json({ error: 'Invalid values' });
     if (fields.goal !== undefined && !['lose', 'maintain', 'gain'].includes(fields.goal)) return res.status(400).json({ error: 'Invalid values' });
     if (fields.activity_level !== undefined && !['sedentary', 'light', 'moderate', 'active', 'very_active'].includes(fields.activity_level)) return res.status(400).json({ error: 'Invalid values' });
+    if (fields.fitness_level !== undefined) {
+      const fl = parseInt(fields.fitness_level);
+      if (!(fl >= 1 && fl <= 5)) return res.status(400).json({ error: 'Invalid values' });
+      fields.fitness_level = fl;
+    }
     if (fields.name !== undefined && (typeof fields.name !== 'string' || !fields.name.trim() || fields.name.length > 30)) return res.status(400).json({ error: 'Invalid values' });
     if (fields.timezone !== undefined) {
       const tzv = String(fields.timezone);
@@ -1249,7 +1254,7 @@ app.get('/api/exercises', (req, res) => {
   db.all(sql, params, (err, rows) => {
     if (err) return res.status(500).json({ error: err.message });
     rows.forEach(r => { r.tips = Array.isArray(r.tips) ? r.tips : (r.tips ? [r.tips] : []); });
-    res.json({ exercises: rows });
+    attachGifs(rows, () => res.json({ exercises: rows }));
   });
 });
 
@@ -1258,8 +1263,53 @@ app.get('/api/exercise/:id', (req, res) => {
     if (err) return res.status(500).json({ error: err.message });
     if (!row) return res.status(404).json({ error: 'Not found' });
     row.tips = Array.isArray(row.tips) ? row.tips : (row.tips ? [row.tips] : []);
-    res.json(row);
+    attachGifs([row], () => res.json(row));
   });
+});
+
+/* v31: добавляет gif_url из meta (упавшему в кеш списку — один SQL-запрос вместо N) */
+let _gifMetaCache = null, _gifMetaAt = 0;
+function gifMap(cb) {
+  if (_gifMetaCache && Date.now() - _gifMetaAt < 300000) return cb(_gifMetaCache);
+  db.all("SELECT key, value FROM meta WHERE key LIKE 'exercise:gif:%' AND key != 'exercise:gif:source'", [], (e, rows) => {
+    const m = {};
+    (rows || []).forEach(r => { try { m[r.key.replace('exercise:gif:', '')] = JSON.parse(r.value).gif || null; } catch (er) {} });
+    _gifMetaCache = m; _gifMetaAt = Date.now();
+    cb(m);
+  });
+}
+function attachGifs(rows, done) {
+  gifMap(m => { (rows || []).forEach(r => { r.gif_url = m[r.id] || null; }); done(); });
+}
+
+/* v31: медиа упражнения — локальная GIF-анимация (© Gym visual, exercises-dataset),
+   при отсутствии пары в датасете — фото с Pexels (существующий пайплайн кеша). */
+app.get('/api/exercise-media/:id', async (req, res) => {
+  try {
+    const exId = parseInt(req.params.id, 10) || 0;
+    const name = String(req.query.name || '').slice(0, 80);
+    let gifUrl = null, source = 'gif';
+    if (exId) {
+      const row = await new Promise((resolve) =>
+        db.get("SELECT value FROM meta WHERE key = ?", ['exercise:gif:' + exId], (e, r) => resolve(r)));
+      if (row) { try { gifUrl = JSON.parse(row.value).gif || null; } catch (e) {} }
+    }
+    if (!gifUrl) {
+      source = 'photo';
+      const q = name || 'gym workout training';
+      const slug = crypto.createHash('md5').update('ex:' + q).digest('hex').slice(0, 16) + '.webp';
+      const localPath = path.join(IMG_DIR, slug);
+      if (fs.existsSync(localPath)) gifUrl = '/images/cache/' + slug;
+      else {
+        const remote = await fetchPexelsPhoto(q + ' exercise training');
+        if (remote) {
+          const local = await cacheImageLocally(remote, 'ex:' + q);
+          gifUrl = local || remote;
+        }
+      }
+    }
+    res.json({ url: gifUrl || '', source });
+  } catch (e) { res.json({ url: '', source: 'none' }); }
 });
 
 app.get('/api/programs', (req, res) => {
@@ -1360,6 +1410,160 @@ app.post('/api/user/program/complete', (req, res) => {
   db.run("UPDATE user_programs SET active = 0, completed = 1 WHERE tg_id = ? AND active = 1", [tgId], (err) => {
     if (err) return res.status(500).json({ error: err.message });
     res.json({ status: 'ok' });
+  });
+});
+
+/* ================= v31: новая система программ (Фаза B) =================
+   fit_programs (fat/muscle/cardio) + yoga_programs (5 уровней, фокусы).
+   Старые /api/programs и /api/yoga/* остаются нетронутыми для отката. */
+const GOAL_TO_CATEGORY = { lose: 'fat', gain: 'muscle', maintain: 'cardio' };
+function exerciseMedia(exerciseId) {
+  return new Promise((resolve) => {
+    db.get("SELECT value FROM meta WHERE key = ?", ['exercise:gif:' + exerciseId], (e, r) => resolve((r && r.value) || null));
+  });
+}
+function yogaPoseMedia(poseId) {
+  return new Promise((resolve) => {
+    db.get("SELECT value FROM meta WHERE key = ?", ['exercise:gif:yoga:' + poseId], (e, r) => resolve((r && r.value) || null));
+  });
+}
+
+app.get('/api/fit/programs', async (req, res) => {
+  const cat = ['fat', 'muscle', 'cardio'].includes(req.query.category) ? req.query.category : null;
+  const lvl = [1, 2, 3, 4, 5].includes(parseInt(req.query.level)) ? parseInt(req.query.level) : null;
+  let sql = "SELECT * FROM fit_programs WHERE 1=1";
+  const params = [];
+  if (cat) { sql += " AND category = ?"; params.push(cat); }
+  if (lvl) { sql += " AND level = ?"; params.push(lvl); }
+  sql += " ORDER BY level, id";
+  db.all(sql, params, async (err, rows) => {
+    if (err) return res.status(500).json({ error: err.message });
+    // рекомендация по цели профиля (гость/без цели -> fat, как в ТЗ)
+    let recommended = 'fat';
+    const tgId = resolveTgId(req);
+    if (tgId) {
+      const u = await new Promise((resolve) => db.get("SELECT goal FROM users WHERE tg_id = ?", [tgId], (e, r) => resolve(r)));
+      if (u && GOAL_TO_CATEGORY[u.goal]) recommended = GOAL_TO_CATEGORY[u.goal];
+    }
+    res.json({ programs: rows, recommended });
+  });
+});
+
+app.get('/api/fit/program/:id', (req, res) => {
+  db.get("SELECT * FROM fit_programs WHERE id = ?", [req.params.id], (err, program) => {
+    if (err) return res.status(500).json({ error: err.message });
+    if (!program) return res.status(404).json({ error: 'Not found' });
+    db.all("SELECT * FROM fit_days WHERE program_id = ? ORDER BY week, day", [program.id], async (err2, days) => {
+      if (err2) return res.status(500).json({ error: err2.message });
+      const enriched = await Promise.all((days || []).map(d => new Promise((resolve) => {
+        db.all(`SELECT fe.*, e.name as exercise_name, e.description as exercise_desc, e.muscle_group
+              FROM fit_exercises fe JOIN exercises e ON e.id = fe.exercise_id
+              WHERE fe.program_day_id = ? ORDER BY fe.id`, [d.id], async (err3, exes) => {
+          const list = exes || [];
+          await Promise.all(list.map(async (x) => { x.gif_url = await exerciseMedia(x.exercise_id); }));
+          resolve({ ...d, exercises: list });
+        });
+      })));
+      res.json({ program, days: enriched, total_days: enriched.length });
+    });
+  });
+});
+
+app.post('/api/fit/start', (req, res) => {
+  const tgId = resolveTgId(req);
+  if (!tgId) return res.status(401).json({ error: 'Unauthorized' });
+  const pid = parseInt(req.body.program_id);
+  if (!pid) return res.status(400).json({ error: 'Missing fields' });
+  db.get("SELECT id FROM fit_programs WHERE id = ?", [pid], (err, p) => {
+    if (err) return res.status(500).json({ error: err.message });
+    if (!p) return res.status(404).json({ error: 'Not found' });
+    db.get("SELECT id FROM fit_days WHERE program_id = ? ORDER BY week, day LIMIT 1", [pid], (err2, d) => {
+      if (err2) return res.status(500).json({ error: err2.message });
+      if (!d) return res.status(404).json({ error: 'Program has no days' });
+      db.run("UPDATE user_programs_v2 SET active = 0 WHERE tg_id = ?", [tgId], () => {
+        db.run(`INSERT INTO user_programs_v2 (tg_id, program_id, current_day_id, start_date, active)
+              VALUES (?, ?, ?, ?, 1)`, [tgId, pid, d.id, localDate()], (err3) => {
+          if (err3) return res.status(500).json({ error: err3.message });
+          touchSeen(tgId);
+          res.json({ status: 'ok' });
+        });
+      });
+    });
+  });
+});
+
+app.get('/api/fit/active', (req, res) => {
+  const tgId = resolveTgId(req);
+  if (!tgId) return res.status(401).json({ error: 'Unauthorized' });
+  db.get(`SELECT upv.*, fp.name as program_name, fp.category, fp.level, fp.weeks, fp.days_per_week, fp.description
+      FROM user_programs_v2 upv JOIN fit_programs fp ON fp.id = upv.program_id
+      WHERE upv.tg_id = ? AND upv.active = 1`, [tgId], (err, row) => {
+    if (err) return res.status(500).json({ error: err.message });
+    if (!row) return res.json({ program: null });
+    db.get("SELECT COUNT(*) c FROM fit_days WHERE program_id = ?", [row.program_id], (err2, c) => {
+      if (err2) return res.status(500).json({ error: err2.message });
+      db.get("SELECT week, day, title FROM fit_days WHERE id = ?", [row.current_day_id], (err3, cur) => {
+        if (err3) return res.status(500).json({ error: err3.message });
+        row.total_days = (c && c.c) || 0;
+        row.current = cur || null;
+        res.json({ program: row });
+      });
+    });
+  });
+});
+
+app.post('/api/fit/progress', (req, res) => {
+  const tgId = resolveTgId(req);
+  if (!tgId) return res.status(401).json({ error: 'Unauthorized' });
+  db.get("SELECT * FROM user_programs_v2 WHERE tg_id = ? AND active = 1", [tgId], (err, up) => {
+    if (err) return res.status(500).json({ error: err.message });
+    if (!up) return res.status(404).json({ error: 'No active program' });
+    db.all("SELECT id FROM fit_days WHERE program_id = ? ORDER BY week, day", [up.program_id], (err2, days) => {
+      if (err2) return res.status(500).json({ error: err2.message });
+      const idx = (days || []).findIndex(d => d.id === up.current_day_id);
+      if (idx === -1) return res.status(404).json({ error: 'Current day not found' });
+      const next = days[idx + 1];
+      if (!next) {
+        db.run("UPDATE user_programs_v2 SET active = 0, completed = 1 WHERE id = ?", [up.id], (err3) => {
+          if (err3) return res.status(500).json({ error: err3.message });
+          res.json({ status: 'ok', completed: true });
+        });
+      } else {
+        db.run("UPDATE user_programs_v2 SET current_day_id = ? WHERE id = ?", [next.id, up.id], (err3) => {
+          if (err3) return res.status(500).json({ error: err3.message });
+          res.json({ status: 'ok', completed: false });
+        });
+      }
+    });
+  });
+});
+
+app.get('/api/yoga2/programs', (req, res) => {
+  const lvl = [1, 2, 3, 4, 5].includes(parseInt(req.query.level)) ? parseInt(req.query.level) : null;
+  const focus = String(req.query.focus || '').slice(0, 40);
+  let sql = "SELECT id, title, focus, level, minutes, description FROM yoga_programs WHERE 1=1";
+  const params = [];
+  if (lvl) { sql += " AND level = ?"; params.push(lvl); }
+  if (focus) { sql += " AND focus = ?"; params.push(focus); }
+  sql += " ORDER BY level, id";
+  db.all(sql, params, (err, rows) => {
+    if (err) return res.status(500).json({ error: err.message });
+    res.json({ programs: rows || [] });
+  });
+});
+
+app.get('/api/yoga2/program/:id', async (req, res) => {
+  db.get("SELECT * FROM yoga_programs WHERE id = ?", [req.params.id], async (err, program) => {
+    if (err) return res.status(500).json({ error: err.message });
+    if (!program) return res.status(404).json({ error: 'Not found' });
+    let poses = [];
+    try { poses = JSON.parse(program.poses || '[]'); } catch (e) { poses = []; }
+    const enriched = await Promise.all(poses.map(async (p) => {
+      const pose = await new Promise((resolve) => db.get("SELECT id, name, how, why FROM yoga_poses WHERE id = ?", [p.pose_id], (e, r) => resolve(r)));
+      return { ...pose, seconds: p.seconds, gif_url: await yogaPoseMedia(p.pose_id) };
+    }));
+    delete program.poses;
+    res.json({ program, poses: enriched.filter(p => p && p.id) });
   });
 });
 

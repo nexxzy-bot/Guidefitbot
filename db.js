@@ -27,6 +27,8 @@ db.serialize(() => {
   )`);
   db.all("PRAGMA table_info(users)", [], (e2, cols2) => {
     if (!e2 && cols2 && !cols2.some(c => c.name === 'notify_enabled')) db.run("ALTER TABLE users ADD COLUMN notify_enabled INTEGER DEFAULT 1");
+    // v31: уровень подготовки (1 начинающий … 5 профессионал) — от него зависят рекомендации программ и йоги
+    if (!e2 && cols2 && !cols2.some(c => c.name === 'fitness_level')) db.run("ALTER TABLE users ADD COLUMN fitness_level INTEGER");
   });
   // админка + мультиавторизация (ВК/Яндекс/Max): последний визит и провайдер (tg_id остаётся единым subject: 'tg:123', 'vk:456', ...)
   // + фото профиля из VK (avatar) + привязанный Telegram-чат для напоминаний (notify_chat_id)
@@ -103,6 +105,13 @@ db.serialize(() => {
     program_day_id INTEGER, date TEXT, duration_minutes INTEGER,
     total_volume REAL, notes TEXT, completed INTEGER DEFAULT 1
   )`);
+  /* v31: прогресс по новым программам (fit_programs) — отдельно от легаси user_programs */
+  db.run(`CREATE TABLE IF NOT EXISTS user_programs_v2 (
+    id INTEGER PRIMARY KEY AUTOINCREMENT, tg_id TEXT, program_id INTEGER,
+    current_day_id INTEGER, start_date TEXT,
+    active INTEGER DEFAULT 1, completed INTEGER DEFAULT 0
+  )`);
+  db.run(`CREATE INDEX IF NOT EXISTS idx_user_programs_v2_tg ON user_programs_v2(tg_id, active)`);
   db.run(`CREATE TABLE IF NOT EXISTS workout_sets (
     id INTEGER PRIMARY KEY AUTOINCREMENT, log_id INTEGER,
     exercise_id INTEGER, set_number INTEGER, reps INTEGER, weight REAL,
@@ -183,6 +192,32 @@ db.serialize(() => {
     id INTEGER PRIMARY KEY, title TEXT, focus TEXT, level TEXT,
     minutes INTEGER, description TEXT
   )`);
+  /* v31: НОВАЯ система программ (Фаза B) — параллельно старым programs/yoga_flows,
+     старые таблицы остаются нетронутыми для отката. ids: fit 5001+, йога 5001+. */
+  db.run(`CREATE TABLE IF NOT EXISTS fit_programs (
+    id INTEGER PRIMARY KEY, name TEXT NOT NULL, category TEXT NOT NULL,
+    level INTEGER NOT NULL DEFAULT 1, weeks INTEGER NOT NULL DEFAULT 4,
+    days_per_week INTEGER NOT NULL DEFAULT 3, minutes INTEGER,
+    description TEXT, location TEXT DEFAULT 'home'
+  )`);
+  db.run(`CREATE INDEX IF NOT EXISTS idx_fit_programs_cat ON fit_programs(category, level)`);
+  db.run(`CREATE TABLE IF NOT EXISTS fit_days (
+    id INTEGER PRIMARY KEY, program_id INTEGER NOT NULL, week INTEGER NOT NULL,
+    day INTEGER NOT NULL, title TEXT, description TEXT
+  )`);
+  db.run(`CREATE INDEX IF NOT EXISTS idx_fit_days_prog ON fit_days(program_id, week, day)`);
+  db.run(`CREATE TABLE IF NOT EXISTS fit_exercises (
+    id INTEGER PRIMARY KEY AUTOINCREMENT, program_day_id INTEGER NOT NULL,
+    exercise_id INTEGER NOT NULL, sets INTEGER DEFAULT 3, reps TEXT,
+    rest_seconds INTEGER DEFAULT 60, notes TEXT
+  )`);
+  db.run(`CREATE INDEX IF NOT EXISTS idx_fit_ex_day ON fit_exercises(program_day_id)`);
+  db.run(`CREATE TABLE IF NOT EXISTS yoga_programs (
+    id INTEGER PRIMARY KEY, title TEXT NOT NULL, focus TEXT NOT NULL,
+    level INTEGER NOT NULL DEFAULT 1, minutes INTEGER, description TEXT,
+    poses TEXT /* JSON: [{pose_id, seconds}] */
+  )`);
+  db.run(`CREATE INDEX IF NOT EXISTS idx_yoga_programs_level ON yoga_programs(level, focus)`);
   db.run(`CREATE TABLE IF NOT EXISTS yoga_flow_poses (
     id INTEGER PRIMARY KEY AUTOINCREMENT, flow_id INTEGER,
     pose_id INTEGER, seconds INTEGER

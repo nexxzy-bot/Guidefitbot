@@ -23,6 +23,10 @@ android/*.keystore
 static/images/cache/
 # Локальные фото блюд (Unitools/Pexels → webp), генерируется scripts/preheat-images.js
 static/images/dishes/
+# GIF-анимации упражнений (Gym visual), скачиваются scripts/match-exercises.js
+static/images/exercises/
+# Метаданные exercises-dataset (17МБ, runtime для пересопоставления)
+data/exercises-dataset.json
 
 static/*.apk
 android/*.apk

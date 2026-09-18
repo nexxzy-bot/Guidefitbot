@@ -836,6 +836,7 @@ function navigate(screen){
     if(cur && cur.id === 'screen-settings'){ stopSupportChatPoll(); }
     if(screen !== 'active-workout'){ clearInterval(restTimer); restTimer = null; const ro = document.getElementById('restOverlay'); if(ro) ro.classList.remove('show'); }
     if(screen !== 'workouts' && screen !== 'program' && typeof yfTimer !== 'undefined'){ clearInterval(yfTimer); }
+    if(screen !== 'workouts' && typeof _y2Timer !== 'undefined'){ clearInterval(_y2Timer); }
   }catch(e){}
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   const t = $('screen-'+screen); if(t) t.classList.add('active');
@@ -1421,7 +1422,7 @@ async function abortWorkout(){
   clearInterval(workoutTimer); workoutTimer = null;
   clearInterval(restTimer); restTimer = null;
   const ro = document.getElementById('restOverlay'); if(ro) ro.classList.remove('show');
-  isProgramWorkout = false; currentProgramDay = null;
+  isProgramWorkout = false; currentProgramDay = null; _fitDayActive = false;
   _wzExit = true;
   try{ navigate('workouts'); } finally{ _wzExit = false; }
 }
@@ -1449,6 +1450,15 @@ async function finishWorkout(isProgram){
       }
     });
     showSuccess('Тренировка завершена: ' + duration + ' мин');
+    if(isProgram && _fitDayActive){
+      try{
+        const p = await api('/api/fit/progress', { method:'POST', body:{ tg_id: currentUser.tg_id } });
+        if(p.completed) setTimeout(() => showSuccess('Программа завершена!'), 1200);
+      }catch(e2){ /* тренировка сохранена, прогресс подтянется при открытии */ }
+      window._wzFinished = true; isProgramWorkout = false; currentProgramDay = null; _wzExit = true; _fitDayActive = false;
+      try{ fitOpen(_fitDayProgId); } finally{ _wzExit = false; }
+      return;
+    }
     if(isProgram && currentProgramId){
       const doneProgramId = currentProgramId;
       try{
@@ -1583,11 +1593,39 @@ const EXG = {
 'Спринт на месте':{steps:['Встань прямо, начни бег на месте.','Колени — выше бёдер, руки работают активно.','20–30 секунд максимального темпа, 40–60 отдых.'],mistakes:['Низкие колени — поднимай до уровня бёдер.','Сутулость — корпус вертикально.']}
 };
 
-function loadExPhoto(i, name, muscle){
+/* v31: GIF-анимации упражнений (© Gym visual) — /api/exercise-media/:id отдаёт
+   локальный GIF, при отсутствии пары в датасете — Pexels-фото как fallback.
+   Прогрев: на активной тренировке GIF следующего упражнения качается заранее. */
+const _exMedia = {};
+function exMediaFor(exId){ return _exMedia[exId] || null; }
+async function prefetchExMedia(exIds){
+  const need = (exIds || []).filter(id => id && !_exMedia[id] && !_exMedia['p:' + id]);
+  if(!need.length) return;
+  await Promise.all(need.map(async id => {
+    try{ const d = await api('/api/exercise-media/' + id); _exMedia[id] = d.url || null; }
+    catch(e){ _exMedia[id] = null; }
+    if(!_exMedia[id]) _exMedia['p:' + id] = 1;
+  }));
+}
+function exMediaImg(exId, cls){
+  const u = exMediaFor(exId);
+  return u ? '<img src="' + esc(u) + '" class="' + (cls || '') + '" alt="" ' + (String(u).endsWith('.gif') ? '' : 'loading="lazy" ') + 'decoding="async">' : '';
+}
+async function loadExMedia(i, exId, name, muscle){
+  const el = document.getElementById('exphoto-' + i); if(!el) return;
+  if(exId && _exMedia[exId] !== undefined){ el.innerHTML = exMediaImg(exId) || loadExPhotoFallback(i, name, muscle); return; }
+  try{
+    const d = await api('/api/exercise-media/' + (exId || 0) + '?name=' + encodeURIComponent(name || ''));
+    _exMedia[exId || 0] = d.url || null;
+    el.innerHTML = d.url ? '<img src="' + esc(d.url) + '" alt="" ' + (String(d.url).endsWith('.gif') ? '' : 'loading="lazy" ') + 'decoding="async">' : loadExPhotoFallback(i, name, muscle);
+  }catch(e){ el.innerHTML = loadExPhotoFallback(i, name, muscle); }
+}
+function loadExPhotoFallback(i, name, muscle){
   const q = (typeof EXQ !== 'undefined' && EXQ[name]) || 'gym workout training';
   api('/api/ex-photo?q=' + encodeURIComponent(q)).then(d => {
     if(d && d.url){ const el = document.getElementById('exphoto-' + i); if(el) el.innerHTML = '<img src="' + d.url.replace(/"/g, '') + '" alt="" loading="lazy">'; }
   }).catch(() => {});
+  return '<span style="display:flex">' + ic('dumbbell', 26) + '</span>';
 }
 async function awResolveMeta(){
   try{
@@ -1600,9 +1638,11 @@ async function awResolveMeta(){
       if(b && m.muscle){ b.textContent = mn[m.muscle] || m.muscle; b.classList.remove('hidden'); }
       const wy = document.getElementById('exwhy-' + i);
       if(wy && m.muscle && typeof WHY !== 'undefined'){ wy.textContent = WHY[m.muscle] || ''; wy.classList.remove('hidden'); }
-      loadExPhoto(i, m.name, m.muscle);
+      loadExMedia(i, m.id, m.name, m.muscle);
     });
-  }catch(e){ awMeta.forEach((m, i) => loadExPhoto(i, m.name, '')); }
+    const ids = awMeta.map(m => m.id).filter(Boolean);
+    prefetchExMedia(ids.slice((awMeta.indexOf(awMeta.find(x => x.id)) || 0) + 1, (awMeta.indexOf(awMeta.find(x => x.id)) || 0) + 3));
+  }catch(e){ awMeta.forEach((m, i) => loadExMedia(i, m.id, m.name, '')); }
 }
 async function toggleExInfo(i){
   const box = document.getElementById('exinfo-' + i);
@@ -1921,9 +1961,12 @@ async function woLibDetail(i){
     const th = document.getElementById('libthumb-' + i);
     if(!th || th.dataset.ph) return;
     th.dataset.ph = '1';
-    const q = (typeof EXQ !== 'undefined' && EXQ[x.name]) || 'gym workout training';
-    api('/api/ex-photo?q=' + encodeURIComponent(q)).then(d => {
-      if(d && d.url){ const el = document.getElementById('libthumb-' + i); if(el) el.innerHTML = '<img src="' + d.url.replace(/"/g,'') + '" loading="lazy" alt="">'; }
+    const put = (u) => { const el = document.getElementById('libthumb-' + i); if(el && u) el.innerHTML = '<img src="' + esc(u) + '" alt="" ' + (String(u).endsWith('.gif') ? '' : 'loading="lazy" ') + 'decoding="async">'; };
+    if(_exMedia[x.id] !== undefined){ put(_exMedia[x.id]); return; }
+    api('/api/exercise-media/' + x.id).then(d => {
+      _exMedia[x.id] = d.url || null;
+      if(!d.url) _exMedia['p:' + x.id] = 1;
+      put(d.url);
     }).catch(() => {});
   })();
   const g = (typeof EXG !== 'undefined' && EXG[x.name]) || null;
@@ -2152,14 +2195,8 @@ function wzRender(isProgram){
           'Подход ' + (done+1) + ' сделан ' + ic('check',20) + '</button>' +
         '<p class="text-center subtle mt2" style="font-size:11.5px">Нажми кнопку после каждого подхода. Отдых между подходами — ' + (ex.rest_seconds||40) + ' сек.</p>');
   awMeta = [{ id: ex.id || 0, name: ex.name || '', muscle: '' }];
-  loadExPhoto(0, ex.name, '');
-  awResolveMeta().then(function(){
-    const m = awMeta[0];
-    if(m && m.muscle){
-      const img = document.querySelector('#exphoto-0 img');
-      if(!img) loadExPhoto(0, ex.name, m.muscle);
-    }
-  }).catch(function(){});
+  loadExMedia(0, ex.id || 0, ex.name, '');
+  awResolveMeta().catch(function(){});
 }
 function wzSetDone(isProgram){
   const ex = currentExercises[wzEx];
@@ -2332,11 +2369,15 @@ async function saveProfileSettings(){
   const tw = num('setTarget'); if(tw >= 20 && tw <= 400) body.target_weight = tw;
   const goal = (document.querySelector('input[name="setGoal"]:checked') || {}).value;
   if(goal && ['lose','maintain','gain'].includes(goal)) body.goal = goal;
+  const lvl = parseInt((document.querySelector('input[name="setLevel"]:checked') || {}).value);
+  if(lvl >= 1 && lvl <= 5) body.fitness_level = lvl;
   if(Object.keys(body).length < 2){ showToast('Ничего не изменено', 'err'); return; }
+  const hadLvl = lvl >= 1 && lvl <= 5;
   const saveBtn = document.querySelector('#settingsContent .btn-primary');
   try{
     if(saveBtn){ saveBtn.disabled = true; saveBtn.textContent = 'Сохранение…'; }
     const r = await api('/api/user/update', { method: 'POST', body: body });
+    if(hadLvl) currentUser.fitness_level = lvl; // новая йога/программы читают уровень из профиля
     showSuccess('Настройки сохранены! Калории пересчитаны: ' + r.calorie_norm + ' ккал');
     if(typeof haptic === 'function') haptic('ok');
     setTimeout(loadProfile, 900);
@@ -2578,7 +2619,8 @@ function aboutBlock(){
     '<p class="subtle mt2" style="font-size:11px;line-height:1.6">Возрастная категория: 12+. Приложение не является медицинским изделием и не заменяет консультацию врача. Расчёты и программы носят информационный характер. Время напоминаний — по выбранному вами часовому поясу.</p>' +
     '<div style="border-top:1px solid rgba(128,128,128,.18);margin:12px 0;padding-top:10px"><p class="subtle" style="font-size:10px;font-weight:700;margin-bottom:6px">ИСТОЧНИКИ ДАННЫХ</p>' +
     '<p class="muted" style="font-size:11.5px;line-height:1.7;margin-bottom:8px">База рецептов: <a href="https://github.com/farcrak/unitools-recipes" onclick="tgOpenLink(\'https://github.com/farcrak/unitools-recipes\');return false" style="color:var(--accent);text-decoration:underline">Unitools Recipes</a>, автор farcrak — лицензия CC BY-SA 4.0. Названия блюд, составы и рецепты импортированы из открытого датасета Unitools.</p>' +
-    '<p class="muted" style="font-size:11.5px;line-height:1.7">Фотографии: <a href="https://www.pexels.com" onclick="tgOpenLink(\'https://www.pexels.com\');return false" style="color:var(--accent);text-decoration:underline">Pexels</a> — бесплатная лицензия Pexels, без указания авторства (благодарим фотографов!).</p></div>' +
+    '<p class="muted" style="font-size:11.5px;line-height:1.7">Фотографии: <a href="https://www.pexels.com" onclick="tgOpenLink(\'https://www.pexels.com\');return false" style="color:var(--accent);text-decoration:underline">Pexels</a> — бесплатная лицензия Pexels, без указания авторства (благодарим фотографов!).</p>' +
+    '<p class="muted" style="font-size:11.5px;line-height:1.7">GIF-анимации упражнений: © Gym visual — <a href="https://gymvisual.com/" onclick="tgOpenLink(\'https://gymvisual.com/\');return false" style="color:var(--accent);text-decoration:underline">gymvisual.com</a> (через открытый датасет exercises-dataset, 180×180).</p></div>' +
     '</div>';
 }
 async function fillAboutVersion(){
@@ -2761,6 +2803,8 @@ function loadSettings(){
           '<div class="set-field"><label class="input-label">Целевой вес</label><input class="input" type="number" inputmode="decimal" step="0.1" id="setTarget" value="' + u.target_weight + '"></div>' +
         '</div>' +
         '<label class="input-label">Цель</label><div class="flex gap2 mb3" style="flex-wrap:wrap">' + goalChips + '</div>' +
+        '<label class="input-label">Уровень подготовки</label><div class="flex gap2 mb3" style="flex-wrap:wrap">' +
+          [1,2,3,4,5].map(function(l){ return '<label class="chip pressable' + ((parseInt(u.fitness_level)||1)===l?' active':'') + '" style="cursor:pointer"><input type="radio" name="setLevel" value="' + l + '"' + ((parseInt(u.fitness_level)||1)===l?' checked':'') + ' style="display:none">' + FIT_LVL[l] + '</label>'; }).join('') + '</div>' +
         '<button class="btn btn-primary btn-block pressable" onclick="saveProfileSettings()">Сохранить</button>' +
         '<p class="subtle mt2" style="font-size:11.5px">После сохранения норма калорий пересчитается автоматически.</p></div>' +
       '<div class="card mb4"><h3 class="mb3">Приёмы пищи в день</h3><div class="flex gap2">' +
@@ -3283,17 +3327,16 @@ async function loadWorkouts(){
   const chips = document.getElementById('woChips');
   if(chips){
     const goals = [
-      {id:'fat', label:'Жиросжигание'},
-      {id:'strength', label:'Сила и тонус'},
+      {id:'fat', label:'Тренировки'},
       {id:'yoga', label:'Йога'},
       {id:'lib', label:'Все упражнения'}
     ];
-    /* v26: вкладка по умолчанию — «Жиросжигание» (раньше при цели «Набрать» открывалась «Сила и тонус») */
+    /* v31: вкладка по умолчанию — «Тренировки» (новые программы: жиросжигание/масса/кардио) */
     try{ if(typeof woGoal === 'undefined' || woGoal === null){ woGoal = 'fat'; } }catch(e){}
     let html = goals.map(g => '<button class="wo-chip pressable' + (g.id===woGoal?' active':'') + '" onclick="woSetGoal(\'' + g.id + '\')">' + g.label + '</button>').join('');
-    if((woGoal === 'fat' || woGoal === 'strength')){
+    if(woGoal === 'yoga'){
       html += '<span style="width:8px"></span>' +
-        ['all','beginner','intermediate'].map(l => '<button class="lvl-chip pressable' + (l===woLevel?' active':'') + '" onclick="woSetLevel(\'' + l + '\')">' + (l==='all'?'Все уровни':l==='beginner'?'Лёгкие':'Средние') + '</button>').join('');
+        [1,2,3,4,5].map(l => '<button class="lvl-chip pressable' + (l===_y2Lvl?' active':'') + '" onclick="y2SetLvl(' + l + ')">' + FIT_LVL[l] + '</button>').join('');
     }
     chips.innerHTML = html;
   }
@@ -3306,6 +3349,7 @@ async function loadWorkouts(){
   };
   if(woGoal === 'yoga'){ woRenderYoga(c); return; }
   if(woGoal === 'lib'){ woRenderLib(c); return; }
+  if(woGoal === 'fat' || woGoal === 'strength'){ fitRender(c); return; }
   try{
     const d = await api('/api/programs');
     const types = woGoal === 'fat' ? ['hiit','cardio','mix'] : ['strength'];
@@ -3357,6 +3401,210 @@ async function loadWorkouts(){
   }catch(e){ c.innerHTML = '<div class="empty">Не удалось загрузить</div>'; }
 }
 function woSetLevel(l){ woLevel = l; if(typeof haptic === 'function') haptic(); loadWorkouts(); }
+function woRenderYoga(c){
+  /* v31: йога 2.0 — 5 уровней, фокусы; старые потоки /api/yoga/flows остаются доступными для отката */
+  yoga2Render(c);
+}
+
+/* ============ v31: программы v2 (fit_programs) ============ */
+let _fitCache = null, _fitRec = 'fat', _fitCat = null;
+const FIT_CATS = [
+  { id:'fat', label:'Жиросжигание', sub:'Интервальные и круговые тренировки дома: максимум калорий за минимум времени.' },
+  { id:'muscle', label:'Набор массы', sub:'Силовая работа с весом тела и утяжелителями: мышцы растут дома не хуже, чем в зале.' },
+  { id:'cardio', label:'Кардионагрузки', sub:'Ритмичные тренировки для выносливости, сердца и общего тонуса.' }
+];
+const FIT_LVL = { 1:'Новичок', 2:'Любитель', 3:'Уверенный', 4:'Опытный', 5:'Профи' };
+function fitLvlBadge(l){ const n = Math.min(Math.max(parseInt(l) || 1, 1), 5); const cls = n <= 2 ? 'badge-green' : n === 3 ? 'badge-amber' : 'badge-violet'; return '<span class="badge ' + cls + '">' + FIT_LVL[n] + '</span>'; }
+async function fitRender(c){
+  if(!_fitCat) _fitCat = _fitRec;
+  let html = '<div class="flex gap2 mb3" style="flex-wrap:wrap">' +
+    FIT_CATS.map(x => '<button class="wo-chip pressable' + (x.id === _fitCat ? ' active' : '') + '" onclick="fitSetCat(\'' + x.id + '\')">' + x.label + '</button>').join('') + '</div>';
+  const meta = FIT_CATS.find(x => x.id === _fitCat) || FIT_CATS[0];
+  html += '<p class="subtle mb3" style="font-size:12.5px;line-height:1.6">' + meta.sub + (_fitCat === _fitRec ? ' <b style="color:var(--accent)">Рекомендовано по твоей цели.</b>' : '') + '</p>';
+  if(_fitCache === null) html += '<div class="shimmer"></div><div class="shimmer"></div>';
+  c.innerHTML = html;
+  try{
+    if(!_fitCache){
+      const d = await api('/api/fit/programs');
+      _fitCache = d.programs || []; _fitRec = d.recommended || 'fat';
+      if(!_fitCat) _fitCat = _fitRec;
+    }
+    let list = _fitCache.filter(p => p.category === _fitCat);
+    let active = null;
+    try{
+      const st = await api('/api/fit/active');
+      if(st && st.program){ active = list.find(p => p.id === st.program.program_id) || null; if(active) list = list.filter(p => p.id !== active.id); }
+    }catch(e){}
+    if(active){
+      html += '<div class="prog-card pressable active-prog" onclick="fitOpen(' + active.id + ')">' +
+        '<div class="flex between items-center" style="gap:10px"><h3 style="font-size:17px">' + esc(active.name) + '</h3>' +
+        '<span class="badge badge-accent">Твоя программа</span></div>' +
+        '<div class="prog-tags">' + fitLvlBadge(active.level) + '<span class="badge badge-accent">' + active.weeks + ' нед</span><span class="badge badge-blue">' + active.days_per_week + ' × в неделю</span><span class="badge badge-violet">' + active.minutes + ' мин</span></div>' +
+        '<p class="muted" style="font-size:12.5px;line-height:1.6">' + esc(active.description || '') + '</p></div>';
+    }
+    if(!list.length && !active){ html += '<div class="empty">В этой категории пока пусто</div>'; }
+    list.forEach(p => {
+      html += '<div class="prog-card pressable" onclick="fitOpen(' + p.id + ')">' +
+        '<div class="flex between items-center" style="gap:10px"><h3 style="font-size:17px">' + esc(p.name) + '</h3>' + fitLvlBadge(p.level) + '</div>' +
+        '<div class="prog-tags"><span class="badge badge-accent">' + p.weeks + ' нед</span><span class="badge badge-blue">' + p.days_per_week + ' × в неделю</span><span class="badge badge-violet">' + p.minutes + ' мин</span></div>' +
+        '<p class="muted" style="font-size:12.5px;line-height:1.6">' + esc(p.description || '') + '</p></div>';
+    });
+    if(document.getElementById('workoutContent') === c) c.innerHTML = html;
+  }catch(e){ if(document.getElementById('workoutContent') === c) c.innerHTML = '<div class="empty">Не удалось загрузить программы</div>'; }
+}
+function fitSetCat(cat){ _fitCat = cat; if(typeof haptic === 'function') haptic(); fitRender(document.getElementById('workoutContent')); }
+let _fitProg = null, _fitDayActive = false, _fitDayProgId = null;
+async function fitStartDay(dayId){
+  if(!_fitProg){ showError('Открой программу заново'); return; }
+  try{
+    const day = (_fitProg.days || []).find(x => x.id === dayId);
+    if(!day){ showError('День не найден'); return; }
+    currentProgramDay = dayId;
+    isProgramWorkout = true;
+    _fitDayActive = true; _fitDayProgId = _fitProg.program.id; currentProgramId = null;
+    currentExercises = (day.exercises || []).map(ex => ({
+      id: ex.exercise_id, name: ex.exercise_name,
+      sets: ex.sets || 3, reps: ex.reps || '10-12',
+      rest_seconds: ex.rest_seconds || 60, notes: ex.notes || ''
+    }));
+    renderActiveWorkout(true);
+    navigate('active-workout');
+  }catch(e){ showError('Ошибка загрузки тренировки'); }
+}
+async function fitOpen(id){
+  navigate('program');
+  const c = document.getElementById('programContent');
+  c.innerHTML = '<div class="shimmer"></div>';
+  try{
+    const d = await api('/api/fit/program/' + id);
+    _fitProg = d; currentProgramId = null;
+    const p = d.program;
+    let html = '<div class="card mb4"><h3 style="font-size:19px">' + esc(p.name) + '</h3>' +
+      '<div class="prog-tags mt2">' + fitLvlBadge(p.level) + '<span class="badge badge-accent">' + p.weeks + ' нед</span><span class="badge badge-violet">' + p.minutes + ' мин</span></div>' +
+      '<p class="muted mt2" style="font-size:12.5px;line-height:1.6">' + esc(p.description || '') + '</p>' +
+      '<button class="btn btn-primary btn-block pressable mt3" id="fitStartBtn" onclick="fitStart(' + p.id + ')">Начать программу</button></div>';
+    (d.days || []).forEach(day => {
+      html += '<div class="card mb4"><div class="flex between items-center mb2"><h3 style="font-size:15px">' + esc(day.title || ('Неделя ' + day.week + ' · День ' + day.day)) + '</h3><span class="badge badge-blue">' + (day.exercises || []).length + ' упр</span></div>';
+      (day.exercises || []).forEach((ex, i) => {
+        html += '<div class="exercise-row"><div class="flex between items-center" style="gap:10px"><div><b style="font-size:13.5px">' + esc(ex.exercise_name) + '</b>' +
+          '<p class="subtle" style="font-size:11.5px">' + ex.sets + ' × ' + esc(String(ex.reps || '')) + ' · отдых ' + (ex.rest_seconds || 60) + 'с</p></div></div></div>';
+      });
+      html += '<button class="btn btn-primary btn-block pressable mt3" onclick="fitStartDay(' + day.id + ')">Начать тренировку</button>';
+      html += '</div>';
+    });
+    c.innerHTML = html;
+  }catch(e){ c.innerHTML = '<div class="empty">Не удалось загрузить программу</div>'; }
+}
+async function fitStart(id){
+  if(!currentUser){ showError('Войдите, чтобы начать программу'); return; }
+  try{
+    await api('/api/fit/start', { method:'POST', body:{ tg_id: currentUser.tg_id, program_id: id } });
+    if(typeof haptic === 'function') haptic('ok');
+    showSuccess('Программа запущена!');
+    _fitCache = null; _fitCat = null;
+    navigate('workouts');
+  }catch(e){ showError('Не удалось запустить программу'); }
+}
+
+/* ============ v31: йога 2.0 — 5 уровней, фокусы ============ */
+let _y2Cache = null, _y2Lvl = 1, _y2Focus = null;
+const Y2_FOCUS_LABEL = { relax:'Расслабление', stretch:'Растяжка', flexibility:'Гибкость', lower_back:'Поясница', core:'Кор и пресс', legs:'Ноги', back:'Спина', energy:'Энергия', sleep:'Перед сном' };
+async function yoga2Render(c){
+  try{
+    const u = currentUser || {};
+    const fl = Math.min(Math.max(parseInt(u.fitness_level) || 1, 1), 5);
+    if(!_y2Lvl) _y2Lvl = fl;
+    if(!_y2Cache){ const d = await api('/api/yoga2/programs'); _y2Cache = d.programs || []; }
+    const lvls = [1,2,3,4,5];
+    let html = '<p class="subtle mb3" style="font-size:12.5px;line-height:1.6">Пять уровней сложности — от мягких практик для новичка до профессиональных. Внутри уровня выбирай фокус: расслабление, растяжка, поясница, кор и другие.</p>';
+    html += '<div class="flex gap2 mb3" style="flex-wrap:wrap">' + lvls.map(l => '<button class="lvl-chip pressable' + (l === _y2Lvl ? ' active' : '') + '" onclick="y2SetLvl(' + l + ')">' + FIT_LVL[l] + '</button>').join('') + '</div>';
+    if(_y2Lvl === fl) html += '<p class="subtle mb3" style="font-size:11.5px"><b style="color:var(--accent)">Твой уровень по профилю.</b> Можно выбрать и другой.</p>';
+    const all = _y2Cache.filter(p => p.level === _y2Lvl);
+    const focuses = [];
+    all.forEach(p => { if(!focuses.includes(p.focus)) focuses.push(p.focus); });
+    html += '<div class="flex gap2 mb3" style="flex-wrap:wrap">' +
+      '<button class="wo-chip pressable' + (_y2Focus ? '' : ' active') + '" onclick="y2SetFocus(null)">Все фокусы</button>' +
+      focuses.map(f => '<button class="wo-chip pressable' + (_y2Focus === f ? ' active' : '') + '" onclick="y2SetFocus(\'' + String(f).replace(/'/g, "") + '\')">' + esc(Y2_FOCUS_LABEL[f] || f) + '</button>').join('') + '</div>';
+    const list = _y2Focus ? all.filter(p => p.focus === _y2Focus) : all;
+    if(!list.length) html += '<div class="empty">На этом уровне пока пусто — выбери другой фокус или уровень</div>';
+    list.forEach(p => {
+      html += '<div class="prog-card pressable" onclick="y2Open(' + p.id + ')">' +
+        '<div class="flex between items-center" style="gap:10px"><h3 style="font-size:17px">' + esc(p.title) + '</h3><span class="badge badge-violet">' + esc(Y2_FOCUS_LABEL[p.focus] || p.focus) + '</span></div>' +
+        '<div class="prog-tags"><span class="badge badge-amber">' + FIT_LVL[p.level] + '</span><span class="badge badge-blue">' + p.minutes + ' мин</span></div>' +
+        '<p class="muted" style="font-size:12.5px;line-height:1.6">' + esc(p.description || '') + '</p></div>';
+    });
+    c.innerHTML = html;
+  }catch(e){ c.innerHTML = '<div class="empty">Не удалось загрузить йогу</div>'; }
+}
+function y2SetLvl(l){ _y2Lvl = l; _y2Focus = null; if(typeof haptic === 'function') haptic(); yoga2Render(document.getElementById('workoutContent')); }
+function y2SetFocus(f){ _y2Focus = f; if(typeof haptic === 'function') haptic(); yoga2Render(document.getElementById('workoutContent')); }
+let _y2Prog = null, _y2Poses = [], _y2Idx = 0, _y2Timer = null, _y2Left = 0;
+async function y2Open(id){
+  navigate('workouts');
+  const c = document.getElementById('workoutContent');
+  c.innerHTML = '<div class="shimmer"></div>';
+  try{
+    const d = await api('/api/yoga2/program/' + id);
+    _y2Prog = d.program; _y2Poses = d.poses || []; _y2Idx = 0;
+    y2RenderPose();
+  }catch(e){ c.innerHTML = '<div class="empty">Ошибка загрузки</div>'; }
+}
+function y2RenderPose(){
+  const c = document.getElementById('workoutContent');
+  const p = _y2Poses[_y2Idx];
+  if(!p){ y2Finish(); return; }
+  clearInterval(_y2Timer); _y2Left = p.seconds || 30;
+  c.innerHTML = '<div class="flex between items-center mb3">' +
+    '<button class="icon-btn pressable" aria-label="Назад" onclick="y2BackToCatalog()">' + ic('chevronL',18) + '</button>' +
+    '<div class="text-center"><h3 style="font-size:16px">' + esc(_y2Prog.title) + '</h3><span class="subtle">Поза ' + (_y2Idx + 1) + ' из ' + _y2Poses.length + '</span></div>' +
+    '<div style="width:44px"></div></div>' +
+    '<div class="yp-player"><div class="yp-timer" id="y2Time">' + _y2Left + '</div>' +
+    '<div class="yp-bar"><div class="yp-bar-in" id="y2Bar" style="width:100%"></div></div>' +
+    '<div class="wz-photo yp-photo" id="y2Photo">' + (p.gif_url ? '<img src="' + esc(p.gif_url) + '" alt="" decoding="async">' : (_y2PhotoUrl[p.name] ? '<img src="' + esc(_y2PhotoUrl[p.name]) + '" alt="" loading="lazy">' : ic('person',30))) + '</div>' +
+    '<h2 style="font-size:24px;margin:8px 0 4px">' + esc(p.name) + '</h2>' +
+    '<p class="muted" style="font-size:13px;line-height:1.65;text-align:left;margin-top:12px">' + esc(p.how || '') + '</p>' +
+    '<p class="ex-why" style="text-align:left;margin-top:10px"><b>Зачем:</b> ' + esc(p.why || '') + '</p></div>' +
+    '<div class="flex gap2 mt3"><button class="btn btn-ghost pressable" style="flex:1" onclick="y2Prev()">Назад</button>' +
+    '<button class="btn btn-primary pressable" style="flex:2" onclick="y2Next()">' + (_y2Idx === _y2Poses.length - 1 ? 'Завершить' : 'Следующая') + '</button></div>';
+  if(!p.gif_url) y2LoadPhoto(p.name);
+  _y2Timer = setInterval(() => {
+    _y2Left--;
+    const t = document.getElementById('y2Time'); if(t) t.textContent = Math.max(_y2Left, 0);
+    const bar = document.getElementById('y2Bar'); if(bar) bar.style.width = Math.max(_y2Left / (p.seconds || 30) * 100, 0) + '%';
+    if(_y2Left <= 0){ clearInterval(_y2Timer); y2Next(); }
+  }, 1000);
+}
+/* позы датасета без GIF — фото через существующий Pexels-пайплайн (как в старой йоге) */
+const _y2PhotoUrl = {};
+function y2LoadPhoto(name){
+  if(_y2PhotoUrl[name]) return;
+  api('/api/ex-photo?q=' + encodeURIComponent(ypPhotoFor(name))).then(d => {
+    if(d && d.url){ _y2PhotoUrl[name] = d.url.replace(/"/g, ''); const cur = _y2Poses[_y2Idx]; const el = document.getElementById('y2Photo'); if(el && cur && !cur.gif_url) el.innerHTML = '<img src="' + _y2PhotoUrl[name] + '" alt="" loading="lazy">'; }
+  }).catch(() => {});
+}
+function y2Next(){ clearInterval(_y2Timer); if(typeof haptic === 'function') haptic('ok'); _y2Idx++; y2RenderPose(); }
+function y2Prev(){ clearInterval(_y2Timer); if(_y2Idx > 0){ _y2Idx--; y2RenderPose(); } else { y2BackToCatalog(); } }
+function y2BackToCatalog(){ clearInterval(_y2Timer); try{ _y2Lvl = Math.min(Math.max(parseInt((currentUser||{}).fitness_level) || 1, 1), 5); }catch(e){ _y2Lvl = 1; } _y2Focus = null; yoga2Render(document.getElementById('workoutContent')); }
+async function y2Finish(){
+  clearInterval(_y2Timer);
+  const c = document.getElementById('workoutContent');
+  const prog = _y2Prog || {};
+  const minutes = Math.max(parseInt(prog.minutes) || 10, 1);
+  let saved = false;
+  if(currentUser){
+    try{
+      await api('/api/workout/log', { method:'POST', body:{ tg_id: currentUser.tg_id, program_id: null, program_day_id: null, duration_minutes: minutes, notes: 'Йога: ' + (prog.title || ''), sets: [] } });
+      saved = true;
+    }catch(e){ saved = false; }
+  }
+  c.innerHTML = '<div class="card text-center" style="padding:40px 20px">' +
+    '<div style="width:72px;height:72px;border-radius:50%;background:var(--green-dim);color:var(--green);display:flex;align-items:center;justify-content:center;margin:0 auto 16px">' + ic('check',34) + '</div>' +
+    '<h2 style="font-size:26px">Практика завершена</h2>' +
+    '<p class="muted mt2" style="font-size:13px">' + esc(prog.title || '') + ' · ' + minutes + ' мин</p>' +
+    '<p class="subtle mt2" style="font-size:11.5px">' + (saved ? 'Записано в статистику и серию тренировок' : 'Не удалось записать практику — проверьте соединение') + '</p>' +
+    '<button class="btn btn-primary btn-block pressable mt4" onclick="y2BackToCatalog()">К практикам</button></div>';
+  if(saved) showSuccess('Практика записана: ' + minutes + ' мин');
+}
 </script>
 </body>
 </html>
