@@ -21,6 +21,8 @@ android/*.keystore
 
 # Локальный кеш фото (Pexels → webp), генерируется на сервере
 static/images/cache/
+# Локальные фото блюд (Unitools/Pexels → webp), генерируется scripts/preheat-images.js
+static/images/dishes/
 
 static/*.apk
 android/*.apk

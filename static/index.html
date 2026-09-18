@@ -88,6 +88,10 @@ select.input{appearance:none}
 .stat-box .v{font-family:'Bebas Neue';font-size:24px}
 .stat-box .l{font-size:10.5px;font-weight:700;color:var(--text3);margin-top:3px}
 .kpi{background:var(--solid);border-radius:16px;padding:12px 6px;display:flex;margin:14px 0 4px}
+/* v30: консистентная разметка веса — классы вместо inline-стилей (единица «кг» раньше меняла размер между рендерами) */
+.weight-value{font-family:'Bebas Neue';font-size:36px;line-height:1;display:inline-block}
+.weight-value .weight-unit{font-family:Manrope;font-size:12px;font-weight:700;margin-left:4px}
+.weight-value .weight-num{font-size:36px}
 .kpi .c{flex:1;display:flex;flex-direction:column;align-items:center;gap:1px}
 .kpi .v{font-family:'Bebas Neue';font-size:21px}
 .kpi .l{font-size:9.5px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:var(--text3)}
@@ -357,7 +361,7 @@ body{touch-action:manipulation}
     </div>
     <div class="flex between items-center" style="margin-bottom:8px">
       <div><div class="subtle" style="font-size:11px;font-weight:700">ТЕКУЩИЙ ВЕС</div>
-        <div style="font-family:'Bebas Neue';font-size:30px;line-height:1.1" id="weightNow">—</div></div>
+        <div style="font-family:'Bebas Neue';font-size:30px;line-height:1.1" id="weightNow"><span class="weight-num" style="font-size:30px">—</span> <span class="muted" style="font-family:Manrope;font-size:12px;font-weight:700">кг</span></div></div>
       <div style="text-align:right"><div class="subtle" style="font-size:11px;font-weight:700">ДО ЦЕЛИ</div>
         <div style="font-weight:800;font-size:15px;margin-top:2px" id="weightDelta">—</div></div>
     </div>
@@ -1631,12 +1635,19 @@ async function toggleExInfo(i){
     box.dataset.loaded = '1';
   }catch(e){ box.innerHTML = '<div class="empty">Не удалось загрузить</div>'; }
 }
+/* v30: диапазон калорий приёма считает сервер из профиля — поясняем пользователю подбор */
+function mealRangeLabel(d){
+  try{
+    if(!d || !Array.isArray(d.meal_range) || d.meal_range.length !== 2) return '';
+    return 'Подобрано под норму: ' + d.meal_range[0] + '–' + d.meal_range[1] + ' ккал на этот приём';
+  }catch(e){ return ''; }
+}
 async function loadNextMeal(){
   const area = $('mealCardArea');
   area.innerHTML = '<div class="shimmer" style="height:220px"></div>';
   try{
     const exclude = currentMealRecipe ? currentMealRecipe.id : null;
-    const d = await api('/api/meal', { method:'POST', body:{ category: currentMealCategory, goal: currentUser ? currentUser.goal : null, exclude_id: exclude, max_calories: Math.round(((currentUser && currentUser.calorie_norm) || 2000) * ({breakfast:.3,lunch:.35,dinner:.25,snack:.1}[currentMealCategory] || .3)) } });
+    const d = await api('/api/meal', { method:'POST', body:{ category: currentMealCategory, goal: currentUser ? currentUser.goal : null, exclude_id: exclude } });
     if(!d.recipe){ area.innerHTML = '<div class="empty">Нет рецептов</div>'; return; }
     currentMealRecipe = d.recipe;
     const r = d.recipe;
@@ -1650,6 +1661,7 @@ async function loadNextMeal(){
       '<div class="c"><div class="v">' + Math.round(r.protein) + '</div><div class="l">Белки</div></div>' +
       '<div class="c"><div class="v">' + Math.round(r.fat) + '</div><div class="l">Жиры</div></div>' +
       '<div class="c"><div class="v">' + Math.round(r.carbs) + '</div><div class="l">Углев.</div></div></div>' +
+      '<p class="subtle" style="font-size:10.5px;margin:-2px 0 10px">' + mealRangeLabel(d) + '</p>' +
       '<p class="subtle" style="font-size:11px;font-weight:700;margin-bottom:8px">Ингредиенты</p>' +
       '<p class="muted" style="font-size:13px;line-height:1.7;margin-bottom:16px">' + ings.map(fmtIng).join(' • ') + '</p>' +
       '<div class="flex gap2"><button class="btn btn-ghost" style="flex:1" onclick="loadNextMeal()">' + ic('refresh',15) + ' Другое</button>' +
@@ -1770,11 +1782,14 @@ function renderWeightHeader(vals){
   const now = $('weightNow'), delta = $('weightDelta'), gi = $('weightGoalInput');
   const goal = weightGoal();
   if(gi && goal && !gi.value) gi.value = goal;
+  // v30: цифра обновляется в .weight-num, разметка и единица «кг» не затираются;
+  // пустая история не перезаписывает уже показанное значение (прочерк при быстрых кликах на «Профиль»)
+  const setW = (box, v) => { if(!box) return; const n = box.querySelector('.weight-num'); if(n && v != null) n.textContent = v; };
   // хедер в карточке профиля (тот же модуль, другой контейнер)
   const pNow = $('profWeightNow'), pDelta = $('profWeightDelta');
   if(pNow || pDelta){
     const lastP = vals && vals.length ? vals[vals.length - 1] : null;
-    if(pNow) pNow.textContent = lastP ? Number(lastP.weight) + ' кг' : '—';
+    setW(pNow, lastP ? Number(lastP.weight) : null);
     if(pDelta){
       if(!lastP || goal === null){ pDelta.textContent = goal === null ? 'Цель не задана' : '—'; pDelta.style.color = ''; }
       else {
@@ -1786,7 +1801,7 @@ function renderWeightHeader(vals){
   }
   if(now){
     const last = vals && vals.length ? vals[vals.length - 1] : null;
-    now.textContent = last ? Number(last.weight) + ' кг' : '—';
+    setW(now, last ? Number(last.weight) : null);
   }
   if(delta){
     const last = vals && vals.length ? vals[vals.length - 1] : null;
@@ -2378,7 +2393,7 @@ function profCoreHtml(user){
     '<div class="flex gap2" style="flex-wrap:wrap;justify-content:center"><span class="badge badge-accent">' + gt + '</span><span class="badge badge-violet">' + (user.gender==='male'?'Мужчина':'Женщина') + '</span></div></div>' +
     '<div class="card mb4"><div class="flex between items-center"><div>' +
     '<h3 style="font-size:14px" class="mb2">Текущий вес</h3>' +
-    '<div style="font-family:\'Bebas Neue\';font-size:36px;line-height:1" id="profWeightNow">' + (user.current_weight || '—') + ' <span class="muted" style="font-family:Manrope;font-size:12px;font-weight:700">кг</span></div>' +
+    '<div class="weight-value" id="profWeightNow"><span class="weight-num">' + (user.current_weight != null ? user.current_weight : '—') + '</span><span class="weight-unit muted">кг</span></div>' +
     '<p class="subtle" style="font-size:11px;margin-top:3px" id="profWeightDelta">' + (user.target_weight ? 'цель: ' + user.target_weight + ' кг' : 'цель не задана') + '</p></div>' +
     '<button class="btn btn-primary pressable" style="font-size:12.5px;padding:10px 14px" onclick="navigate(\'stats\')">Добавить взвешивание</button></div></div>';
 }
@@ -2401,7 +2416,7 @@ function setProfAvatar(user){
    (раньше один медленный запрос из пяти держал весь экран на shimmer, и было видно только чат поддержки) */
 async function loadProfile(){
   const c = document.getElementById('profileContent'); const tgId = currentUser && currentUser.tg_id; if(!c || !tgId) return;
-  if(_profileLoading) return;
+  if(_profileLoading) return; // v30: guard стал асинхронным — повторный клик ждёт завершения запросов
   _profileLoading = true;
   c.innerHTML = '<div id="profCore"></div>' +
     '<div id="profReport"><div class="shimmer"></div></div>' +
@@ -2410,7 +2425,6 @@ async function loadProfile(){
     profButtonsHtml();
   $('profCore').innerHTML = profCoreHtml(currentUser);
   setProfAvatar(currentUser);
-  _profileLoading = false;
 
   api('/api/user/' + tgId).then(function(user){
     currentUser = user;
@@ -2420,7 +2434,7 @@ async function loadProfile(){
     setProfAvatar(user);
   }).catch(function(){});
 
-  api('/api/weight/' + tgId).catch(function(){ return { history: [] }; }).then(function(wl){
+  const pw = api('/api/weight/' + tgId).catch(function(){ return { history: [] }; }).then(function(wl){
     const hist = ((wl && wl.history) || []).slice().reverse();
     renderWeightHeader(hist);
     /* v29.1: тот же график веса и в профиле */
@@ -2437,7 +2451,7 @@ async function loadProfile(){
     }
   }).catch(function(){});
 
-  api('/api/achievements/' + tgId).catch(function(){ return { achievements: [] }; }).then(function(ach){
+  const pa = api('/api/achievements/' + tgId).catch(function(){ return { achievements: [] }; }).then(function(ach){
     const list = (ach && ach.achievements) || [];
     const unlocked = list.filter(a => a.unlocked).length;
     const ac = document.getElementById('achCount');
@@ -2461,15 +2475,19 @@ async function loadProfile(){
     }catch(e){}
   }).catch(function(){});
 
-  api('/api/weekly-report/' + tgId).catch(function(){ return null; }).then(function(report){
+  const pr = api('/api/weekly-report/' + tgId).catch(function(){ return null; }).then(function(report){
     const el = document.getElementById('profReport');
     if(el) el.innerHTML = weeklyReportCard(report);
   }).catch(function(){});
 
-  api('/api/workout/logs/' + tgId).catch(function(){ return { logs: [] }; }).then(function(wlogs){
+  const pl = api('/api/workout/logs/' + tgId).catch(function(){ return { logs: [] }; }).then(function(wlogs){
     const el = document.getElementById('profLogs');
     if(el) el.innerHTML = workoutHistoryCard(wlogs && wlogs.logs);
   }).catch(function(){});
+
+  /* v30: флаг снимается только когда ВСЕ секции дозагрузились (или упали) —
+     раньше сброс был синхронным и повторный клик запускал параллельный рендер, ломая блок веса */
+  Promise.all([pw, pa, pr, pl]).catch(function(){}).finally(function(){ _profileLoading = false; });
 }
 /* v28: достижения — сворачиваемые группы (аккордеон) вместо сплошного списка.
    Открытые группы запоминаем в localStorage. */
@@ -2557,7 +2575,11 @@ function aboutBlock(){
     '<div class="flex between" style="font-size:12.5px;padding:5px 0"><span class="muted">Версия</span><b id="aboutVersion">—</b></div>' +
     '<div class="flex between" style="font-size:12.5px;padding:5px 0"><span class="muted">Оператор</span><b>ИП Солдатенко Я. П.</b></div>' +
     '<div class="flex between" style="font-size:12.5px;padding:5px 0"><span class="muted">ОГРНИП</span><b>325246800130330</b></div>' +
-    '<p class="subtle mt2" style="font-size:11px;line-height:1.6">Возрастная категория: 12+. Приложение не является медицинским изделием и не заменяет консультацию врача. Расчёты и программы носят информационный характер. Фото блюд и упражнений — Pexels (бесплатная лицензия). Время напоминаний — по выбранному вами часовому поясу.</p></div>';
+    '<p class="subtle mt2" style="font-size:11px;line-height:1.6">Возрастная категория: 12+. Приложение не является медицинским изделием и не заменяет консультацию врача. Расчёты и программы носят информационный характер. Время напоминаний — по выбранному вами часовому поясу.</p>' +
+    '<div style="border-top:1px solid rgba(128,128,128,.18);margin:12px 0;padding-top:10px"><p class="subtle" style="font-size:10px;font-weight:700;margin-bottom:6px">ИСТОЧНИКИ ДАННЫХ</p>' +
+    '<p class="muted" style="font-size:11.5px;line-height:1.7;margin-bottom:8px">База рецептов: <a href="https://github.com/farcrak/unitools-recipes" onclick="tgOpenLink(\'https://github.com/farcrak/unitools-recipes\');return false" style="color:var(--accent);text-decoration:underline">Unitools Recipes</a>, автор farcrak — лицензия CC BY-SA 4.0. Названия блюд, составы и рецепты импортированы из открытого датасета Unitools.</p>' +
+    '<p class="muted" style="font-size:11.5px;line-height:1.7">Фотографии: <a href="https://www.pexels.com" onclick="tgOpenLink(\'https://www.pexels.com\');return false" style="color:var(--accent);text-decoration:underline">Pexels</a> — бесплатная лицензия Pexels, без указания авторства (благодарим фотографов!).</p></div>' +
+    '</div>';
 }
 async function fillAboutVersion(){
   const el = document.getElementById('aboutVersion');

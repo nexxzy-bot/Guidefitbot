@@ -114,6 +114,41 @@ db.serialize(() => {
   db.run(`CREATE TABLE IF NOT EXISTS weight_logs (
     id INTEGER PRIMARY KEY AUTOINCREMENT, tg_id TEXT, date TEXT, weight REAL
   )`);
+  /* v30: нормализованный каталог блюд (Unitools Recipes, CC BY-SA 4.0).
+     Раздельные таблицы: каждая правится независимо, точечное изменение не задевает остальных. */
+  db.run(`CREATE TABLE IF NOT EXISTS dishes (
+    id INTEGER PRIMARY KEY, slug TEXT UNIQUE, title TEXT NOT NULL, meal_type TEXT NOT NULL,
+    calories REAL, protein REAL, fat REAL, carbs REAL,
+    base_servings INTEGER DEFAULT 1, prep_minutes INTEGER, cook_minutes INTEGER,
+    description TEXT, category TEXT, country TEXT, difficulty TEXT,
+    attribution TEXT, photo_url TEXT
+  )`);
+  db.run(`CREATE INDEX IF NOT EXISTS idx_dishes_meal_kcal ON dishes(meal_type, calories)`);
+  // ингредиенты уникальны по русской нормализованной записи — не дублируем текстом внутри блюда
+  db.run(`CREATE TABLE IF NOT EXISTS ingredients (
+    id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL UNIQUE, unit TEXT
+  )`);
+  db.run(`CREATE INDEX IF NOT EXISTS idx_ingredients_name ON ingredients(name)`);
+  db.run(`CREATE TABLE IF NOT EXISTS dish_ingredients (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    dish_id INTEGER NOT NULL REFERENCES dishes(id) ON DELETE CASCADE,
+    ingredient_id INTEGER NOT NULL REFERENCES ingredients(id) ON DELETE CASCADE,
+    quantity REAL, unit TEXT NOT NULL,
+    scaling TEXT NOT NULL DEFAULT 'linear' CHECK (scaling IN ('linear','damped','fixed')),
+    note TEXT
+  )`);
+  db.run(`CREATE INDEX IF NOT EXISTS idx_dish_ing_dish ON dish_ingredients(dish_id)`);
+  db.run(`CREATE INDEX IF NOT EXISTS idx_dish_ing_ing ON dish_ingredients(ingredient_id)`);
+  // шаги отдельной таблицей, пронумерованы; steps_json — зеркало для совместимых ответов API
+  db.run(`CREATE TABLE IF NOT EXISTS dish_steps (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    dish_id INTEGER NOT NULL REFERENCES dishes(id) ON DELETE CASCADE,
+    step_no INTEGER NOT NULL, text TEXT NOT NULL, minutes INTEGER
+  )`);
+  db.run(`CREATE INDEX IF NOT EXISTS idx_dish_steps_dish ON dish_steps(dish_id, step_no)`);
+  db.all("PRAGMA table_info(recipes)", [], (eC, colsC) => {
+    if (!eC && colsC && !colsC.some(c => c.name === 'category_hint')) db.run("ALTER TABLE recipes ADD COLUMN category_hint TEXT");
+  });
   /* v29.1: одна запись веса на аккаунт за день (день = ключ графика; иначе дубли ломают оси) */
   db.run("DELETE FROM weight_logs WHERE id NOT IN (SELECT MIN(id) FROM weight_logs GROUP BY tg_id, date)");
   db.run("CREATE UNIQUE INDEX IF NOT EXISTS idx_weight_day ON weight_logs(tg_id, date)");
@@ -200,33 +235,11 @@ db.serialize(() => {
   }
 
   const seeders = {
-    recipes: function (done) {
-      db.run("INSERT OR REPLACE INTO image_store (recipe_id, url) SELECT id, image_url FROM recipes WHERE image_url IS NOT NULL AND image_url != ''");
-      const recipes = JSON.parse(fs.readFileSync('./recipes.json', 'utf8'));
-      // UPSERT вместо DELETE+INSERT: id остаются теми же, старые записи дневника не теряют блюдо
-      const stmt = db.prepare(`INSERT INTO recipes
-        (id, title, category, calories, protein, fat, carbs, description, benefits, ingredients, recipe_steps, image_url, goals, photo_query)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        ON CONFLICT(id) DO UPDATE SET
-          title=excluded.title, category=excluded.category, calories=excluded.calories,
-          protein=excluded.protein, fat=excluded.fat, carbs=excluded.carbs,
-          description=excluded.description, benefits=excluded.benefits,
-          ingredients=excluded.ingredients, recipe_steps=excluded.recipe_steps,
-          image_url=excluded.image_url, goals=excluded.goals, photo_query=excluded.photo_query`);
-      recipes.forEach(r => {
-        const title = r.title || r.name || '';
-        const steps = r.recipe_steps || r.steps || [];
-        stmt.run(r.id, title, r.category, r.calories || 0, r.protein || 0,
-          r.fat || 0, r.carbs || 0, r.description || '', r.benefits || '',
-          JSON.stringify(r.ingredients || []), JSON.stringify(steps),
-          r.image_url || '', JSON.stringify(r.goals || ['lose','gain','maintain']), r.photo || '');
-      });
-      stmt.finalize(() => {
-        // восстанавливаем закэшированные URL (включая локальные /images/...):
-        // локальный файл всегда побеждает (это обработанный артефакт), remote из JSON — только для новых id
-        db.run(`UPDATE recipes SET image_url = (SELECT url FROM image_store WHERE image_store.recipe_id = recipes.id) WHERE EXISTS (SELECT 1 FROM image_store WHERE image_store.recipe_id = recipes.id AND url IS NOT NULL AND url != '' AND ((recipes.image_url IS NULL OR recipes.image_url = '' OR recipes.image_url = 'empty.jpg') OR image_store.url LIKE '/images/%'))`, [], () => done());
-      });
-    },
+    /* v30: легаси-сидер отключён — каталог рецептов теперь ведётся нормализованными таблицами
+       (dishes/ingredients/dish_ingredients/dish_steps) и наполняется scripts/import-unitools.js.
+       Раньше recipes.json пересеивался при каждом старте и подмешивал шаблонные блюда поверх
+       импортированного каталога Unitools. Таблица recipes остаётся зеркалом для совместимости. */
+    recipes: function (done) { done(); },
     exercises: function (done) {
       const exercises = JSON.parse(fs.readFileSync('./exercises.json', 'utf8'));
       const stmt = db.prepare(`INSERT INTO exercises

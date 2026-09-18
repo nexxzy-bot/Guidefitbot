@@ -74,6 +74,17 @@ before(async () => {
   child.stderr.on('data', d => process.stderr.write('[server] ' + d));
   const up = await waitFor(async () => (await api('/api/health')).status === 200, 40000);
   assert.ok(up, 'сервер не поднялся на порту ' + PORT);
+  // v30: каталог рецептов больше не сеется из recipes.json — импортируем Unitools в тестовую базу
+  await new Promise((resolve, reject) => {
+    const imp = spawn(process.execPath, ['scripts/import-unitools.js'], {
+      cwd: ROOT,
+      env: { ...process.env, DB_PATH: DB },
+      stdio: ['ignore', 'ignore', 'pipe']
+    });
+    let err = '';
+    imp.stderr.on('data', d => { err += d; });
+    imp.on('exit', code => code === 0 ? resolve() : reject(new Error('импорт каталога упал: ' + err)));
+  });
 });
 
 after(async () => {
@@ -206,9 +217,9 @@ test('дневник питания: мусорный рецепт не пише
   assert.strictEqual((await api('/api/log-meal', { method: 'POST', token: TOKEN, body: { recipe_id: 'abc' } })).status, 400);
   assert.strictEqual((await api('/api/log-meal', { method: 'POST', token: TOKEN, body: { recipe_id: 999999 } })).status, 404);
 
-  const seeded = await waitFor(async () => (await api('/api/recipe/1')).status === 200, 40000);
+  const seeded = await waitFor(async () => (await api('/api/recipe/20000')).status === 200, 40000);
   assert.ok(seeded, 'каталог рецептов загрузился');
-  const good = await api('/api/log-meal', { method: 'POST', token: TOKEN, body: { recipe_id: 1 } });
+  const good = await api('/api/log-meal', { method: 'POST', token: TOKEN, body: { recipe_id: 20000 } });
   assert.strictEqual(good.status, 200);
 
   const today = await api('/api/food-log/today/' + TG_ID, { token: TOKEN });
@@ -265,6 +276,32 @@ test('удаление аккаунта закрывает и его сесси�
   assert.strictEqual((await api('/api/user/' + TG_ID, { token: TOKEN })).status, 401, 'старый токен больше не работает');
   const left = await dbGet('SELECT COUNT(*) c FROM consent_log WHERE tg_id = ?', [TG_ID]);
   assert.strictEqual(left.c, 0, 'журнал согласий удалён вместе с аккаунтом (152-ФЗ, ст. 21)');
+});
+
+/* ---------- 7b. Подбор блюда под норму пользователя (v30) ---------- */
+test('подбор блюда: диапазон калорий считается из профиля, цель сужает его', async () => {
+  const reg = await api('/api/auth/anonymous', { method: 'POST' });
+  assert.strictEqual(reg.status, 200);
+  const tok = reg.body.session;
+  const init = await api('/api/user/init', { method: 'POST', token: tok, body: {
+    name: 'Диета', goal: 'lose', gender: 'female', age: 28, height: 165, current_weight: 60,
+    target_weight: 55, activity_level: 'light', meal_count: 4,
+    consents: { privacy: true, terms: true, health: true } } });
+  assert.strictEqual(init.status, 200);
+  assert.ok(init.body.calorie_norm > 1000, 'норма рассчитана');
+
+  const r = await api('/api/meal', { method: 'POST', token: tok, body: { category: 'breakfast' } });
+  assert.strictEqual(r.status, 200);
+  assert.ok(r.body.recipe && r.body.recipe.title, 'блюдо подобрано');
+  assert.strictEqual(r.body.recipe.category, 'breakfast');
+  // норма*30% (4 приёма = база) ±20%, при «похудении» верх срезается до целевого значения
+  const t = Math.round(init.body.calorie_norm * 0.30);
+  assert.deepStrictEqual(r.body.meal_range, [Math.round(t * 0.8), t]);
+  assert.ok(r.body.recipe.calories <= Math.round(t * 1.15 * 1.15), 'даже с fallback блюдо недалеко от диапазона');
+
+  // чужие категории отвергаются (фиксированный набор из 4)
+  assert.strictEqual((await api('/api/meal', { method: 'POST', token: tok, body: { category: 'полдник' } })).status, 400);
+  assert.strictEqual((await api('/api/meal', { method: 'POST', token: tok, body: {} })).status, 400);
 });
 
 /* ---------- 8. Лимит на анонимные аккаунты (последним: квота исчерпывается) ---------- */

@@ -1067,31 +1067,54 @@ app.post('/api/dashboard', (req, res) => {
 // v23: селектор блюд доступен и без авторизации (гость выбирает рецепт до логина);
 // запись в дневник по-прежнему требует tg_id
 app.post('/api/meal', (req, res) => {
-  const { category, goal, exclude_id } = req.body;
-  if (!category) return res.status(400).json({ error: 'Missing category' });
-  // аудит: goal попадал в LIKE '%...%' без экранирования (%/_ от клиента = слепая инъекция
-  // в LIKE-паттерн и перебор данных). Категории цели — фиксированный набор, валидируем.
+  const { category, exclude_id } = req.body;
+  // приёмы пищи — фиксированный набор из 4 категорий (никаких других не существует)
+  const MEALS = new Set(['breakfast', 'lunch', 'dinner', 'snack']);
+  if (!category || !MEALS.has(category)) return res.status(400).json({ error: 'Missing category' });
   const GOALS = new Set(['lose', 'maintain', 'gain']);
-  const goalSafe = (typeof goal === 'string' && GOALS.has(goal)) ? goal : null;
-  const maxK = parseFloat(req.body.max_calories);
-  const pick = (withCap, withExclude) => {
-    let sql2 = "SELECT * FROM recipes WHERE category = ?";
-    const p2 = [category];
-    if (goalSafe) { sql2 += " AND (goals LIKE ? OR goals IS NULL OR goals = '')"; p2.push('%' + goalSafe + '%'); }
-    if (withExclude && exclude_id) { sql2 += " AND id != ?"; p2.push(exclude_id); }
-    if (withCap && maxK > 0) { sql2 += " AND calories <= ?"; p2.push(Math.round(maxK * 1.15)); }
-    sql2 += " ORDER BY RANDOM() LIMIT 1";
-    db.get(sql2, p2, (err, row) => {
-      if (err) return res.status(500).json({ error: err.message });
-      if (!row && withCap && maxK > 0) return pick(false, withExclude);
-      if (!row && withExclude) return pick(withCap, false); // v16: «Другое» не падает в 404
-      if (!row) return res.status(404).json({ error: 'Recipe not found' });
-    if (row.ingredients) try { row.ingredients = JSON.parse(row.ingredients); } catch (e) {}
-    if (row.recipe_steps) try { row.recipe_steps = JSON.parse(row.recipe_steps); } catch (e) {}
-    res.json({ recipe: row });
-    });
+  const goalSafe = (typeof req.body.goal === 'string' && GOALS.has(req.body.goal)) ? req.body.goal : null;
+
+  /* ===== КЛЮЧЕВАЯ ЛОГИКА: диапазон калорий приёма пищи из профиля =====
+     1) Профиль: авторизованный (сессия/Telegram) — читаем из БД; гость — фолбэк 2000 ккал / 4 приёма.
+     2) Базовая доля приёма от дневной нормы: завтрак 30%, обед 35%, ужин 25%, перекус 10%.
+     3) Масштабирование под число приёмов (meal_count из визарда): target = норма * доля * 4 / meal_count
+        (при 3 приёмах каждый крупнее, при 5 — мельче; перекус не масштабируем).
+     4) Диапазон = target ±20%; цель сужает его: «похудение» — нижняя половина, «набор» — верхняя.
+     5) Пусто → расширение на 15% (fallback), затем подбор по категории без потолка. */
+  const tgId = resolveTgId(req);
+  const pickWith = (user) => {
+    const norm = Math.max(1200, Math.min(6000, Math.round(Number(user && user.calorie_norm) || 2000)));
+    const mc = Math.max(2, Math.min(6, parseInt(user && user.meal_count, 10) || 4));
+    const goal = goalSafe || (user && GOALS.has(user.goal) ? user.goal : 'maintain');
+    const share = { breakfast: 0.30, lunch: 0.35, dinner: 0.25, snack: 0.10 }[category];
+    const target = Math.round(norm * share * (category === 'snack' ? 1 : 4 / mc));
+    let lo = Math.round(target * 0.8), hi = Math.round(target * 1.2);
+    if (goal === 'lose') hi = Math.min(hi, target);
+    if (goal === 'gain') lo = Math.max(lo, target);
+    const serve = (row) => {
+      if (row.ingredients) try { row.ingredients = JSON.parse(row.ingredients); } catch (e) {}
+      if (row.recipe_steps) try { row.recipe_steps = JSON.parse(row.recipe_steps); } catch (e) {}
+      res.json({ recipe: row, meal_target: target, meal_range: [lo, hi] });
+    };
+    const attempt = (loV, hiV, withExclude) => {
+      let sql2 = "SELECT * FROM recipes WHERE category = ?";
+      const p2 = [category];
+      if (loV > 0) { sql2 += " AND calories >= ?"; p2.push(loV); }
+      if (hiV) { sql2 += " AND calories <= ?"; p2.push(hiV); }
+      if (withExclude && exclude_id) { sql2 += " AND id != ?"; p2.push(exclude_id); }
+      sql2 += " ORDER BY RANDOM() LIMIT 1";
+      db.get(sql2, p2, (err, row) => {
+        if (err) return res.status(500).json({ error: err.message });
+        if (row) return serve(row);
+        if (hiV) return attempt(Math.round(loV * 0.85), Math.round(hiV * 1.15), withExclude); // fallback +15%
+        if (withExclude) return attempt(0, null, false); // «Другое» не падает в 404
+        return res.status(404).json({ error: 'Recipe not found' });
+      });
+    };
+    attempt(lo, hi, true);
   };
-  pick(true, true);
+  if (!tgId) return pickWith(null);
+  db.get("SELECT calorie_norm, meal_count, goal FROM users WHERE tg_id = ?", [tgId], (e, u) => pickWith(e ? null : u));
 });
 
 app.get('/api/recipe/:id', (req, res) => {
