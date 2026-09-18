@@ -28,8 +28,12 @@ db.configure('busyTimeout', 15000);
 
 const GEMINI_KEY = process.env.GEMINI_API_KEY;
 const MODEL = 'gemini-3.6-flash'; // 2.0-flash удалён из API (подсказку вернул сам сервис)
+/* v31.2: основная модель бывает перегружена (503 high demand) — фолбэк на стабильную
+   2.5-flash. Перебираем модели по очереди, пока одна не ответит рабочим ответом. */
+const FALLBACK_MODELS = ['gemini-2.5-flash', 'gemini-flash-lite-latest'];
+let modelIdx = 0;
 // GEMINI_URL — тестовое отверстие для мок-сервера (в проде не задаётся)
-const API_URL = process.env.GEMINI_URL || `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`;
+const API_URL = process.env.GEMINI_URL || null;
 
 const DRY_RUN = process.argv.includes('--dry-run');
 const NOWAIT = process.argv.includes('--nowait');
@@ -139,15 +143,23 @@ function normName(s) {
 }
 
 /* ============ Gemini ============ */
+function apiUrl() {
+  if (API_URL) return API_URL; // тестовый мок
+  const models = [MODEL, ...FALLBACK_MODELS];
+  const m = models[modelIdx % models.length]; // циклически: основная → фолбэк → основная…
+  return `https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent`;
+}
 async function callGemini(prompt) {
-  return fetch(API_URL, {
+  return fetch(apiUrl(), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'x-goog-api-key': GEMINI_KEY },
     // без таймаута запрос мог висеть вечно (найдено на dry-run) — в автономном режиме недопустимо
     signal: AbortSignal.timeout(120000),
     body: JSON.stringify({
       contents: [{ parts: [{ text: prompt }] }],
-      generationConfig: { temperature: 1.15, maxOutputTokens: 8192, responseMimeType: 'application/json' }
+      // thinkingBudget:0 — 2.5-flash «думает» и срезает MAX_TOKENS на 8192 (проверено);
+      // 3.6-flash игнорирует неизвестное поле. 32k — запас на 10 блюд с ингредиентами и шагами.
+      generationConfig: { temperature: 1.15, maxOutputTokens: 32768, responseMimeType: 'application/json', thinkingConfig: { thinkingBudget: 0 } }
     })
   });
 }
@@ -185,8 +197,17 @@ function buildPrompt(profile, catKey) {
 async function generateBatch(profile, catKey) {
   const res = await callGemini(buildPrompt(profile, catKey));
   if (res.status === 429 || res.status === 503) {
-    const err = new Error('QUOTA: Gemini HTTP ' + res.status);
-    err.quota = true;
+    // различаем минутный (RPM) и дневной лимиты: у дневного в details есть QuotaFailure + RetryInfo с большими задержками
+    const j = await res.json().catch(() => ({}));
+    const det = (j.error && j.error.details) || [];
+    const isOverload = res.status === 503; // «high demand» — пробуем другую модель
+    if (isOverload) modelIdx++; // следующая попытка — фолбэк-модель
+    const ri = det.find(x => (x['@type'] || '').includes('RetryInfo'));
+    let retryMs = null;
+    if (ri && ri.retryDelay) { const m = String(ri.retryDelay).match(/^([\d.]+)s$/); if (m) retryMs = Math.ceil(parseFloat(m[1]) * 1000) + 1000; }
+    const isDaily = det.some(x => (x['@type'] || '').includes('QuotaFailure') && ((x.violations || []).some(v => /PerDay|per_day|day/i.test(String(v.quotaId || '')))));
+    const err = new Error('QUOTA: Gemini HTTP ' + res.status + (isDaily ? ' (дневная квота)' : ' (минутный лимит)'));
+    err.quota = true; err.retryMs = retryMs; err.daily = isDaily; err.overload = isOverload;
     throw err;
   }
   if (!res.ok) {
@@ -197,10 +218,27 @@ async function generateBatch(profile, catKey) {
   const data = await res.json();
   const parts = data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts;
   const text = parts ? parts.map(p => p.text || '').join('') : '';
-  if (!text) throw new Error('Пустой ответ Gemini: ' + JSON.stringify(data).slice(0, 200));
-  const m = text.match(/\[[\s\S]*\]/);
-  if (!m) throw new Error('Gemini не вернул JSON-массив: ' + text.slice(0, 200));
-  const arr = JSON.parse(m[0]);
+  if (!text) { const err = new Error('Пустой ответ Gemini (вероятно, обрезка JSON)'); err.empty = true; throw err; }
+  /* модель иногда присылает «размышления» до/после JSON — вычленяем массив,
+     балансируя скобки, а не жадным регэкспом (\[...\] ловит лишний хвост) */
+  const arrStart = text.indexOf('[');
+  let raw = null;
+  if (arrStart !== -1) {
+    let depth = 0, end = -1, inStr = false, esc = false;
+    for (let i = arrStart; i < text.length; i++) {
+      const ch = text[i];
+      if (esc) { esc = false; continue; }
+      if (ch === '\\') { esc = true; continue; }
+      if (ch === '"') inStr = !inStr;
+      if (inStr) continue;
+      if (ch === '[') depth++;
+      else if (ch === ']') { depth--; if (depth === 0) { end = i; break; } }
+    }
+    if (end !== -1) raw = text.slice(arrStart, end + 1);
+  }
+  if (!raw) { const err = new Error('Gemini не вернул JSON-массив: ' + text.slice(0, 200)); err.badjson = true; throw err; }
+  let arr;
+  try { arr = JSON.parse(raw); } catch (e) { const err = new Error('JSON не распарсился: ' + e.message); err.badjson = true; throw err; }
   if (!Array.isArray(arr) || !arr.length) throw new Error('Ответ не массив или пуст');
   return arr;
 }
@@ -244,9 +282,13 @@ async function ensureIngredientId(nm, unit) {
   const key = nm.toLowerCase() + '|' + unit;
   let id = ingCache.get(key);
   if (id === undefined) {
-    const row = await get('SELECT id FROM ingredients WHERE name = ? AND unit = ?', [nm, unit]);
-    if (row) id = row.id;
-    else {
+    /* UNIQUE в БД стоит на name (unit вне ограничения): сначала ищем по имени —
+       иначе INSERT ловит SQLITE_CONSTRAINT, когда тот же ингредиент уже есть с другой единицей */
+    const row = await get('SELECT id, unit FROM ingredients WHERE name = ?', [nm]);
+    if (row) {
+      id = row.id;
+      ingCache.set(nm.toLowerCase() + '|' + (row.unit || ''), id); // уже известен и под другой единицей
+    } else {
       const r = await q('INSERT INTO ingredients (name, unit) VALUES (?, ?)', [nm, unit]);
       id = r.lastID;
     }
@@ -308,8 +350,12 @@ let usedNames = new Set(); // сквозная дедупликация назв
 async function main() {
   if (!GEMINI_KEY) { console.error('Нет GEMINI_API_KEY в .env'); process.exit(1); }
 
-  if (freshStart && !DRY_RUN) await hardReset();
-  else await ensureSchema(); // стейт есть, но БД может быть чистой (перенос/переезд)
+  /* v31.1: HARD RESET при первом запуске сносил бы каталог Unitools (501 блюдо) — еда пропала бы
+     у пользователей на дни, пока генератор дойдёт до 2000. Новый генератор добавляет свои блюда
+     ПОВЕРХ существующего каталога (id 20501+), дедупликация названий не даст дублей.
+     Полный снос возможен вручную: GEN_HARD_RESET=1 node scripts/gen-pp-dishes.js */
+  if (freshStart && !DRY_RUN && process.env.GEN_HARD_RESET === '1') await hardReset();
+  else await ensureSchema(); // таблицы гарантируем в любом случае
 
   // кеш ингредиентов и занятых названий из БД (после возможного RESET)
   const ings = await all('SELECT id, name, unit FROM ingredients');
@@ -356,11 +402,20 @@ async function main() {
       }
     } catch (e) {
       if (e.quota) {
-        console.error('429 / квота Gemini исчерпана. ' + (NOWAIT ? '--nowait: выходим.' : 'Засыпаю на 24 часа, потом продолжаю автоматически…'));
-        if (NOWAIT) process.exit(2);
-        await sleep(24 * 60 * 60 * 1000); // ровно 24 часа, затем повтор текущего батча
+        if (NOWAIT) { console.error('429 / квота Gemini. --nowait: выходим.'); process.exit(2); }
+        if (e.daily) {
+          console.error('Дневная квота Gemini исчерпана. Засыпаю на 24 часа, потом продолжаю автоматически…');
+          saveState(); // прогресс всех принятых батчей сохранён
+          await sleep(24 * 60 * 60 * 1000); // ровно 24 часа, затем повтор текущего батча
+          continue;
+        }
+        const wait = e.overload ? 20000 : (e.retryMs || 70000); // перегрузка другой модели — короткая пауза
+        console.error((e.overload ? '503 перегрузка' : '429 (минутный лимит' + (e.retryMs ? ', retry через ' + Math.round(e.retryMs / 1000) + 'с' : '') + ')') + '. Пауза ' + Math.round(wait / 1000) + 'с…');
+        await sleep(wait);
         continue;
       }
+      if (e.badjson) { console.log('Кривой ответ (не JSON) — ретрай через 15с'); await sleep(15000); continue; }
+      if (e.empty) { console.log('Пустой ответ Gemini — ретрай через 20с'); await sleep(20000); continue; }
       console.error('Ошибка генерации: ' + e.message + (e.transient ? ' (транзиентная)' : ''));
       console.log('Ретрай через 60с…');
       await sleep(60000);
