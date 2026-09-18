@@ -26,3 +26,6 @@ static/images/dishes/
 
 static/*.apk
 android/*.apk
+
+# стейт генератора блюд (runtime)
+data/gen-state.json

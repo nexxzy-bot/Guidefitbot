@@ -203,5 +203,7 @@ function fmtQty(v) {
   console.log('Приёмы пищи: завтрак=' + stats.meal.breakfast + ' обед=' + stats.meal.lunch + ' ужин=' + stats.meal.dinner + ' перекус=' + stats.meal.snack);
   console.log('Уникальных ингредиентов: ' + (DRY ? '(dry)' : ingCache.size) + ', связей: ' + stats.links + ', шагов: ' + stats.steps);
   console.log('Пропущено: неполный RU=' + stats.skippedLang + ', битые данные=' + stats.skippedBad);
-  process.exit(0);
+  // dry-режим используется тестами для создания схемы на пустой БД: выходим только
+  // после полного опустошения очереди sqlite3, иначе DDL обрывается на середине
+  db.run("SELECT 1", [], () => process.exit(0));
 })().catch(e => { console.error('Ошибка импорта:', e.message); process.exit(1); });

@@ -1076,7 +1076,8 @@ app.post('/api/meal', (req, res) => {
 
   /* ===== КЛЮЧЕВАЯ ЛОГИКА: диапазон калорий приёма пищи из профиля =====
      1) Профиль: авторизованный (сессия/Telegram) — читаем из БД; гость — фолбэк 2000 ккал / 4 приёма.
-     2) Базовая доля приёма от дневной нормы: завтрак 30%, обед 35%, ужин 25%, перекус 10%.
+     2) Базовая доля приёма от дневной нормы: завтрак 25%, обед 35%, ужин 25%, перекус 15%
+        (совпадает с планом генерации каталога scripts/gen-pp-dishes.js).
      3) Масштабирование под число приёмов (meal_count из визарда): target = норма * доля * 4 / meal_count
         (при 3 приёмах каждый крупнее, при 5 — мельче; перекус не масштабируем).
      4) Диапазон = target ±20%; цель сужает его: «похудение» — нижняя половина, «набор» — верхняя.
@@ -1086,7 +1087,7 @@ app.post('/api/meal', (req, res) => {
     const norm = Math.max(1200, Math.min(6000, Math.round(Number(user && user.calorie_norm) || 2000)));
     const mc = Math.max(2, Math.min(6, parseInt(user && user.meal_count, 10) || 4));
     const goal = goalSafe || (user && GOALS.has(user.goal) ? user.goal : 'maintain');
-    const share = { breakfast: 0.30, lunch: 0.35, dinner: 0.25, snack: 0.10 }[category];
+    const share = { breakfast: 0.25, lunch: 0.35, dinner: 0.25, snack: 0.15 }[category];
     const target = Math.round(norm * share * (category === 'snack' ? 1 : 4 / mc));
     let lo = Math.round(target * 0.8), hi = Math.round(target * 1.2);
     if (goal === 'lose') hi = Math.min(hi, target);

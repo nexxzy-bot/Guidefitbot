@@ -294,8 +294,8 @@ test('подбор блюда: диапазон калорий считаетс�
   assert.strictEqual(r.status, 200);
   assert.ok(r.body.recipe && r.body.recipe.title, 'блюдо подобрано');
   assert.strictEqual(r.body.recipe.category, 'breakfast');
-  // норма*30% (4 приёма = база) ±20%, при «похудении» верх срезается до целевого значения
-  const t = Math.round(init.body.calorie_norm * 0.30);
+  // норма*25% (4 приёма = база; доли согласованы с генератором каталога) ±20%, при «похудении» верх срезается до целевого значения
+  const t = Math.round(init.body.calorie_norm * 0.25);
   assert.deepStrictEqual(r.body.meal_range, [Math.round(t * 0.8), t]);
   assert.ok(r.body.recipe.calories <= Math.round(t * 1.15 * 1.15), 'даже с fallback блюдо недалеко от диапазона');
 
