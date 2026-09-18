@@ -1504,9 +1504,15 @@ app.get('/api/fit/active', (req, res) => {
       if (err2) return res.status(500).json({ error: err2.message });
       db.get("SELECT week, day, title FROM fit_days WHERE id = ?", [row.current_day_id], (err3, cur) => {
         if (err3) return res.status(500).json({ error: err3.message });
-        row.total_days = (c && c.c) || 0;
-        row.current = cur || null;
-        res.json({ program: row });
+        // выполненные дни: по фактическим логам тренировок (finishWorkout пишет program_day_id)
+        db.all("SELECT DISTINCT program_day_id FROM workout_logs WHERE tg_id = ? AND program_day_id IN (SELECT id FROM fit_days WHERE program_id = ?)",
+          [tgId, row.program_id], (err4, doneRows) => {
+            if (err4) return res.status(500).json({ error: err4.message });
+            row.total_days = (c && c.c) || 0;
+            row.current = cur || null;
+            row.done_day_ids = (doneRows || []).map(x => x.program_day_id);
+            res.json({ program: row });
+          });
       });
     });
   });

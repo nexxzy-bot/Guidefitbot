@@ -31,7 +31,9 @@ const MODEL = 'gemini-3.6-flash'; // 2.0-flash удалён из API (подск
 /* v31.2: основная модель бывает перегружена (503 high demand) — фолбэк на стабильную
    2.5-flash. Перебираем модели по очереди, пока одна не ответит рабочим ответом. */
 const FALLBACK_MODELS = ['gemini-2.5-flash', 'gemini-flash-lite-latest'];
+const ALL_MODELS = [MODEL, ...FALLBACK_MODELS];
 let modelIdx = 0;
+const modelDead = new Set(); // индексы моделей с исчерпанной дневной квотой
 // GEMINI_URL — тестовое отверстие для мок-сервера (в проде не задаётся)
 const API_URL = process.env.GEMINI_URL || null;
 
@@ -145,23 +147,34 @@ function normName(s) {
 /* ============ Gemini ============ */
 function apiUrl() {
   if (API_URL) return API_URL; // тестовый мок
-  const models = [MODEL, ...FALLBACK_MODELS];
-  const m = models[modelIdx % models.length]; // циклически: основная → фолбэк → основная…
+  const m = ALL_MODELS[modelIdx % ALL_MODELS.length];
   return `https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent`;
 }
 async function callGemini(prompt) {
-  return fetch(apiUrl(), {
+  const body = (withThinking) => JSON.stringify({
+    contents: [{ parts: [{ text: prompt }] }],
+    // thinkingBudget:0 — 2.5-flash «думает» и срезает MAX_TOKENS на 8192 (проверено).
+    // Часть моделей не знает thinkingConfig (400 INVALID_ARGUMENT) — второй попыткой шлём без него.
+    generationConfig: withThinking
+      ? { temperature: 1.15, maxOutputTokens: 32768, responseMimeType: 'application/json', thinkingConfig: { thinkingBudget: 0 } }
+      : { temperature: 1.15, maxOutputTokens: 32768, responseMimeType: 'application/json' }
+  });
+  let res = await fetch(apiUrl(), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'x-goog-api-key': GEMINI_KEY },
     // без таймаута запрос мог висеть вечно (найдено на dry-run) — в автономном режиме недопустимо
     signal: AbortSignal.timeout(120000),
-    body: JSON.stringify({
-      contents: [{ parts: [{ text: prompt }] }],
-      // thinkingBudget:0 — 2.5-flash «думает» и срезает MAX_TOKENS на 8192 (проверено);
-      // 3.6-flash игнорирует неизвестное поле. 32k — запас на 10 блюд с ингредиентами и шагами.
-      generationConfig: { temperature: 1.15, maxOutputTokens: 32768, responseMimeType: 'application/json', thinkingConfig: { thinkingBudget: 0 } }
-    })
+    body: body(true)
   });
+  if (res.status === 400) {
+    res = await fetch(apiUrl(), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-goog-api-key': GEMINI_KEY },
+      signal: AbortSignal.timeout(120000),
+      body: body(false)
+    });
+  }
+  return res;
 }
 
 function macroTargets(profile, catKey) {
@@ -201,6 +214,7 @@ async function generateBatch(profile, catKey) {
     const j = await res.json().catch(() => ({}));
     const det = (j.error && j.error.details) || [];
     const isOverload = res.status === 503; // «high demand» — пробуем другую модель
+    const curIdx = modelIdx % ALL_MODELS.length; // модель-виновник (до инкремента)
     if (isOverload) modelIdx++; // следующая попытка — фолбэк-модель
     const ri = det.find(x => (x['@type'] || '').includes('RetryInfo'));
     let retryMs = null;
@@ -208,6 +222,7 @@ async function generateBatch(profile, catKey) {
     const isDaily = det.some(x => (x['@type'] || '').includes('QuotaFailure') && ((x.violations || []).some(v => /PerDay|per_day|day/i.test(String(v.quotaId || '')))));
     const err = new Error('QUOTA: Gemini HTTP ' + res.status + (isDaily ? ' (дневная квота)' : ' (минутный лимит)'));
     err.quota = true; err.retryMs = retryMs; err.daily = isDaily; err.overload = isOverload;
+    err.modelIdx = curIdx; // какая модель ответила ошибкой
     throw err;
   }
   if (!res.ok) {
@@ -404,13 +419,24 @@ async function main() {
       if (e.quota) {
         if (NOWAIT) { console.error('429 / квота Gemini. --nowait: выходим.'); process.exit(2); }
         if (e.daily) {
-          console.error('Дневная квота Gemini исчерпана. Засыпаю на 24 часа, потом продолжаю автоматически…');
+          modelDead.add(e.modelIdx);
+          const alive = ALL_MODELS.map((_, i) => i).filter(i => !modelDead.has(i));
+          if (alive.length) {
+            modelIdx = alive[0];
+            console.error('Дневная квота ' + ALL_MODELS[e.modelIdx] + ' исчерпана — переключаюсь на ' + ALL_MODELS[modelIdx] + ' через 10с');
+            await sleep(10000);
+            continue;
+          }
+          console.error('Дневные квоты ВСЕХ моделей (' + ALL_MODELS.join(', ') + ') исчерпаны. Засыпаю на 24 часа, потом продолжаю автоматически…');
           saveState(); // прогресс всех принятых батчей сохранён
           await sleep(24 * 60 * 60 * 1000); // ровно 24 часа, затем повтор текущего батча
+          modelDead.clear(); // за сутки квоты обновляются
           continue;
         }
         const wait = e.overload ? 20000 : (e.retryMs || 70000); // перегрузка другой модели — короткая пауза
-        console.error((e.overload ? '503 перегрузка' : '429 (минутный лимит' + (e.retryMs ? ', retry через ' + Math.round(e.retryMs / 1000) + 'с' : '') + ')') + '. Пауза ' + Math.round(wait / 1000) + 'с…');
+        // минутный лимит/перегрузка конкретной модели — следующая попытка на другой модели
+        modelIdx = (e.modelIdx + 1) % ALL_MODELS.length;
+        console.error((e.overload ? '503 перегрузка' : '429 (минутный лимит' + (e.retryMs ? ', retry через ' + Math.round(e.retryMs / 1000) + 'с' : '') + ')') + ' на ' + ALL_MODELS[e.modelIdx] + '. Пауза ' + Math.round(wait / 1000) + 'с, дальше — ' + ALL_MODELS[modelIdx] + '…');
         await sleep(wait);
         continue;
       }

@@ -1825,20 +1825,7 @@ function renderWeightHeader(vals){
   // v30: цифра обновляется в .weight-num, разметка и единица «кг» не затираются;
   // пустая история не перезаписывает уже показанное значение (прочерк при быстрых кликах на «Профиль»)
   const setW = (box, v) => { if(!box) return; const n = box.querySelector('.weight-num'); if(n && v != null) n.textContent = v; };
-  // хедер в карточке профиля (тот же модуль, другой контейнер)
-  const pNow = $('profWeightNow'), pDelta = $('profWeightDelta');
-  if(pNow || pDelta){
-    const lastP = vals && vals.length ? vals[vals.length - 1] : null;
-    setW(pNow, lastP ? Number(lastP.weight) : null);
-    if(pDelta){
-      if(!lastP || goal === null){ pDelta.textContent = goal === null ? 'Цель не задана' : '—'; pDelta.style.color = ''; }
-      else {
-        const d = Number(lastP.weight) - goal;
-        if(Math.abs(d) < 0.05){ pDelta.textContent = 'Цель достигнута!'; pDelta.style.color = 'var(--green)'; }
-        else { const sgn = d > 0 ? '+' : ''; pDelta.textContent = (sgn + d.toFixed(1)) + ' кг до цели'; pDelta.style.color = ''; }
-      }
-    }
-  }
+  // v31.2: хедер веса в профиле убран вместе с блоком «Текущий вес» — живёт только вкладка «Статистика»
   if(now){
     const last = vals && vals.length ? vals[vals.length - 1] : null;
     setW(now, last ? Number(last.weight) : null);
@@ -2086,6 +2073,9 @@ async function woFinishFlow(){
 }
 </script>
 <style>
+/* v31.2: статусы дней программы — выполнен приглушён, текущий подсвечен */
+.fit-day-done{opacity:.72}
+.fit-day-current{border:1.5px solid var(--accent)}
 .wz-dots{display:flex;gap:6px;justify-content:center;margin-bottom:12px}
 .wz-dot{width:9px;height:9px;border-radius:50%}
 .wz-photo{width:100%;height:220px;border-radius:18px;background:var(--solid);display:flex;align-items:center;justify-content:center;color:var(--accent);overflow:hidden;margin-bottom:14px}
@@ -2431,17 +2421,11 @@ function profCoreHtml(user){
     '<div class="avatar" style="width:84px;height:84px;font-size:32px;margin:0 auto 12px" id="profAvatar">' + esc((user.name || 'U').charAt(0).toUpperCase()) + '</div>' +
     '<h2 style="font-size:26px">' + esc(user.name || 'Друг') + '</h2>' +
     '<p class="muted" style="font-size:13px;margin:4px 0 12px">' + (user.calorie_norm || '—') + ' ккал в день · ' + (user.meal_count || 2) + ' ' + plural(user.meal_count || 2,'приём','приёма','приёмов') + ' пищи</p>' +
-    '<div class="flex gap2" style="flex-wrap:wrap;justify-content:center"><span class="badge badge-accent">' + gt + '</span><span class="badge badge-violet">' + (user.gender==='male'?'Мужчина':'Женщина') + '</span></div></div>' +
-    '<div class="card mb4"><div class="flex between items-center"><div>' +
-    '<h3 style="font-size:14px" class="mb2">Текущий вес</h3>' +
-    '<div class="weight-value" id="profWeightNow"><span class="weight-num">' + (user.current_weight != null ? user.current_weight : '—') + '</span><span class="weight-unit muted">кг</span></div>' +
-    '<p class="subtle" style="font-size:11px;margin-top:3px" id="profWeightDelta">' + (user.target_weight ? 'цель: ' + user.target_weight + ' кг' : 'цель не задана') + '</p></div>' +
-    '<button class="btn btn-primary pressable" style="font-size:12.5px;padding:10px 14px" onclick="navigate(\'stats\')">Добавить взвешивание</button></div></div>';
+    '<div class="flex gap2" style="flex-wrap:wrap;justify-content:center"><span class="badge badge-accent">' + gt + '</span><span class="badge badge-violet">' + (user.gender==='male'?'Мужчина':'Женщина') + '</span></div></div>';
 }
 function profButtonsHtml(){
-  return '<div class="card mb4" id="profWeightChartCard"><h3 class="mb2">Взвешивание</h3><div id="profWeightChart"></div>' +
-    '<button class="btn btn-ghost btn-block pressable mt2" onclick="navigate(\'stats\')" style="font-size:13px">Все данные и запись веса</button></div>' +
-    '<button class="btn btn-ghost btn-block pressable mb4 mt3" onclick="openSupportTab()" style="display:flex;align-items:center;justify-content:center;gap:8px">' + ic('person',16) + ' Чат поддержки</button>' +
+  /* v31.2: блок «Взвешивание» в профиле убран по фидбеку — график и запись веса живут во вкладке «Статистика» */
+  return '<button class="btn btn-ghost btn-block pressable mb4 mt3" onclick="openSupportTab()" style="display:flex;align-items:center;justify-content:center;gap:8px">' + ic('person',16) + ' Чат поддержки</button>' +
     '<button class="btn btn-ghost btn-block pressable mb4 mt2" onclick="navigate(\'settings\')" style="display:flex;align-items:center;justify-content:center;gap:8px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 1v4m0 14v4M4.2 4.2l2.8 2.8m10 10 2.8 2.8M1 12h4m14 0h4M4.2 19.8l2.8-2.8m10-10 2.8-2.8"/></svg> Настройки</button>';
 }
 function setProfAvatar(user){
@@ -2461,7 +2445,7 @@ async function loadProfile(){
   _profileLoading = true;
   c.innerHTML = '<div id="profCore"></div>' +
     '<div id="profReport"><div class="shimmer"></div></div>' +
-    '<div id="profLogs"><div class="shimmer"></div></div>' +
+    '<div id="profLogs"></div>' +
     '<div class="flex between items-center mb3"><h3>Достижения</h3><span class="badge badge-amber" id="achCount"></span></div><div id="achList"><div class="shimmer"></div></div>' +
     profButtonsHtml();
   $('profCore').innerHTML = profCoreHtml(currentUser);
@@ -2478,18 +2462,7 @@ async function loadProfile(){
   const pw = api('/api/weight/' + tgId).catch(function(){ return { history: [] }; }).then(function(wl){
     const hist = ((wl && wl.history) || []).slice().reverse();
     renderWeightHeader(hist);
-    /* v29.1: тот же график веса и в профиле */
-    const pc = document.getElementById('profWeightChart');
-    if(pc){
-      const save = $('weightChart');
-      const tmp = document.createElement('div');
-      tmp.id = 'weightChart';
-      document.body.appendChild(tmp);
-      renderWeightChart(hist, currentUser && currentUser.current_weight);
-      pc.innerHTML = tmp.innerHTML;
-      tmp.remove();
-      if(save) save.id = 'weightChart';
-    }
+    /* v31.2: график веса в профиле больше не рендерим (блок убран) — только в «Статистике» */
   }).catch(function(){});
 
   const pa = api('/api/achievements/' + tgId).catch(function(){ return { achievements: [] }; }).then(function(ach){
@@ -2618,7 +2591,7 @@ function aboutBlock(){
     '<div class="flex between" style="font-size:12.5px;padding:5px 0"><span class="muted">ОГРНИП</span><b>325246800130330</b></div>' +
     '<p class="subtle mt2" style="font-size:11px;line-height:1.6">Возрастная категория: 12+. Приложение не является медицинским изделием и не заменяет консультацию врача. Расчёты и программы носят информационный характер. Время напоминаний — по выбранному вами часовому поясу.</p>' +
     '<div style="border-top:1px solid rgba(128,128,128,.18);margin:12px 0;padding-top:10px"><p class="subtle" style="font-size:10px;font-weight:700;margin-bottom:6px">ИСТОЧНИКИ ДАННЫХ</p>' +
-    '<p class="muted" style="font-size:11.5px;line-height:1.7;margin-bottom:8px">База рецептов: <a href="https://github.com/farcrak/unitools-recipes" onclick="tgOpenLink(\'https://github.com/farcrak/unitools-recipes\');return false" style="color:var(--accent);text-decoration:underline">Unitools Recipes</a>, автор farcrak — лицензия CC BY-SA 4.0. Названия блюд, составы и рецепты импортированы из открытого датасета Unitools.</p>' +
+    '<p class="muted" style="font-size:11.5px;line-height:1.7;margin-bottom:8px">База рецептов: собственная база GuideFit — блюда сгенерированы ИИ под нормы КБЖУ (1500–3500 ккал/сутки), простые продукты, доступные в РФ.</p>' +
     '<p class="muted" style="font-size:11.5px;line-height:1.7">Фотографии: <a href="https://www.pexels.com" onclick="tgOpenLink(\'https://www.pexels.com\');return false" style="color:var(--accent);text-decoration:underline">Pexels</a> — бесплатная лицензия Pexels, без указания авторства (благодарим фотографов!).</p>' +
     '<p class="muted" style="font-size:11.5px;line-height:1.7">GIF-анимации упражнений: © Gym visual — <a href="https://gymvisual.com/" onclick="tgOpenLink(\'https://gymvisual.com/\');return false" style="color:var(--accent);text-decoration:underline">gymvisual.com</a> (через открытый датасет exercises-dataset, 180×180).</p></div>' +
     '</div>';
@@ -3407,7 +3380,7 @@ function woRenderYoga(c){
 }
 
 /* ============ v31: программы v2 (fit_programs) ============ */
-let _fitCache = null, _fitRec = 'fat', _fitCat = null;
+let _fitCache = null, _fitRec = 'fat', _fitCat = null, _fitActive = null;
 const FIT_CATS = [
   { id:'fat', label:'Жиросжигание', sub:'Интервальные и круговые тренировки дома: максимум калорий за минимум времени.' },
   { id:'muscle', label:'Набор массы', sub:'Силовая работа с весом тела и утяжелителями: мышцы растут дома не хуже, чем в зале.' },
@@ -3421,20 +3394,28 @@ async function fitRender(c){
     FIT_CATS.map(x => '<button class="wo-chip pressable' + (x.id === _fitCat ? ' active' : '') + '" onclick="fitSetCat(\'' + x.id + '\')">' + x.label + '</button>').join('') + '</div>';
   const meta = FIT_CATS.find(x => x.id === _fitCat) || FIT_CATS[0];
   html += '<p class="subtle mb3" style="font-size:12.5px;line-height:1.6">' + meta.sub + (_fitCat === _fitRec ? ' <b style="color:var(--accent)">Рекомендовано по твоей цели.</b>' : '') + '</p>';
-  if(_fitCache === null) html += '<div class="shimmer"></div><div class="shimmer"></div>';
+  if(_fitCache === null || _fitActive === null) html += '<div class="shimmer"></div><div class="shimmer"></div>';
   c.innerHTML = html;
   try{
-    if(!_fitCache){
-      const d = await api('/api/fit/programs');
-      _fitCache = d.programs || []; _fitRec = d.recommended || 'fat';
+    /* один параллельный запрос каталога + активной программы; результат кешируется —
+       переключение категорий мгновенное, без повторных запросов (раньше было рывками) */
+    if(_fitCache === null || _fitActive === null){
+      const rs = await Promise.all([
+        api('/api/fit/programs'),
+        currentUser ? api('/api/fit/active').catch(() => ({ program: null })) : Promise.resolve({ program: null })
+      ]);
+      _fitCache = rs[0].programs || []; _fitRec = rs[0].recommended || 'fat';
+      _fitActive = rs[1].program || null;
       if(!_fitCat) _fitCat = _fitRec;
+      /* перерисовываем шапку с финальной рекомендацией */
+      const meta2 = FIT_CATS.find(x => x.id === _fitCat) || FIT_CATS[0];
+      html = '<div class="flex gap2 mb3" style="flex-wrap:wrap">' +
+        FIT_CATS.map(x => '<button class="wo-chip pressable' + (x.id === _fitCat ? ' active' : '') + '" onclick="fitSetCat(\'' + x.id + '\')">' + x.label + '</button>').join('') + '</div>' +
+        '<p class="subtle mb3" style="font-size:12.5px;line-height:1.6">' + meta2.sub + (_fitCat === _fitRec ? ' <b style="color:var(--accent)">Рекомендовано по твоей цели.</b>' : '') + '</p>';
     }
     let list = _fitCache.filter(p => p.category === _fitCat);
-    let active = null;
-    try{
-      const st = await api('/api/fit/active');
-      if(st && st.program){ active = list.find(p => p.id === st.program.program_id) || null; if(active) list = list.filter(p => p.id !== active.id); }
-    }catch(e){}
+    let active = _fitActive && list.find(p => p.id === _fitActive.program_id) || null;
+    if(active) list = list.filter(p => p.id !== active.id);
     if(active){
       html += '<div class="prog-card pressable active-prog" onclick="fitOpen(' + active.id + ')">' +
         '<div class="flex between items-center" style="gap:10px"><h3 style="font-size:17px">' + esc(active.name) + '</h3>' +
@@ -3476,21 +3457,55 @@ async function fitOpen(id){
   const c = document.getElementById('programContent');
   c.innerHTML = '<div class="shimmer"></div>';
   try{
-    const d = await api('/api/fit/program/' + id);
+    /* один параллельный запрос: программа + активная программа пользователя */
+    const rs = await Promise.all([
+      api('/api/fit/program/' + id),
+      currentUser ? api('/api/fit/active').catch(() => ({ program: null })) : Promise.resolve({ program: null })
+    ]);
+    const d = rs[0];
+    const act = rs[1].program;
+    const isActive = !!(act && act.program_id === id);
     _fitProg = d; currentProgramId = null;
     const p = d.program;
+    const days = d.days || [];
+    const doneIds = isActive ? (act.done_day_ids || []) : [];
+    const curId = isActive ? act.current_day_id : null;
     let html = '<div class="card mb4"><h3 style="font-size:19px">' + esc(p.name) + '</h3>' +
       '<div class="prog-tags mt2">' + fitLvlBadge(p.level) + '<span class="badge badge-accent">' + p.weeks + ' нед</span><span class="badge badge-violet">' + p.minutes + ' мин</span></div>' +
-      '<p class="muted mt2" style="font-size:12.5px;line-height:1.6">' + esc(p.description || '') + '</p>' +
-      '<button class="btn btn-primary btn-block pressable mt3" id="fitStartBtn" onclick="fitStart(' + p.id + ')">Начать программу</button></div>';
-    (d.days || []).forEach(day => {
-      html += '<div class="card mb4"><div class="flex between items-center mb2"><h3 style="font-size:15px">' + esc(day.title || ('Неделя ' + day.week + ' · День ' + day.day)) + '</h3><span class="badge badge-blue">' + (day.exercises || []).length + ' упр</span></div>';
-      (day.exercises || []).forEach((ex, i) => {
-        html += '<div class="exercise-row"><div class="flex between items-center" style="gap:10px"><div><b style="font-size:13.5px">' + esc(ex.exercise_name) + '</b>' +
-          '<p class="subtle" style="font-size:11.5px">' + ex.sets + ' × ' + esc(String(ex.reps || '')) + ' · отдых ' + (ex.rest_seconds || 60) + 'с</p></div></div></div>';
+      '<p class="muted mt2" style="font-size:12.5px;line-height:1.6">' + esc(p.description || '') + '</p>';
+    if(isActive){
+      const done = doneIds.length, total = days.length;
+      const pct = total ? Math.min(done / total * 100, 100) : 0;
+      html += '<div class="flex between items-center mt3 mb2"><span class="subtle" style="font-size:12px">Выполнено ' + done + ' из ' + total + ' тренировок</span><span class="badge badge-accent">' + Math.round(pct) + '%</span></div>' +
+        '<div class="track"><div class="fill fill-accent" style="width:' + pct + '%"></div></div>';
+    } else {
+      html += '<button class="btn btn-primary btn-block pressable mt3" id="fitStartBtn" onclick="fitStart(' + p.id + ')">Начать программу</button>';
+    }
+    html += '</div>';
+    /* группировка по неделям: сразу видно, что это план на N недель, а не разовая тренировка */
+    const weeks = [];
+    days.forEach(day => { const w = day.week || 1; (weeks[w] = weeks[w] || []).push(day); });
+    weeks.forEach((wDays, wi) => {
+      if(!wDays) return;
+      html += '<div class="wo-group-hd"><b>Неделя ' + wi + '</b><span></span></div>';
+      wDays.forEach(day => {
+        const isDone = doneIds.includes(day.id);
+        const isCur = day.id === curId;
+        const badge = isDone ? '<span class="badge badge-green">Выполнено ✓</span>' : isCur ? '<span class="badge badge-accent">Текущий день</span>' : '<span class="badge badge-blue">' + (day.exercises || []).length + ' упр</span>';
+        html += '<div class="card mb4' + (isDone ? ' fit-day-done' : '') + (isCur ? ' fit-day-current' : '') + '"><div class="flex between items-center mb2"><h3 style="font-size:15px">' + esc(day.title || ('Неделя ' + day.week + ' · День ' + day.day)) + '</h3>' + badge + '</div>';
+        (day.exercises || []).forEach(ex => {
+          html += '<div class="exercise-row"><div class="flex between items-center" style="gap:10px"><div><b style="font-size:13.5px">' + esc(ex.exercise_name) + '</b>' +
+            '<p class="subtle" style="font-size:11.5px">' + ex.sets + ' × ' + esc(String(ex.reps || '')) + ' · отдых ' + (ex.rest_seconds || 60) + 'с</p></div></div></div>';
+        });
+        if(isActive){
+          if(isDone) html += '<button class="btn btn-ghost btn-block pressable mt3" onclick="fitStartDay(' + day.id + ')">Повторить</button>';
+          else if(isCur) html += '<button class="btn btn-primary btn-block pressable mt3" onclick="fitStartDay(' + day.id + ')">Начать тренировку</button>';
+          else html += '<button class="btn btn-ghost btn-block pressable mt3" style="opacity:.6" onclick="fitStartDay(' + day.id + ')">Начать тренировку</button>';
+        } else {
+          html += '<button class="btn btn-primary btn-block pressable mt3" onclick="fitStartDay(' + day.id + ')">Начать тренировку</button>';
+        }
+        html += '</div>';
       });
-      html += '<button class="btn btn-primary btn-block pressable mt3" onclick="fitStartDay(' + day.id + ')">Начать тренировку</button>';
-      html += '</div>';
     });
     c.innerHTML = html;
   }catch(e){ c.innerHTML = '<div class="empty">Не удалось загрузить программу</div>'; }
@@ -3501,8 +3516,8 @@ async function fitStart(id){
     await api('/api/fit/start', { method:'POST', body:{ tg_id: currentUser.tg_id, program_id: id } });
     if(typeof haptic === 'function') haptic('ok');
     showSuccess('Программа запущена!');
-    _fitCache = null; _fitCat = null;
-    navigate('workouts');
+    _fitCache = null; _fitCat = null; _fitActive = null;
+    fitOpen(id); // остаёмся в программе: сразу видно статус и текущий день
   }catch(e){ showError('Не удалось запустить программу'); }
 }
 
