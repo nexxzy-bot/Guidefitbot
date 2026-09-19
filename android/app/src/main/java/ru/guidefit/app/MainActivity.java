@@ -1,5 +1,6 @@
 package ru.guidefit.app;
 
+import android.Manifest;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.Intent;
@@ -12,6 +13,7 @@ import android.view.Gravity;
 import android.view.View;
 import android.view.Window;
 import android.webkit.CookieManager;
+import android.webkit.JavascriptInterface;
 import android.webkit.WebResourceError;
 import android.webkit.WebResourceRequest;
 import android.webkit.WebSettings;
@@ -23,6 +25,7 @@ import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
+import org.json.JSONArray;
 import org.json.JSONObject;
 
 import java.io.BufferedReader;
@@ -35,11 +38,15 @@ import javax.net.ssl.HttpsURLConnection;
 /**
  * GuideFit — WebView-обёртка для RuStore.
  * Загружает приложение с https://app.xn--80aag3axnld9b.xn--p1ai,
- * внешние домены (VK ID, Telegram OAuth) открывает в системном браузере.
+ * внешние домены (VK ID) открывает в системном браузере.
  *
  * RuStore (требование «обновления»): при выходе новой версии пользователю
  * показывается уведомление с рекомендацией обновиться через RuStore.
  * Проверка — лёгкий GET /api/app-version, не чаще раза в 6 часов.
+ *
+ * v32: Telegram удалён из продукта. Напоминания стали ЛОКАЛЬНЫМИ — их планирует
+ * этот APK (AlarmManager → ReminderReceiver), а веб-слой получает доступ к
+ * планировщику через мост window.GuideFitNative.
  */
 public class MainActivity extends Activity {
 
@@ -100,6 +107,10 @@ public class MainActivity extends Activity {
                 FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT));
 
         setContentView(rootLayout);
+
+        ReminderScheduler.ensureChannel(this);
+        // Мост для веб-слоя: локальные напоминания. Никаких данных наружу не уходит.
+        webView.addJavascriptInterface(new NativeBridge(), "GuideFitNative");
 
         WebSettings s = webView.getSettings();
         s.setJavaScriptEnabled(true);
@@ -167,6 +178,58 @@ public class MainActivity extends Activity {
     protected void onSaveInstanceState(Bundle outState) {
         super.onSaveInstanceState(outState);
         webView.saveState(outState);
+    }
+
+    /* ===== мост в веб-слой: локальные уведомления =====
+       Доступен только нашему же приложению (WebView грузит единственный доверенный домен,
+       внешние ссылки уходят в системный браузер), поэтому наружу интерфейс не торчит. */
+    public class NativeBridge {
+
+        @JavascriptInterface
+        public boolean notificationsAllowed() {
+            return ReminderReceiver.notificationsAllowed(MainActivity.this);
+        }
+
+        /** Системный запрос разрешения на уведомления (Android 13+). */
+        @JavascriptInterface
+        public void requestNotifications() {
+            if (Build.VERSION.SDK_INT < 33) return;
+            if (ReminderReceiver.notificationsAllowed(MainActivity.this)) return;
+            runOnUiThread(() -> {
+                try { requestPermissions(new String[]{Manifest.permission.POST_NOTIFICATIONS}, 9001); }
+                catch (Exception ignored) { }
+            });
+        }
+
+        /** Расписание из приложения: {"enabled":true,"entries":[{id,hour,minute,title,text}]} */
+        @JavascriptInterface
+        public void setReminders(String json) {
+            try {
+                JSONArray entries = null;
+                String t = json == null ? "" : json.trim();
+                if (t.startsWith("[")) {
+                    entries = new JSONArray(t);
+                } else {
+                    JSONObject obj = new JSONObject(t);
+                    entries = obj.optJSONArray("entries");
+                }
+                if (entries == null || entries.length() == 0) { ReminderScheduler.cancelAll(MainActivity.this); return; }
+                ReminderScheduler.schedule(MainActivity.this, entries);
+                ReminderScheduler.setEnabled(MainActivity.this, true);
+            } catch (Exception ignored) {
+                // мусорный JSON просто игнорируем — будильники не трогаем
+            }
+        }
+
+        @JavascriptInterface
+        public void clearReminders() {
+            ReminderScheduler.cancelAll(MainActivity.this);
+        }
+
+        @JavascriptInterface
+        public String appVersion() {
+            return versionName;
+        }
     }
 
     /* ===== сплэш и экран «нет сети» ===== */

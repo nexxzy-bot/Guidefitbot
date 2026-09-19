@@ -12,13 +12,15 @@ function q(sql, args) { return new Promise((res, rej) => db.run(sql, args || [],
 function get(sql, args) { return new Promise((res, rej) => db.get(sql, args || [], (e, r) => e ? rej(e) : res(r))); }
 function all(sql, args) { return new Promise((res, rej) => db.all(sql, args || [], (e, r) => e ? rej(e) : res(r))); }
 
-/* id упражнений БД (из exercises.json, с GIF из Фазы A) */
+/* id упражнений БД (из exercises.json, с GIF из Фазы A).
+   v31.2: в карте остались только упражнения, которые реально есть в домашнем каталоге
+   exercises.json (38 позиций). Раньше тут были pullup/dip/dbBench/... (штанга, гантели,
+   турник, скакалка) — их из каталога убрали, и такие id теперь роняли сидер
+   сообщением «Нет упражнений в БД», если программа на них ссылалась. */
 const EX = { pushup: 1, squat: 2, plank: 3, lunge: 4, bridge: 5, burpee: 6, climber: 7, jack: 8,
   vup: 9, crunch: 10, catcow: 11, child: 12, walklunge: 13, highknees: 16, backjump: 17,
-  plankbench: 18, pushbench: 19, pullup: 20, chinup: 21, dip: 22, legraise: 23, benchdip: 24,
-  stretchStand: 25, stretchShoulder: 26, dbBench: 27, dbFly: 28, bandPulldown: 29, dbRow: 30,
-  dbPress: 31, dbLatRaise: 32, dbCurl: 33, bandTriceps: 34, calf: 40,
-  plankTap: 42, revCrunch: 53, sidePlank: 54, rope: 55, widePush: 57, narrowPush: 58, sprint: 205 };
+  plankbench: 18, pushbench: 19, benchdip: 24, stretchStand: 25, stretchShoulder: 26, calf: 40,
+  plankTap: 42, revCrunch: 53, sidePlank: 54, widePush: 57, narrowPush: 58, sprint: 205 };
 
 /* шаблон недели: [день, [упражнение, подходы, повторы, отдых]] */
 const W = (days) => days;

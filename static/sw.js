@@ -1,4 +1,4 @@
-const CACHE = 'guidefit-v32';
+const CACHE = 'guidefit-v34';
 self.addEventListener('install', e => {
   e.waitUntil(
     caches.open(CACHE)
@@ -18,11 +18,14 @@ self.addEventListener('fetch', e => {
   if (e.request.method !== 'GET') return;
   // страница приложения — сначала сеть, кэш как запасной (аудит: без этого юзеры сидят на старой версии)
   if (e.request.mode === 'navigate' || url.pathname === '/' || url.pathname === '/index.html') {
+    // catch() должен быть ВНУТРИ respondWith: e.respondWith() возвращает undefined,
+    // поэтому прежний .catch() на его результате не работал — при офлайне выбрасывался
+    // TypeError, а фолбэк на кэшированный index.html никогда не отдавался.
     e.respondWith(fetch(e.request).then(res => {
       const copy = res.clone();
       caches.open(CACHE).then(c => c.put('/index.html', copy));
       return res;
-    })).catch(() => caches.match('/index.html'));
+    }).catch(() => caches.match('/index.html')));
     return;
   }
   // остальное (фото и т.п.) — stale-while-revalidate; локальные фото тоже кэшируем

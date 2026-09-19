@@ -90,7 +90,16 @@ function ensureSchema() {
       dish_id INTEGER NOT NULL REFERENCES dishes(id) ON DELETE CASCADE,
       step_no INTEGER NOT NULL, text TEXT NOT NULL, minutes INTEGER)`),
     q('CREATE INDEX IF NOT EXISTS idx_dish_steps_dish ON dish_steps(dish_id, step_no)'),
-    q('CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT)')
+    q('CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT)'),
+    // зеркало и кеш фото нужны самому генератору (insertDish/hardReset): раньше на СВЕЖЕЙ
+    // базе без запущенного сервера скрипт падал на «no such table: recipes/image_store»
+    q(`CREATE TABLE IF NOT EXISTS recipes (
+      id INTEGER PRIMARY KEY, title TEXT, category TEXT,
+      calories REAL, protein REAL, fat REAL, carbs REAL,
+      description TEXT, benefits TEXT, ingredients TEXT,
+      recipe_steps TEXT, image_url TEXT, goals TEXT, photo_query TEXT,
+      category_hint TEXT)`),
+    q('CREATE TABLE IF NOT EXISTS image_store (recipe_id INTEGER PRIMARY KEY, url TEXT)')
   ]);
 }
 

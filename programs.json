@@ -3216,11 +3216,11 @@
       "rest_seconds": 40
      },
      {
-      "exercise_id": 20,
-      "exercise_name": "Подтягивания",
+      "exercise_id": 24,
+      "exercise_name": "Обратные отжимания на скамейке",
       "sets": 3,
-      "reps": "макс",
-      "rest_seconds": 90
+      "reps": "12-15 раз",
+      "rest_seconds": 60
      },
      {
       "exercise_id": 201,
@@ -3345,11 +3345,11 @@
       "rest_seconds": 40
      },
      {
-      "exercise_id": 20,
-      "exercise_name": "Подтягивания",
+      "exercise_id": 24,
+      "exercise_name": "Обратные отжимания на скамейке",
       "sets": 3,
-      "reps": "макс",
-      "rest_seconds": 90
+      "reps": "12-15 раз",
+      "rest_seconds": 60
      },
      {
       "exercise_id": 201,
@@ -3474,11 +3474,11 @@
       "rest_seconds": 40
      },
      {
-      "exercise_id": 20,
-      "exercise_name": "Подтягивания",
+      "exercise_id": 24,
+      "exercise_name": "Обратные отжимания на скамейке",
       "sets": 3,
-      "reps": "макс",
-      "rest_seconds": 90
+      "reps": "12-15 раз",
+      "rest_seconds": 60
      },
      {
       "exercise_id": 201,
@@ -3603,11 +3603,11 @@
       "rest_seconds": 40
      },
      {
-      "exercise_id": 20,
-      "exercise_name": "Подтягивания",
+      "exercise_id": 24,
+      "exercise_name": "Обратные отжимания на скамейке",
       "sets": 4,
-      "reps": "макс",
-      "rest_seconds": 90
+      "reps": "12-15 раз",
+      "rest_seconds": 60
      },
      {
       "exercise_id": 201,
@@ -3732,11 +3732,11 @@
       "rest_seconds": 40
      },
      {
-      "exercise_id": 20,
-      "exercise_name": "Подтягивания",
+      "exercise_id": 24,
+      "exercise_name": "Обратные отжимания на скамейке",
       "sets": 4,
-      "reps": "макс",
-      "rest_seconds": 90
+      "reps": "12-15 раз",
+      "rest_seconds": 60
      },
      {
       "exercise_id": 201,
@@ -3861,11 +3861,11 @@
       "rest_seconds": 40
      },
      {
-      "exercise_id": 20,
-      "exercise_name": "Подтягивания",
+      "exercise_id": 24,
+      "exercise_name": "Обратные отжимания на скамейке",
       "sets": 4,
-      "reps": "макс",
-      "rest_seconds": 90
+      "reps": "12-15 раз",
+      "rest_seconds": 60
      },
      {
       "exercise_id": 201,

@@ -4,15 +4,16 @@
 дневник питания, вода, вес, программы тренировок с логом подходов, практики йоги,
 достижения и напоминания.
 
-Работает в двух режимах:
+Распространяется **только как Android-приложение (RuStore)** — Telegram из продукта
+удалён (v32). Вход: **анонимная регистрация** на устройстве (без номера телефона) или
+**VK ID** для переноса прогресса. Сессия хранится в `localStorage` (`x-session-token`).
 
-- **Telegram Mini App** — вход по подписанным `initData` (HMAC-проверка на сервере).
-- **Standalone / APK (RuStore)** — вход через **VK ID** или **анонимная регистрация**
-  без номера телефона. Сессия хранится в `localStorage` (`x-session-token`).
+Напоминания — **локальные**: системные уведомления Android (AlarmManager) по выбранному
+часовому поясу. Сервер их не рассылает, данные наружу не уходят.
 
 ## Стек
 
-Node.js >= 18, Express 4, SQLite (`sqlite3`), Telegram Bot API.
+Node.js >= 18, Express 4, SQLite (`sqlite3`), Android SDK (без Gradle).
 Фронтенд — **один файл** `static/index.html` без фреймворков и сборки
 (конвенция проекта: вся вёрстка, стили и логика в одном файле).
 
@@ -20,9 +21,9 @@ Node.js >= 18, Express 4, SQLite (`sqlite3`), Telegram Bot API.
 
 | Файл | Назначение |
 |---|---|
-| `server.js` | API, расчёты норм, достижения, сессии, напоминания, админка, CSP |
+| `server.js` | API, расчёты норм, достижения, сессии, админка, CSP |
 | `db.js` | схема SQLite, индексы, каталоги из JSON (пересев только при изменении файла) |
-| `bot.js` | Telegram-бот: кнопка Mini App, привязка чата, `/stop`, `/help` |
+| `android/` | APK-обёртка: WebView + нативные экран/сплэш и локальные напоминания |
 | `static/index.html` | весь фронтенд |
 | `static/fonts.css`, `static/fonts/` | локальные шрифты (без Google Fonts) |
 | `static/sw.js`, `static/manifest.webmanifest` | PWA: офлайн-режим, установка |
@@ -31,6 +32,7 @@ Node.js >= 18, Express 4, SQLite (`sqlite3`), Telegram Bot API.
 | `scripts/backup-db.js` | резервная копия базы (`VACUUM INTO`) с ротацией |
 | `scripts/preheat-images.js` | прогрев фото блюд (Pexels → WebP) |
 | `scripts/generate-dishes.js` | генерация блюд через Gemini |
+| `scripts/send-build.js` | доставка собранного APK владельцу в Telegram (`npm run send-build`) |
 | `tests/api.test.js` | smoke-тесты API на отдельной временной базе |
 | `deploy/nginx-guidefit-app.conf` | эталон конфига nginx (проброс реального IP и т.д.) |
 
@@ -39,15 +41,16 @@ Node.js >= 18, Express 4, SQLite (`sqlite3`), Telegram Bot API.
 ```bash
 npm install
 cp .env.example .env     # заполнить переменные
-npm start                # сервер
-npm run bot              # Telegram-бот (отдельный процесс)
+npm start                # сервер API + статика
+
+ANDROID_HOME=/opt/android-sdk bash android/build.sh   # сборка APK (см. android/README.md)
+npm run send-build                                    # отправить APK себе в Telegram
 ```
 
-В продакшене оба процесса держит pm2:
+В продакшене процесс держит pm2:
 
 ```bash
 pm2 start server.js --name guidefit-app
-pm2 start bot.js   --name guidefit-bot
 pm2 save
 ```
 
@@ -55,7 +58,7 @@ pm2 save
 
 ```bash
 npm run check    # синтаксис всех серверных файлов и service worker
-npm test         # smoke-тесты API (12 тестов, отдельная база)
+npm test         # smoke-тесты API + целостность каталогов (отдельная база)
 npm run backup   # резервная копия базы (VACUUM INTO, ротация 14 дней)
 ```
 
@@ -70,8 +73,11 @@ npm run backup   # резервная копия базы (VACUUM INTO, рота
 Все секреты — только в `.env` (в репозиторий не попадает). Полный список с
 комментариями — в `.env.example`.
 
-Ключевые: `MINIAPP_PORT`, `MINIAPP_URL`, `TELEGRAM_TOKEN`, `TELEGRAM_USERNAME`,
-`ADMIN_TOKEN`, `VK_CLIENT_ID`, `VK_CLIENT_SECRET`, `TZ` (по умолчанию `Europe/Moscow`).
+Ключевые: `MINIAPP_PORT`, `MINIAPP_URL`, `ADMIN_TOKEN`, `VK_CLIENT_ID`,
+`VK_CLIENT_SECRET`, `TZ` (по умолчанию `Europe/Moscow`).
+
+Только для доставки сборок (приложение Telegram не использует): `TELEGRAM_TOKEN`,
+`BUILD_CHAT_ID` (или `ADMIN_ID`).
 
 ## API (основное)
 
@@ -80,21 +86,22 @@ npm run backup   # резервная копия базы (VACUUM INTO, рота
 - `GET /api/auth/me` — кто я по текущей сессии
 - `POST /api/user/init` — завершение визарда (возраст 12–100)
 - `GET /api/user/export` — выгрузка всех своих данных (право на доступ, 152-ФЗ)
-- `POST /api/user/link/telegram` — одноразовый код привязки чата для напоминаний
 - `POST /api/user/delete` — удаление аккаунта вместе с сессиями
 - `GET /api/health` — статус + проверка базы + версия
 
 ## Безопасность и приватность
 
 - CSP, HSTS, `X-Content-Type-Options`, `Referrer-Policy`, `Permissions-Policy`.
-  Фреймы запрещены везде, кроме Telegram Web (Mini App открывается в iframe).
+  Страницу нельзя встроить в чужой фрейм (`frame-ancestors 'self'`).
 - `app.set('trust proxy', 1)` + заголовки `X-Real-IP`/`X-Forwarded-For` в nginx:
   без этого все лимиты считались бы по одному IP прокси.
 - Шрифты хостятся локально: IP пользователя не уходит в Google.
 - Сторонняя аналитика VK ID SDK (Top.Mail.ru) заблокирована политикой CSP.
 - Сессии живут 180 дней, удаляются вместе с аккаунтом и чистятся фоновым заданием.
-- Напоминания уходят только в Telegram-чат: у аккаунтов ВК/анонимных — только
-  после явной привязки бота.
+- Напоминания формируются на устройстве (AlarmManager) — сервер их не рассылает
+  и данные для этого никуда не передаёт.
+- `tg_id` — историческое имя внутреннего ключа аккаунта (`anon:…`, `vk:…`);
+  к Telegram он отношения не имеет, значения `anon:…`/`vk:…` остаются прежними.
 
 ## Соответствие требованиям РФ
 
@@ -110,13 +117,16 @@ npm run backup   # резервная копия базы (VACUUM INTO, рота
   до 18 лет — с согласия законного представителя.
 - Дисклеймер: приложение не медицинское изделие и не заменяет врача.
 - Отсутствуют: реклама, сторонние трекеры, передача данных третьим лицам.
-- Оператор: ИП Солдатенко Ярослав Павлович (ОГРНИП 325246800130330).
+  Трансграничной передачи нет: единственный внешний сервис — российский VK ID
+  (и опционально Pexels только для поиска фото, без персональных данных).
+- Оператор: ИП Солдатенко Ярослав Павлович (ИНН 245905941928,
+  ОГРНИП 325246800130330, г. Красноярск).
 
 ## Деплой
 
 ```bash
 git push origin main          # на сервере: git pull
-pm2 restart guidefit-app guidefit-bot --update-env
+pm2 restart guidefit-app --update-env
 curl -s localhost:3000/api/health
 ```
 

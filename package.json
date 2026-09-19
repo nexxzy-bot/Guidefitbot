@@ -1,13 +1,14 @@
 {
   "name": "guidefit",
-  "version": "2.6.0",
-  "description": "GuideFit — Telegram Mini App и standalone-приложение: питание, вода, вес и тренировки",
+  "version": "2.7.0",
+  "description": "GuideFit — Android-приложение (RuStore): дневник питания, воды, веса и тренировок",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
     "dev": "node server.js",
-    "bot": "node bot.js",
-    "check": "node --check server.js && node --check db.js && node --check bot.js && node --check static/sw.js && node --check scripts/backup-db.js && node scripts/check-frontend.js && node scripts/check-handlers.js && node --check scripts/gen-pp-dishes.js && node --check scripts/import-unitools.js && node --check scripts/preheat-images.js",
+    "send-build": "node scripts/send-build.js",
+    "build:apk": "bash android/build.sh",
+    "check": "node --check server.js && node --check db.js && node --check static/sw.js && node --check scripts/backup-db.js && node scripts/check-frontend.js && node scripts/check-handlers.js && node --check scripts/send-build.js && node --check scripts/gen-pp-dishes.js && node --check scripts/import-unitools.js && node --check scripts/preheat-images.js",
     "test": "node --test",
     "backup": "node scripts/backup-db.js",
     "preheat": "node scripts/preheat-images.js",

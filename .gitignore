@@ -17,6 +17,7 @@ backups/
 # Android: артефакты сборки и ключ подписи (не коммитить!)
 android/build/
 android/*.apk
+android/*.idsig
 android/*.keystore
 
 # Локальный кеш фото (Pexels → webp), генерируется на сервере

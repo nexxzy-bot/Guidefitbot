@@ -32,11 +32,14 @@ mkdir -p "$OUT/gen" "$OUT/obj" "$OUT/apk"
 # 2. Java → dex (R.java ложится в корень gen, пакет задаётся внутри файла)
 R_JAVA="$OUT/gen/R.java"
 ls "$R_JAVA" >/dev/null
+# Все исходники собираем сразу: MainActivity + ReminderScheduler/ReminderReceiver/BootReceiver.
+# Один javac на весь набор обязателен — вложенные классы ссылаются друг на друга,
+# и раздельная компиляция ломала бы сборку (NoClassDefFoundError при linking).
 javac -source 17 -target 17 \
   -classpath "$PLAT" \
   -d "$OUT/obj" \
   "$R_JAVA" \
-  "$SRC/java/ru/guidefit/app/MainActivity.java"
+  $(find "$SRC/java" -name '*.java')
 "$BT/d8" --release --lib "$PLAT" \
   --output "$OUT/apk" \
   $(find "$OUT/obj" -name '*.class')

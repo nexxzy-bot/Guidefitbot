@@ -13,14 +13,14 @@ db.serialize(() => {
 
 db.serialize(() => {
   // Все колонки объявлены сразу — на чистой базе не зависим от порядка ALTER-ов ниже.
-  // notify_chat_id — привязанный Telegram-чат (напоминания для ВК/анонимных аккаунтов).
+  // provider — способ создания аккаунта: 'anon' (устройство) или 'vk'.
   db.run(`CREATE TABLE IF NOT EXISTS users (
     tg_id TEXT PRIMARY KEY, name TEXT, goal TEXT, gender TEXT,
     age INTEGER, height INTEGER, current_weight REAL, target_weight REAL,
     calorie_norm INTEGER, activity_level TEXT DEFAULT 'moderate',
     meal_count INTEGER DEFAULT 4, created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     notify_enabled INTEGER DEFAULT 1, last_seen DATETIME,
-    provider TEXT DEFAULT 'tg', avatar TEXT, notify_chat_id TEXT
+    provider TEXT DEFAULT 'anon', avatar TEXT
   )`);
   db.run(`CREATE TABLE IF NOT EXISTS sessions (
     token TEXT PRIMARY KEY, tg_id TEXT, created_at INTEGER
@@ -30,23 +30,19 @@ db.serialize(() => {
     // v31: уровень подготовки (1 начинающий … 5 профессионал) — от него зависят рекомендации программ и йоги
     if (!e2 && cols2 && !cols2.some(c => c.name === 'fitness_level')) db.run("ALTER TABLE users ADD COLUMN fitness_level INTEGER");
   });
-  // админка + мультиавторизация (ВК/Яндекс/Max): последний визит и провайдер (tg_id остаётся единым subject: 'tg:123', 'vk:456', ...)
-  // + фото профиля из VK (avatar) + привязанный Telegram-чат для напоминаний (notify_chat_id)
+  // админка + мультиавторизация (ВК/Яндекс/Max): последний визит и провайдер.
+  // tg_id остаётся единым внутренним идентификатором аккаунта ('anon:…', 'vk:456', …) —
+  // это просто имя ключа в базе, назад к Telegram он отношения не имеет.
+  // + фото профиля из VK (avatar)
   db.all("PRAGMA table_info(users)", [], (e3, cols3) => {
     if (!e3 && cols3) {
       if (!cols3.some(c => c.name === 'last_seen')) db.run("ALTER TABLE users ADD COLUMN last_seen DATETIME");
       if (!cols3.some(c => c.name === 'provider')) db.run("ALTER TABLE users ADD COLUMN provider TEXT DEFAULT 'tg'");
       if (!cols3.some(c => c.name === 'avatar')) db.run("ALTER TABLE users ADD COLUMN avatar TEXT");
-      if (!cols3.some(c => c.name === 'notify_chat_id')) db.run("ALTER TABLE users ADD COLUMN notify_chat_id TEXT");
       // v28: часовой пояс пользователя (выбор из списка, без геолокации) — от него зависят часы напоминаний
       if (!cols3.some(c => c.name === 'timezone')) db.run("ALTER TABLE users ADD COLUMN timezone TEXT");
     }
   });
-  // одноразовые коды привязки Telegram-чата к аккаунту ВК/анонимному (вводятся боту командой /start link_<code>)
-  db.run(`CREATE TABLE IF NOT EXISTS link_codes (
-    code TEXT PRIMARY KEY, tg_id TEXT NOT NULL, created_at INTEGER NOT NULL
-  )`);
-  db.run(`CREATE INDEX IF NOT EXISTS idx_link_codes_tg ON link_codes(tg_id)`);
   // журнал согласий (152-ФЗ, ст. 9 и 10): что и когда отметил пользователь, версии документов.
   // Доказательство согласия; удаляется вместе с аккаунтом (/api/user/delete).
   db.run(`CREATE TABLE IF NOT EXISTS consent_log (
@@ -168,11 +164,6 @@ db.serialize(() => {
   db.run(`CREATE TABLE IF NOT EXISTS user_achievements (
     id INTEGER PRIMARY KEY AUTOINCREMENT, tg_id TEXT, achievement_id INTEGER,
     unlocked_at DATETIME DEFAULT CURRENT_TIMESTAMP
-  )`);
-  db.run(`CREATE TABLE IF NOT EXISTS notification_log (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    tg_id TEXT NOT NULL, type TEXT NOT NULL, date TEXT NOT NULL,
-    UNIQUE(tg_id, type, date)
   )`);
   // v28: встроенный чат поддержки — сообщения пользователя и ответы поддержки, привязаны к tg_id
   db.run(`CREATE TABLE IF NOT EXISTS support_messages (

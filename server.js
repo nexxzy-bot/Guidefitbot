@@ -19,9 +19,9 @@ if (!db || typeof db.run !== 'function' || typeof db.get !== 'function' || typeo
 let APP_VERSION = '2.0.0';
 try { APP_VERSION = require('./package.json').version || APP_VERSION; } catch (e) {}
 
-// v28: Telegram-id администратора — уведомления о новых сообщениях чата поддержки.
-// Добавьте числовой ADMIN_ID в .env (id аккаунта, которому бот может писать).
-const ADMIN_ID = String(process.env.ADMIN_ID || '');
+// Telegram из приложения удалён: TELEGRAM_TOKEN/TELEGRAM_USERNAME/ADMIN_ID больше
+// не участвуют в работе сервера. Они нужны только скрипту доставки сборок
+// scripts/send-build.js (см. .env.example).
 
 const app = express();
 // Приложение стоит за nginx (app.xn--80aag3axnld9b.xn--p1ai → localhost:3000).
@@ -45,38 +45,13 @@ function dayDiff(a, b) {
   return Math.round((Date.parse(a + 'T00:00:00') - Date.parse(b + 'T00:00:00')) / 86400000);
 }
 
-/* ================= Telegram initData: валидация ================= */
-function validateInitData(initData) {
-  const token = process.env.TELEGRAM_TOKEN;
-  if (!token) return { valid: false, reason: 'no-token' };
-  if (!initData || typeof initData !== 'string') return { valid: false };
-  const params = new URLSearchParams(initData);
-  const hash = params.get('hash');
-  if (!hash) return { valid: false };
-  params.delete('hash');
-  const dataCheckString = [...params.entries()]
-    .sort(([a], [b]) => a < b ? -1 : a > b ? 1 : 0)
-    .map(([k, v]) => k + '=' + v).join('\n');
-  const secretKey = crypto.createHmac('sha256', 'WebAppData').update(token).digest();
-  const calcHash = crypto.createHmac('sha256', secretKey).update(dataCheckString).digest('hex');
-  const _a = Buffer.from(calcHash, 'hex'), _b = Buffer.from(hash, 'hex');
-  if (_a.length !== _b.length || !crypto.timingSafeEqual(_a, _b)) return { valid: false };
-  const authDate = parseInt(params.get('auth_date') || '0', 10);
-  if (!authDate || Date.now() / 1000 - authDate > 86400) return { valid: false, reason: 'stale' };
-  try {
-    const user = JSON.parse(params.get('user') || 'null');
-    return user && user.id ? { valid: true, id: String(user.id) } : { valid: false };
-  } catch (e) { return { valid: false }; }
-}
-
 // Срок жизни сессии standalone/APK. Токен лежит в localStorage, бесконечный срок = бесконечная утечка.
 const SESSION_TTL_SEC = 180 * 24 * 3600; // 180 дней
 function sessionCutoff() { return Math.floor(Date.now() / 1000) - SESSION_TTL_SEC; }
 
 app.use('/api', (req, res, next) => {
-  const check = validateInitData(req.headers['x-telegram-init-data']);
-  if (check.valid) { req.tgUserId = check.id; return next(); }
-  // standalone/APK: сессия VK/анонимного входа (Telegram initData в приоритете и не тронут)
+  // APK/standalone: единственный способ авторизации — сессия устройства
+  // (анонимный аккаунт или вход через VK ID). Telegram initData больше не принимается.
   const sess = String(req.headers['x-session-token'] || '');
   if (!sess) return next();
   db.get("SELECT tg_id FROM sessions WHERE token = ? AND created_at > ?", [sess, sessionCutoff()], (err, row) => {
@@ -85,12 +60,11 @@ app.use('/api', (req, res, next) => {
   });
 });
 
-// Какому tg_id разрешено работать с запросом
+// Какому tg_id разрешено работать с запросом.
+// Идентификатор берём ТОЛЬКО из проверенной сессии: tg_id, присланный телом или
+// параметром запроса, игнорируется — иначе любой мог бы читать и править чужой аккаунт.
 function resolveTgId(req) {
-  const requested = String(req.body?.tg_id ?? req.query?.tg_id ?? req.params?.tgId ?? '');
-  if (req.tgUserId) return req.tgUserId;          // подписанные данные Telegram имеют приоритет
-  if (!process.env.TELEGRAM_TOKEN) return requested === 'demo_user' ? requested : null; // dev без токена: только demo_user
-  return null;                                     // иначе — попытка подмены, отказ
+  return req.tgUserId || null;
 }
 
 // Последний визит (для админки: "последний вход")
@@ -102,7 +76,7 @@ function touchSeen(tgId) {
 /* ================= журнал согласий (152-ФЗ, ст. 9/10) =================
    Согласие должно быть доказуемым: сохраняем факт, время и версии документов, с которыми
    пользователь согласился. Записи стираются вместе с аккаунтом (/api/user/delete). */
-const CONSENT_DOC_VERSION = '2026-09-15'; // дата публикации privacy.html / terms.html
+const CONSENT_DOC_VERSION = '2026-09-19'; // редакция privacy.html (19.09.2026) / terms.html (15.09.2026)
 function logConsent(tgId, { privacy = 1, terms = 1, health = 1 } = {}) {
   if (!tgId) return;
   db.run("INSERT INTO consent_log (tg_id, privacy, terms, health, doc_version) VALUES (?, ?, ?, ?, ?)",
@@ -151,53 +125,18 @@ function calcStreak(tg_id, callback) {
   });
 }
 
-/* ================= уведомления в Telegram ================= */
-// Куда шлём напоминание: сначала явно привязанный чат, затем сам Telegram-id аккаунта.
-// У аккаунтов ВК/анонимных это позволяет получать уведомления после привязки чата ботом.
-function chatTarget(row) {
-  if (!row) return null;
-  if (isTelegramId(row.notify_chat_id)) return String(row.notify_chat_id);
-  return isTelegramId(row.tg_id) ? String(row.tg_id) : null;
-}
-
-async function sendTelegram(tg_id, text) {
-  const token = process.env.TELEGRAM_TOKEN;
-  if (!token || !isTelegramId(tg_id)) return;
-  try {
-    await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ chat_id: tg_id, text }),
-      signal: AbortSignal.timeout(5000)
-    }).catch(e => console.error('TG send:', e.message));
-  } catch (e) { console.error('TG send error:', e.message); }
-}
-
-// Напоминания шлём только реальным Telegram-юзерам (числовой id).
-// У аккаунтов 'vk:...' и 'anon:...' чата с ботом нет — им уведомления не отправляем.
-function isTelegramId(tg_id) { return /^\d+$/.test(String(tg_id || '')); }
-
-// Уведомление с дедупликацией: один тип — один раз в день на аккаунт.
-// accountId — идентификатор аккаунта (для лога), chatId — куда именно слать (может быть null).
-function notifyOnce(accountId, chatId, type, dateStr, text) {
-  if (!chatId || !isTelegramId(chatId)) return;
-  db.run("INSERT OR IGNORE INTO notification_log (tg_id, type, date) VALUES (?, ?, ?)",
-    [accountId, type, dateStr], function (err) {
-      if (!err && this.changes > 0) sendTelegram(chatId, text);
-    });
-}
-
 /* ================= уведомления админу ================= */
-// Новая регистрация: сообщение в ТГ админу (ADMIN_ID) + строка в чат поддержки (видна в админ-панели).
-// Ошибки не должны мешать регистрации — всё в try/catch.
+// Новая регистрация: строка в чат поддержки (видна в админ-панели).
+// Telegram удалён, поэтому push админу больше не отправляется — уведомление живёт
+// в админке. Ошибки не должны мешать регистрации — всё в try/catch.
 function notifyAdminNewUser(tgId, name) {
   try {
-    if (!process.env.ADMIN_ID) return;
     const text = '🆕 Новая регистрация в GuideFit: ' + (name || 'без имени') + ' (ID ' + tgId + ')';
-    sendTelegram(process.env.ADMIN_ID, text);
-    const sender = isTelegramId(tgId) ? String(tgId) : null;
+    // sender NOT NULL: для ВК/анонимных (tg_id вида 'vk:…') отдавали null — вставка падала
+    // с SQLITE_CONSTRAINT, и в админке не появлялось ни одной регистрации. Метка 'system'
+    // отделяет служебную запись от переписки (в чате пользователя она скрыта).
     db.run("INSERT INTO support_messages (tg_id, sender, text) VALUES (?, ?, ?)",
-      [tgId, sender, text], function (e) {
+      [tgId, 'system', text], function (e) {
         if (e) console.error('notifyAdminNewUser db:', e.message);
       });
   } catch (e) { console.error('notifyAdminNewUser:', e.message); }
@@ -210,9 +149,8 @@ function bumpAchievements(tg_id) {
 
 function checkAchievements(tg_id) {
   if (!tg_id || tg_id === 'demo_user') return;
-  db.get("SELECT current_weight, tg_id, notify_chat_id FROM users WHERE tg_id = ?", [tg_id], (err, u) => {
+  db.get("SELECT current_weight, tg_id FROM users WHERE tg_id = ?", [tg_id], (err, u) => {
     const waterNorm = Math.round((Number(u?.current_weight) || 70) * 30);
-    const achChat = chatTarget(u);
     db.all("SELECT achievement_id FROM user_achievements WHERE tg_id = ?", [tg_id], (err2, ua) => {
       const unlocked = new Set((ua || []).map(a => a.achievement_id));
       db.all("SELECT * FROM achievements", [], (err3, all) => {
@@ -244,9 +182,8 @@ function checkAchievements(tg_id) {
                   if (val >= a.condition_value) {
                     db.run("INSERT OR IGNORE INTO user_achievements (tg_id, achievement_id) VALUES (?, ?)",
                       [tg_id, a.id], function (err2) {
-                        if (!err2 && this.changes > 0 && achChat) {
-                          sendTelegram(achChat, `🏅 Новое достижение «${a.title}»\n${a.description}`);
-                        }
+                        // Telegram удалён: достижения видны только в приложении (вкладка «Профиль»)
+                        if (err2) console.error('achievement:', err2.message);
                       });
                   }
                 });
@@ -262,22 +199,21 @@ function checkAchievements(tg_id) {
 /* ================= пользователь ================= */
 // --- безопасность без новых зависимостей ---
 app.disable('x-powered-by');
-// Заголовки безопасности. X-Frame-Options: DENY ломал Mini App в Telegram Web (страница
-// открывается во фрейме web.telegram.org) — поэтому запрет фреймов задан через CSP
-// frame-ancestors с явным разрешением для Telegram.
+// Заголовки безопасности. Приложение больше не работает внутри Telegram, поэтому
+// страницу нельзя встроить во фрейм вообще (frame-ancestors 'self').
 // Список источников сверен с реальными обращениями самохостингового VK ID SDK
 // (id.vk.ru / api.vk.ru / oauth.vk.ru / login.vk.ru) и с local-шрифтами.
 // Трекер Top.Mail.ru (mytopf.com), который SDK пытается подгрузить, намеренно
 // НЕ разрешён — без согласия пользователя сторонняя аналитика не подключается.
 const CSP = [
   "default-src 'self'",
-  "script-src 'self' 'unsafe-inline' https://telegram.org",
+  "script-src 'self' 'unsafe-inline'",
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: blob: https:",
   "font-src 'self' data:",
-  "connect-src 'self' https://id.vk.ru https://api.vk.ru https://oauth.vk.ru https://login.vk.ru https://*.vk.ru https://*.vk.com https://*.userapi.com https://*.mycdn.me https://api.telegram.org",
+  "connect-src 'self' https://id.vk.ru https://api.vk.ru https://oauth.vk.ru https://login.vk.ru https://*.vk.ru https://*.vk.com https://*.userapi.com https://*.mycdn.me",
   "frame-src https://id.vk.ru https://oauth.vk.ru https://login.vk.ru https://*.vk.ru https://*.vk.com https://*.vkid.ru https://connect.ok.ru https://*.ok.ru",
-  "frame-ancestors 'self' https://web.telegram.org https://*.telegram.org",
+  "frame-ancestors 'self'",
   "form-action 'self' https://oauth.vk.ru https://oauth.vk.com https://id.vk.ru",
   "base-uri 'self'",
   "object-src 'none'"
@@ -319,9 +255,12 @@ app.get('/api/health', (req, res) => {
 app.get('/api/app-version', (req, res) => {
   res.json({
     latest: APP_VERSION,
+    // По умолчанию min = версия сервера: старые сборки получают обязательное обновление.
+    // Чтобы обновление было добровольным (кнопка «Позже»), задайте MIN_VERSION ниже текущей.
     min: process.env.MIN_VERSION || APP_VERSION,
     force: process.env.FORCE_UPDATE === '1',
     store: 'https://www.rustore.ru/catalog/app/ru.guidefit.app',
+    docs: CONSENT_DOC_VERSION, // редакция privacy.html/terms.html (для повторного согласия)
     message: ''
   });
 });
@@ -370,34 +309,43 @@ app.post('/api/user/init', (req, res) => {
   const mc = (meal_count === undefined || meal_count === null || meal_count === '') ? 2 : mcParsed;
   if (!(mc >= 2 && mc <= 6)) return res.status(400).json({ error: 'Invalid values' });
   const calorie_norm = calcCalories(current_weight, height, age, gender, al, goal);
-  db.run(
-    `INSERT INTO users (tg_id, name, goal, gender, age, height, current_weight, target_weight, calorie_norm, activity_level, meal_count)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-     ON CONFLICT(tg_id) DO UPDATE SET
-       name=excluded.name, goal=excluded.goal, gender=excluded.gender, age=excluded.age,
-       height=excluded.height, current_weight=excluded.current_weight,
-       target_weight=excluded.target_weight, calorie_norm=excluded.calorie_norm,
-       activity_level=excluded.activity_level, meal_count=excluded.meal_count`,
-    [tgId, name, goal, gender, age, height, current_weight, target_weight || current_weight, calorie_norm, al, mc],
-    (err) => {
-      if (err) { console.error(err); return res.status(500).json({ error: 'Database error' }); }
-      touchSeen(tgId);
-      logConsent(tgId, consents);
-      // v29: уведомление админу (и дубль в админку) о новой регистрации — только для реально новых аккаунтов
-      db.get("SELECT changes FROM users WHERE tg_id = ?", [tgId], (ec, _c) => {
-        if (!ec) notifyAdminNewUser(tgId, name);
-      });
-      db.get("SELECT avatar FROM users WHERE tg_id = ?", [tgId], (e2, a2) => {
-        res.json({ status: 'ok', calorie_norm, meal_count: mc, avatar: (!e2 && a2 && a2.avatar) || null });
-      });
-    }
-  );
+  // v29: уведомление админу (и дубль в админку) о новой регистрации — только для реально новых аккаунтов.
+  // Раньше здесь был db.get("SELECT changes FROM users ...") — такой колонки нет, запрос всегда падал
+  // с SQLITE_ERROR, и уведомление о регистрации не приходило НИКОГДА. Теперь признак «новый»
+  // определяем заранее: строки ещё нет (Telegram) либо профиль ещё не заполнен (анонимный/VK).
+  db.get("SELECT goal FROM users WHERE tg_id = ?", [tgId], (e0, before) => {
+    const isNewAccount = !e0 && (!before || !before.goal);
+    // created_at задан явно локальным временем: раньше Telegram-аккаунты получали
+    // UTC (DEFAULT CURRENT_TIMESTAMP), а анонимные/VK — МСК (datetime('now','localtime')).
+    // Из-за микса админка и отчёт «новых за 7 дней» показывали разное время для разных типов аккаунтов.
+    db.run(
+      `INSERT INTO users (tg_id, name, goal, gender, age, height, current_weight, target_weight, calorie_norm, activity_level, meal_count, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now','localtime'))
+       ON CONFLICT(tg_id) DO UPDATE SET
+         name=excluded.name, goal=excluded.goal, gender=excluded.gender, age=excluded.age,
+         height=excluded.height, current_weight=excluded.current_weight,
+         target_weight=excluded.target_weight, calorie_norm=excluded.calorie_norm,
+         activity_level=excluded.activity_level, meal_count=excluded.meal_count`,
+      [tgId, name, goal, gender, age, height, current_weight, target_weight || current_weight, calorie_norm, al, mc],
+      (err) => {
+        if (err) { console.error(err); return res.status(500).json({ error: 'Database error' }); }
+        touchSeen(tgId);
+        logConsent(tgId, consents);
+        if (isNewAccount) notifyAdminNewUser(tgId, name);
+        db.get("SELECT avatar FROM users WHERE tg_id = ?", [tgId], (e2, a2) => {
+          res.json({ status: 'ok', calorie_norm, meal_count: mc, avatar: (!e2 && a2 && a2.avatar) || null });
+        });
+      }
+    );
+  });
 });
 
 app.get('/api/user/:tgId', (req, res, next) => {
-  // /api/user/export объявлен ниже по файлу: без этой проверки Express принял бы
-  // слово «export» за :tgId и вернул профиль вместо файла выгрузки (маршрут был недостижим).
+  // /api/user/export и /api/user/consent объявлены ниже по файлу: без этой проверки
+  // Express принял бы «export»/«consent» за :tgId и вернул профиль вместо нужного
+  // маршрута (так и было: выгрузка была недостижима, а редакция согласия — тоже).
   if (req.params.tgId === 'export') return next();
+  if (req.params.tgId === 'consent') return next();
   const tgId = resolveTgId(req);
   if (!tgId) return res.status(401).json({ error: 'Unauthorized' });
   db.get("SELECT * FROM users WHERE tg_id = ?", [tgId], (err, row) => {
@@ -453,6 +401,31 @@ app.post('/api/user/update', (req, res) => {
   });
 });
 
+/* ================= согласие на актуальную редакцию документов (152-ФЗ, ст. 9) =================
+   Когда privacy.html/terms.html меняются по существу, прежнее согласие покрывает старую
+   редакцию. Приложение при следующем запуске сравнивает свою редакцию с текущей и,
+   если они разошлись, просит подтвердить согласие заново — запись уходит в consent_log. */
+app.get('/api/user/consent', (req, res) => {
+  const tgId = resolveTgId(req);
+  if (!tgId) return res.status(401).json({ error: 'Unauthorized' });
+  db.get("SELECT doc_version FROM consent_log WHERE tg_id = ? ORDER BY id DESC LIMIT 1", [tgId], (err, row) => {
+    if (err) { console.error('consent read:', err.message); return res.status(500).json({ error: 'Database error' }); }
+    res.json({ accepted: row ? row.doc_version : null, current: CONSENT_DOC_VERSION });
+  });
+});
+
+app.post('/api/user/consent', (req, res) => {
+  const tgId = resolveTgId(req);
+  if (!tgId) return res.status(401).json({ error: 'Unauthorized' });
+  const consents = req.body?.consents;
+  // все три согласия обязательны — частичное подтверждение новой редакции не принимаем
+  if (!consents || consents.privacy !== true || consents.terms !== true || consents.health !== true) {
+    return res.status(403).json({ error: 'Требуется согласие на обработку персональных данных' });
+  }
+  logConsent(tgId, consents);
+  res.json({ status: 'ok', doc_version: CONSENT_DOC_VERSION });
+});
+
 /* ================= удаление всех данных пользователя (152-ФЗ, ст. 21) ================= */
 app.post('/api/user/delete', (req, res) => {
   const tgId = resolveTgId(req);
@@ -464,13 +437,12 @@ app.post('/api/user/delete', (req, res) => {
     db.run("DELETE FROM water_logs WHERE tg_id = ?", [tgId]);
     db.run("DELETE FROM weight_logs WHERE tg_id = ?", [tgId]);
     db.run("DELETE FROM user_programs WHERE tg_id = ?", [tgId]);
+    // v31: прогресс по новым программам (fit_programs) — отдельная таблица, тоже чистится
+    db.run("DELETE FROM user_programs_v2 WHERE tg_id = ?", [tgId]);
     db.run("DELETE FROM user_achievements WHERE tg_id = ?", [tgId]);
-    db.run("DELETE FROM notification_log WHERE tg_id = ?", [tgId]);
     db.run("DELETE FROM support_messages WHERE tg_id = ?", [tgId]);
     // сессии тоже удаляем: иначе токен из localStorage продолжает открывать аккаунт
     db.run("DELETE FROM sessions WHERE tg_id = ?", [tgId]);
-    // и неиспользованные коды привязки Telegram (иначе остаётся мусор после удаления)
-    db.run("DELETE FROM link_codes WHERE tg_id = ?", [tgId]);
     // журнал согласий тоже: без него не остаётся следов ПДн после удаления аккаунта
     db.run("DELETE FROM consent_log WHERE tg_id = ?", [tgId]);
     db.run("DELETE FROM users WHERE tg_id = ?", [tgId], (err) => {
@@ -620,47 +592,6 @@ app.post('/api/auth/vk/exchange', async (req, res) => {
   } catch (e) { console.error('VK exchange:', e.message); return res.status(502).json({ error: 'VK exchange failed' }); }
 });
 
-/* ================= привязка Telegram-чата к аккаунту ВК/анонимному =================
-   Нужна, чтобы напоминания доходили и тем, кто вошёл не через Telegram:
-   приложение выдаёт одноразовый код, пользователь отправляет боту /start link_<код>,
-   бот записывает chat_id в users.notify_chat_id, и напоминания идут уже туда. */
-function randomLinkCode(len) {
-  const A = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // без 0/O/1/I — код диктуют/копируют
-  const b = crypto.randomBytes(len);
-  let s = '';
-  for (let i = 0; i < len; i++) s += A[b[i] % A.length];
-  return s;
-}
-
-app.post('/api/user/link/telegram', (req, res) => {
-  const tgId = resolveTgId(req);
-  if (!tgId) return res.status(401).json({ error: 'Unauthorized' });
-  const bot = String(process.env.TELEGRAM_USERNAME || '').replace(/^@/, '');
-  if (!bot) return res.status(503).json({ error: 'Telegram-бот не настроен' });
-  if (isLimited('link:' + req.ip, 20, 3600000)) return res.status(429).json({ error: 'Слишком много попыток. Попробуйте позже' });
-  const code = randomLinkCode(10);
-  const nowSec = Math.floor(Date.now() / 1000);
-  db.run("DELETE FROM link_codes WHERE tg_id = ?", [tgId], () => {
-    db.run("DELETE FROM link_codes WHERE created_at < ?", [nowSec - 3600]); // чистка просроченных
-    db.run("INSERT INTO link_codes (code, tg_id, created_at) VALUES (?, ?, ?)", [code, tgId, nowSec], (err) => {
-      if (err) { console.error('link code:', err.message); return res.status(500).json({ error: 'Database error' }); }
-      res.json({ code, bot, link: 'https://t.me/' + bot + '?start=link_' + code });
-    });
-  });
-});
-
-app.post('/api/user/link/telegram/remove', (req, res) => {
-  const tgId = resolveTgId(req);
-  if (!tgId) return res.status(401).json({ error: 'Unauthorized' });
-  if (isTelegramId(tgId)) return res.status(400).json({ error: 'Для Telegram-аккаунта привязка не нужна' });
-  // снимаем привязку и гасим неиспользованные коды — иначе выданный ранее код
-  // оставался бы действующим ещё час и мог снова привязать чат после отвязки
-  db.run("UPDATE users SET notify_chat_id = NULL WHERE tg_id = ?", [tgId], (err) => {
-    if (err) { console.error('unlink:', err.message); return res.status(500).json({ error: 'Database error' }); }
-    db.run("DELETE FROM link_codes WHERE tg_id = ?", [tgId], () => res.json({ status: 'ok' }));
-  });
-});
-
 /* ================= перенос прогресса анонимного аккаунта в аккаунт ВК ================= */
 function mergeAnonymousInto(fromId, toId, cb) {
   if (!fromId || !toId || fromId === toId || !/^anon:/.test(String(fromId))) return cb(false);
@@ -673,7 +604,6 @@ function mergeAnonymousInto(fromId, toId, cb) {
         if (finished) return;
         finished = true;
         db.run("DELETE FROM sessions WHERE tg_id = ?", [fromId]);
-        db.run("DELETE FROM link_codes WHERE tg_id = ?", [fromId]);
         db.run("DELETE FROM users WHERE tg_id = ?", [fromId], () => cb(true));
       };
       db.serialize(() => {
@@ -686,7 +616,6 @@ function mergeAnonymousInto(fromId, toId, cb) {
         db.run("INSERT OR IGNORE INTO user_achievements (tg_id, achievement_id, unlocked_at) SELECT ?, achievement_id, unlocked_at FROM user_achievements WHERE tg_id = ?", [toId, fromId]);
         db.run("DELETE FROM user_achievements WHERE tg_id = ?", [fromId]);
         db.run("UPDATE user_programs SET tg_id = ? WHERE tg_id = ?", [toId, fromId]);
-        db.run("DELETE FROM notification_log WHERE tg_id = ?", [fromId]);
         // профиль переносим только если у аккаунта ВК его ещё нет — чужие данные не затираем
         if (!tgt || !tgt.goal) {
           db.run(`UPDATE users SET name = ?, goal = ?, gender = ?, age = ?, height = ?, current_weight = ?,
@@ -720,7 +649,7 @@ function mergeAnonymousInto(fromId, toId, cb) {
 
 /* ================= экспорт данных пользователя (право на доступ, 152-ФЗ ст. 14/20) ================= */
 // v28: одноразовый токен скачивания — файл отдаётся обычным GET с Content-Disposition,
-// поэтому скачивание работает и в webview Telegram (где a[download] для blob часто запрещён)
+// поэтому скачивание работает и в WebView Android-приложения (где a[download] для blob часто запрещён)
 const exportTokens = new Map();
 app.post('/api/user/export/token', (req, res) => {
   const tgId = resolveTgId(req);
@@ -756,7 +685,7 @@ app.get('/api/user/export', (req, res) => {
                   note: 'Копия ваших данных из приложения GuideFit (Политика обработки персональных данных: /privacy.html)',
                   profile: {
                     id: u.tg_id,
-                    provider: u.provider || 'tg',
+                    provider: u.provider || 'anon',
                     name: u.name,
                     gender: u.gender,
                     age: u.age,
@@ -875,21 +804,16 @@ app.post('/api/admin/support/reply', requireAdmin, (req, res) => {
   if (text.length > 1500) return res.status(400).json({ error: 'Слишком длинное сообщение' });
   db.run("INSERT INTO support_messages (tg_id, sender, text) VALUES (?, 'admin', ?)", [id, text], function (err) {
     if (err) return res.status(500).json({ error: err.message });
-    // ответ сразу дублируем в Telegram пользователю (если известен его чат)
-    db.get("SELECT notify_chat_id FROM users WHERE tg_id = ?", [id], (e2, u) => {
-      const chat = u ? chatTarget(u) : null;
-      if (chat) sendTelegram(chat, '💬 Ответ поддержки GuideFit:\n\n' + text);
-    });
+    // Telegram удалён: ответ админа пользователь видит в чате поддержки приложения
+    // (вкладка «Поддержка» опрашивает сервер раз в 15 секунд, пока открыта)
     res.json({ status: 'ok', id: this.lastID });
   });
 });
 
 /* ================= чат поддержки (встроенный) =================
-   v28: сообщения пользователя хранятся в БД с привязкой к tg_id; админу (ADMIN_ID)
-   уходит уведомление в Telegram; ответ админа появляется в чате приложения. */
-async function notifyAdmin(text) {
-  if (ADMIN_ID && isTelegramId(ADMIN_ID) && process.env.TELEGRAM_TOKEN) await sendTelegram(ADMIN_ID, text);
-}
+   v28: сообщения пользователя хранятся в БД с привязкой к аккаунту; ответ админа
+   появляется в чате приложения. Telegram удалён — уведомления о новых сообщениях
+   админ видит в админ-панели. */
 
 app.post('/api/support/message', (req, res) => {
   const tgId = resolveTgId(req);
@@ -900,9 +824,6 @@ app.post('/api/support/message', (req, res) => {
   if (isLimited('support:' + tgId, 20, 3600000)) return res.status(429).json({ error: 'Слишком много сообщений. Попробуйте позже' });
   db.run("INSERT INTO support_messages (tg_id, sender, text) VALUES (?, 'user', ?)", [tgId, text], function (err) {
     if (err) return res.status(500).json({ error: err.message });
-    db.get("SELECT name FROM users WHERE tg_id = ?", [tgId], (e, u) => {
-      if (!e) notifyAdmin('💬 Новое сообщение в поддержке GuideFit\nОт: ' + ((u && u.name) || 'Без имени') + ' (' + tgId + ')\n\n' + text);
-    });
     res.json({ status: 'ok', id: this.lastID });
   });
 });
@@ -910,7 +831,8 @@ app.post('/api/support/message', (req, res) => {
 app.get('/api/support/messages', (req, res) => {
   const tgId = resolveTgId(req);
   if (!tgId) return res.status(401).json({ error: 'Unauthorized' });
-  db.all("SELECT id, sender, text, datetime(created_at,'localtime') AS time FROM support_messages WHERE tg_id = ? ORDER BY id DESC LIMIT 100", [tgId], (err, rows) => {
+  // sender <> 'system' — служебные записи (уведомление о регистрации для админа) пользователю не показываем
+  db.all("SELECT id, sender, text, datetime(created_at,'localtime') AS time FROM support_messages WHERE tg_id = ? AND sender <> 'system' ORDER BY id DESC LIMIT 100", [tgId], (err, rows) => {
     if (err) return res.status(500).json({ error: err.message });
     res.json({ messages: (rows || []).reverse() });
   });
@@ -1660,10 +1582,18 @@ app.post('/api/water/undo', (req, res) => {
   });
 });
 
+// Напоминания формируются на устройстве, но флаг храним на сервере: он виден в выгрузке
+// данных и админке. Тело может задать состояние явно ({enabled:true|false});
+// без тела поведение прежнее — переключение.
 app.post('/api/notifications/toggle', (req, res) => {
   const tgId = resolveTgId(req);
   if (!tgId) return res.status(401).json({ error: 'Unauthorized' });
-  db.run("UPDATE users SET notify_enabled = CASE WHEN notify_enabled THEN 0 ELSE 1 END WHERE tg_id = ?", [tgId], function (err) {
+  const explicit = typeof req.body?.enabled === 'boolean' ? req.body.enabled : null;
+  const sql = explicit === null
+    ? "UPDATE users SET notify_enabled = CASE WHEN notify_enabled THEN 0 ELSE 1 END WHERE tg_id = ?"
+    : "UPDATE users SET notify_enabled = ? WHERE tg_id = ?";
+  const args = explicit === null ? [tgId] : [explicit ? 1 : 0, tgId];
+  db.run(sql, args, function (err) {
     if (err) return res.status(500).json({ error: err.message });
     db.get("SELECT notify_enabled FROM users WHERE tg_id = ?", [tgId], (e2, row) => {
       res.json({ status: 'ok', notify_enabled: row ? row.notify_enabled : 1 });
@@ -1743,9 +1673,10 @@ app.get('/api/weight/:tgId', (req, res) => {
 app.get('/api/achievements/:tgId', (req, res) => {
   const tgId = resolveTgId(req);
   if (!tgId) return res.status(401).json({ error: 'Unauthorized' });
-  checkAchievements(tgId); // ленивая разблокировка на случай пропущенных событий
   // v29: разблокировка достижений сразу после значимых событий (тренировка/вес/вода/дневник),
-  // а не только при заходе в профиль — баг «засчитывается только после входа во вкладку профиль»
+  // а не только при заходе в профиль — баг «засчитывается только после входа во вкладку профиль».
+  // Раньше здесь стояли И checkAchievements, И bumpAchievements — это одна и та же функция,
+  // поэтому весь пересчёт (6 запросов к БД) выполнялся дважды на каждый заход в профиль.
   bumpAchievements(tgId);
   db.all("SELECT * FROM achievements", [], (err, allAch) => {
     if (err) return res.status(500).json({ error: err.message });
@@ -1757,99 +1688,17 @@ app.get('/api/achievements/:tgId', (req, res) => {
   });
 });
 
-/* ================= напоминания (раз в 30 мин) ================= */
-// v28: локальное время пользователя по ВЫБРАННОМУ часовому поясу (без геолокации)
-function userLocalHour(tz) {
-  try { return parseInt(new Intl.DateTimeFormat('en-GB', { hour: '2-digit', hour12: false, timeZone: tz }).format(new Date()), 10); }
-  catch (e) { return new Date().getHours(); }
-}
-function userLocalDate(tz) {
-  try { return new Intl.DateTimeFormat('en-CA', { timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date()); }
-  catch (e) { return localDate(); }
-}
+/* ================= напоминания =================
+   Раньше их рассылал сервер через Telegram-бот (крон раз в 30 минут). Telegram удалён,
+   поэтому напоминания стали ЛОКАЛЬНЫМИ: приложение планирует системные уведомления
+   Android (AlarmManager → ReminderReceiver) по выбранному пользователем часовому поясу.
+   Сервер для этого не нужен и данные о напоминаниях никуда не передаются. */
 
-function runReminders() {
-  if (!process.env.TELEGRAM_TOKEN) return;
-  db.all("SELECT tg_id, name, created_at, notify_chat_id, timezone FROM users WHERE notify_enabled = 1 AND (notify_chat_id IS NOT NULL OR tg_id NOT LIKE '%:%')", [], (err, users) => {
-    if (err || !users) return;
-    (users || []).forEach(u => {
-      const chat = chatTarget(u);
-      if (!chat) return;
-      const tz = u.timezone || 'Europe/Moscow';
-      const today = userLocalDate(tz);
-      const hour = userLocalHour(tz);
-      const who = u.name || 'друг';
-      // v28: не чаще 2 напоминаний в день на пользователя — считаем уже отправленные за сегодня
-      db.get("SELECT COUNT(DISTINCT type) c FROM notification_log WHERE tg_id = ? AND date = ?", [u.tg_id, today], (ec, rc) => {
-        if (ec) return;
-        if ((rc?.c || 0) >= 2) return;
-        // вес: не записывал 3+ дня
-        if (hour === 10) {
-          db.get("SELECT MAX(date) d FROM weight_logs WHERE tg_id = ?", [u.tg_id], (e, r) => {
-            const last = r?.d || (u.created_at || '').slice(0, 10);
-            if (last && dayDiff(today, last) >= 3) {
-              notifyOnce(u.tg_id, chat, 'weight:' + today, today, `⚖️ ${who}, время взвеситься! Открой GuideFit и обнови вес — так статистика будет точной.`);
-            }
-          });
-        }
-        // без тренировок 3 дня
-        if (hour === 19) {
-          db.get("SELECT MAX(date) d, COUNT(*) c FROM workout_logs WHERE tg_id = ?", [u.tg_id], (e, r) => {
-            if (r && r.c > 0 && r.d && dayDiff(today, r.d) >= 3) {
-              notifyOnce(u.tg_id, chat, 'inactive:' + today, today, `🏃 ${who}, тебя не было 3 дня! Даже 15 минут тренировки вернут ритм. Заходи в GuideFit 💪`);
-            }
-          });
-        }
-        // приёмы пищи: в 9, 13, 17, 20 — если за последние 4 часа ничего не записано
-        if ([9, 13, 17, 20].includes(hour)) {
-          db.get(`SELECT COUNT(*) c FROM food_logs
-              WHERE tg_id = ? AND date(timestamp) = ? AND CAST(strftime('%H', timestamp) AS INTEGER) BETWEEN ? AND ?`,
-            [u.tg_id, today, Math.max(hour - 4, 0), hour], (e, r) => {
-              if (r && r.c === 0) {
-                notifyOnce(u.tg_id, chat, 'meal' + hour + ':' + today, today, `🍽️ ${who}, приём пищи записан? Загляни в GuideFit — там идеи блюд под твою цель.`);
-              }
-            });
-        }
-      });
-    });
-  });
-}
-function sendWeeklyReports() {
-  const now = new Date();
-  if (now.getDay() !== 1 || now.getHours() !== 9) return;
-  const today = localDate();
-  db.all("SELECT tg_id, name, notify_chat_id FROM users WHERE notify_enabled = 1 AND (notify_chat_id IS NOT NULL OR tg_id NOT LIKE '%:%')", [], (e, users) => {
-    if (e || !users) return;
-    users.forEach(u => {
-      const chat = chatTarget(u);
-      if (!chat) return;
-      db.get("SELECT COUNT(*) c FROM workout_logs WHERE tg_id = ? AND date >= date('now','localtime','-7 days')", [u.tg_id], (e1, w) => {
-        db.get("SELECT COUNT(DISTINCT date(timestamp)) c FROM food_logs WHERE tg_id = ? AND date(timestamp) >= date('now','localtime','-7 days')", [u.tg_id], (e2, m) => {
-          db.all("SELECT weight FROM weight_logs WHERE tg_id = ? ORDER BY date DESC, id DESC LIMIT 1", [u.tg_id], (e4, wl) => {
-            db.all("SELECT weight FROM weight_logs WHERE tg_id = ? ORDER BY date ASC, id ASC LIMIT 1", [u.tg_id], (e5, wf) => {
-              const wLine = (wf.length && wl.length) ? (' Вес: ' + wf[0].weight + ' → ' + wl[0].weight + ' кг.') : '';
-              notifyOnce(u.tg_id, chat, 'weekly:' + today, today, '📊 Неделя в GuideFit: тренировок — ' + (w ? w.c : 0) + ', дней с записанной едой — ' + (m ? m.c : 0) + ' из 7.' + wLine + ' Новая неделя — новый шаг к цели!');
-            });
-          });
-        });
-      });
-    });
-  });
-}
-setInterval(sendWeeklyReports, 30 * 60 * 1000);
-setTimeout(sendWeeklyReports, 90 * 1000);
-
-setInterval(runReminders, 30 * 60 * 1000);
-setTimeout(runReminders, 15 * 1000);
-
-// Чистка: истёкшие сессии (TTL 180 дней) и старый лог уведомлений (90 дней)
+// Чистка: истёкшие сессии (TTL 180 дней)
 function pruneOld() {
   const cutoff = sessionCutoff();
   db.run("DELETE FROM sessions WHERE created_at < ?", [cutoff], (e) => {
-    if (e) return console.error('sessions prune:', e.message);
-    db.run("DELETE FROM notification_log WHERE date < date('now','localtime','-90 days')", [], (e2) => {
-      if (e2) console.error('notify log prune:', e2.message);
-    });
+    if (e) console.error('sessions prune:', e.message);
   });
 }
 setInterval(pruneOld, 6 * 60 * 60 * 1000);

@@ -43,7 +43,10 @@ tr.u:hover td{background:#F6FAFE;cursor:pointer}
 .smsg.admin{background:#E1F2FC;margin-left:auto}
 .smsg .tm{font-size:10px;color:var(--text3);margin-top:3px;display:block}
 @media(max-width:640px){#supportPanel .row{flex-direction:column}
-#supportMsgs{display:flex;flex-direction:column}
+#supportMsgs{display:flex;flex-direction:column}}
+/* .kv / ul.log / .err — базовые стили, НЕ только для узких экранов:
+   без закрывающей скобки выше весь этот блок попадал внутрь @media(max-width:640px)
+   и на десктопе строки деталей/логи/ошибка входа теряли оформление. */
 .kv{font-size:13px;margin-bottom:5px}.kv b{display:inline-block;min-width:130px;color:var(--text3);font-weight:700}
 ul.log{list-style:none;font-size:12.5px}ul.log li{padding:5px 0;border-bottom:1px dashed var(--border)}
 .err{color:var(--red);font-weight:700;font-size:13px;margin-top:8px}
@@ -94,9 +97,14 @@ ul.log{list-style:none;font-size:12.5px}ul.log li{padding:5px 0;border-bottom:1p
 <script>
 let TOK = ''; // аудит: токен больше не сохраняется в sessionStorage — только в памяти вкладки
 let offset = 0; const LIMIT = 50; let total = 0;
-const PROVIDERS = { tg:'Telegram', vk:'VK', anon:'Аноним', yandex:'Яндекс', max:'Max' };
+// 'tg' остался только для старых аккаунтов: Telegram удалён из приложения (v32)
+const PROVIDERS = { tg:'Старый аккаунт', vk:'VK', anon:'Аноним', yandex:'Яндекс', max:'Max' };
 function esc(s){ return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
-function dt(s){ if(!s) return '—'; const d = new Date(String(s).replace(' ', 'T') + (String(s).indexOf('Z') < 0 && String(s).indexOf('+') < 0 ? 'Z' : '')); return isNaN(d) ? esc(String(s).slice(0,16).replace('T',' ')) : d.toLocaleString('ru-RU',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}); }
+/* Все даты пользователей хранятся в локальном времени сервера (МСК): last_seen — через
+   datetime('now','localtime'), created_at — тем же способом при регистрации. Поэтому НЕ
+   дописываем 'Z' (это трактовало МСК как UTC и сдвигало время на +3 ч). Если строка уже
+   содержит явную зону (Z/+hh:mm), Date разберёт её сам. */
+function dt(s){ if(!s) return '—'; const str = String(s).replace(' ', 'T'); const d = new Date(str); return isNaN(d) ? esc(String(s).slice(0,16).replace('T',' ')) : d.toLocaleString('ru-RU',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}); }
 async function call(path){
   const r = await fetch(path, { headers:{ 'X-Admin-Token': TOK } });
   if(r.status === 403) throw new Error('Нет доступа: неверный токен (или ADMIN_TOKEN не задан на сервере)');
@@ -130,7 +138,7 @@ async function loadUsers(off){
     total = d.total;
     document.getElementById('rows').innerHTML = d.users.map(u =>
       '<tr class="u" onclick="detail(\'' + esc(u.tg_id).replace(/'/g,'') + '\')">' +
-      '<td><span class="badge ' + esc(u.provider || 'tg') + '">' + esc(PROVIDERS[u.provider] || u.provider || '?') + '</span><br><span class="sub">' + esc(u.tg_id) + '</span></td>' +
+      '<td><span class="badge ' + esc(u.provider || 'anon') + '">' + esc(PROVIDERS[u.provider] || u.provider || '?') + '</span><br><span class="sub">' + esc(u.tg_id) + '</span></td>' +
       '<td><b>' + esc(u.name) + '</b></td>' +
       '<td class="sub">' + esc(u.goal || '—') + ' · ' + esc(u.gender || '—') + '</td>' +
       '<td>' + dt(u.created_at) + '</td>' +

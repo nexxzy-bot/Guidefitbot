@@ -1,13 +1,13 @@
 /* Smoke-тесты GuideFit API.
    Запуск: npm test  (node --test tests/)
    Тесты поднимают настоящий server.js на случайном порту и ОТДЕЛЬНОЙ временной
-   базе (DB_PATH), поэтому продакшн-данные не затрагиваются. TELEGRAM_TOKEN не
-   задан: проверяем логику сессий VK/анонимных без Telegram.
+   базе (DB_PATH), поэтому продакшн-данные не затрагиваются. Telegram из продукта
+   удалён (v32): единственный вход — сессия устройства (анонимный аккаунт или VK ID).
 
    Что покрыто: health, заголовки безопасности, отказ без авторизации,
    анонимная регистрация, визард (валидация возраста), вода и её отмена,
    дневник питания (проверка каталога), экспорт данных (152-ФЗ),
-   привязка Telegram-чата, тумблер уведомлений, удаление аккаунта
+   отсутствие удалённых Telegram-эндпоинтов, тумблер уведомлений, удаление аккаунта
    вместе с сессией и лимит на анонимные аккаунты. */
 const { test, before, after } = require('node:test');
 const assert = require('node:assert');
@@ -63,8 +63,6 @@ before(async () => {
       PORT: String(PORT),
       DB_PATH: DB,
       TZ: 'Europe/Moscow',
-      TELEGRAM_TOKEN: '',            // без Telegram: тестируем сессионный путь
-      TELEGRAM_USERNAME: 'gf_test_bot',
       ADMIN_TOKEN: 'test-admin-token',
       MINIAPP_URL: 'https://example.test/'
     },
@@ -102,13 +100,14 @@ test('health: база доступна и версия отдаётся', async
   assert.match(String(r.body.version), /^\d+\.\d+\.\d+$/);
 });
 
-test('заголовки безопасности установлены, фрейм для Telegram разрешён', async () => {
+test('заголовки безопасности установлены, Telegram-источников в CSP нет', async () => {
   const r = await api('/api/health');
   const csp = r.headers.get('content-security-policy') || '';
-  assert.ok(csp.includes("frame-ancestors 'self' https://web.telegram.org"), 'CSP frame-ancestors для Telegram');
+  assert.ok(csp.includes("frame-ancestors 'self'"), 'страницу можно встроить только в свой же домен');
+  assert.ok(!csp.includes('telegram'), 'после удаления Telegram его источников в CSP быть не должно');
   assert.ok(csp.includes("object-src 'none'"), 'CSP object-src none');
   assert.strictEqual(r.headers.get('x-content-type-options'), 'nosniff');
-  assert.ok(!r.headers.get('x-frame-options'), 'X-Frame-Options не используется (ломал Mini App)');
+  assert.ok(!r.headers.get('x-frame-options'), 'X-Frame-Options не используется (управляем через CSP)');
   assert.ok((r.headers.get('strict-transport-security') || '').includes('max-age='), 'HSTS');
 });
 
@@ -187,6 +186,62 @@ test('визард: валидация полей и возраст не мла�
   assert.strictEqual(tooOld.status, 400, 'невозможный возраст отвергается при обновлении');
 });
 
+/* ---------- 2б. Новая регистрация уведомляет админа ----------
+   Регресс: в /api/user/init стоял db.get("SELECT changes FROM users …") — такой колонки
+   в SQLite нет, запрос всегда падал с SQLITE_ERROR, и админ НИКОГДА не получал
+   уведомление о регистрации (в чат поддержки строка тоже не попадала). */
+test('визард пишет уведомление о новой регистрации в чат поддержки (один раз)', async () => {
+  const reg = await api('/api/auth/anonymous', { method: 'POST' });
+  assert.strictEqual(reg.status, 200);
+  const tok = reg.body.session;
+  const me = await api('/api/auth/me', { token: tok });
+  const anonId = me.body.tg_id;
+  const body = {
+    name: 'Новичок', goal: 'gain', gender: 'male', age: 25, height: 175, current_weight: 70,
+    target_weight: 75, activity_level: 'light', meal_count: 3,
+    consents: { privacy: true, terms: true, health: true } };
+
+  assert.strictEqual((await api('/api/user/init', { method: 'POST', token: tok, body })).status, 200);
+
+  const th = await api('/api/admin/support/threads', { admin: true });
+  assert.strictEqual(th.status, 200);
+  const row = (th.body.threads || []).find(t => t.tg_id === anonId);
+  assert.ok(row, 'новая регистрация видна в админке (support_messages)');
+  assert.ok(String(row.last_text || '').indexOf('Новая регистрация') !== -1, 'текст — уведомление о регистрации');
+
+  // повторное сохранение заполненного профиля не должно дублировать уведомление
+  assert.strictEqual((await api('/api/user/init', { method: 'POST', token: tok, body })).status, 200);
+  const thread = await api('/api/admin/support/thread/' + encodeURIComponent(anonId), { admin: true });
+  assert.strictEqual(thread.body.messages.length, 1, 'уведомление приходит один раз, а не при каждом сохранении');
+});
+
+/* ---------- 2в. Согласие на актуальную редакцию документов (152-ФЗ, ст. 9) ---------- */
+test('согласие: сервер знает редакцию пользователя и принимает повторное', async () => {
+  // версия документов отдаётся вместе с версией приложения — клиент по ней решает,
+  // нужно ли просить согласие заново
+  const v = await api('/api/app-version');
+  assert.strictEqual(v.status, 200);
+  assert.match(String(v.body.docs), /^\d{4}-\d{2}-\d{2}$/, 'редакция документов в формате ГГГГ-ММ-ДД');
+
+  const c = await api('/api/user/consent', { token: TOKEN });
+  assert.strictEqual(c.status, 200);
+  assert.strictEqual(c.body.current, v.body.docs, 'текущая редакция одна и та же');
+  assert.strictEqual(c.body.accepted, v.body.docs, 'после визарда согласие уже покрывает текущую редакцию');
+
+  // частичное согласие не принимаем
+  const partial = await api('/api/user/consent', { method: 'POST', token: TOKEN, body: { consents: { privacy: true, terms: true, health: false } } });
+  assert.strictEqual(partial.status, 403, 'без отдельного согласия ст. 10 повторное подтверждение не проходит');
+  assert.strictEqual((await api('/api/user/consent', { method: 'POST', token: TOKEN, body: {} })).status, 403);
+  assert.strictEqual((await api('/api/user/consent', { method: 'POST', body: { consents: { privacy: true, terms: true, health: true } } })).status, 401, 'без сессии нельзя');
+
+  const before = await dbGet('SELECT COUNT(*) c FROM consent_log WHERE tg_id = ?', [TG_ID]);
+  const ok = await api('/api/user/consent', { method: 'POST', token: TOKEN, body: { consents: { privacy: true, terms: true, health: true } } });
+  assert.strictEqual(ok.status, 200);
+  assert.strictEqual(ok.body.doc_version, v.body.docs);
+  const after = await dbGet('SELECT COUNT(*) c FROM consent_log WHERE tg_id = ?', [TG_ID]);
+  assert.strictEqual(after.c, before.c + 1, 'подтверждение новой редакции пишется в журнал согласий');
+});
+
 /* ---------- 3. Вода ---------- */
 test('вода: добавление, границы и отмена по одному стакану', async () => {
   assert.strictEqual((await api('/api/water', { method: 'POST', token: TOKEN, body: { amount: 0 } })).status, 400);
@@ -244,29 +299,28 @@ test('экспорт данных: профиль, вода, питание и �
   assert.ok(!('notify_chat_id' in r.body.profile), 'служебный chat_id не отдаём');
 });
 
-/* ---------- 6. Привязка Telegram и уведомления ---------- */
-test('привязка Telegram-чата: выдаётся одноразовый код и ссылка на бота', async () => {
-  const r = await api('/api/user/link/telegram', { method: 'POST', token: TOKEN, body: {} });
-  assert.strictEqual(r.status, 200);
-  assert.match(r.body.code, /^[A-HJ-NP-Z2-9]{10}$/);
-  assert.strictEqual(r.body.bot, 'gf_test_bot');
-  assert.ok(r.body.link.includes('https://t.me/gf_test_bot?start=link_'));
-  assert.ok(r.body.link.endsWith(r.body.code));
-
-  const rm = await api('/api/user/link/telegram/remove', { method: 'POST', token: TOKEN, body: {} });
-  assert.strictEqual(rm.status, 200);
+/* ---------- 6. Уведомления: Telegram-эндпоинтов больше нет ---------- */
+test('Telegram удалён: эндпоинты привязки чата не существуют', async () => {
+  assert.strictEqual((await api('/api/user/link/telegram', { method: 'POST', token: TOKEN, body: {} })).status, 404);
+  assert.strictEqual((await api('/api/user/link/telegram/remove', { method: 'POST', token: TOKEN, body: {} })).status, 404);
 });
 
-test('тумблер уведомлений переключается', async () => {
-  const off = await api('/api/notifications/toggle', { method: 'POST', token: TOKEN, body: {} });
-  assert.strictEqual(off.status, 200);
+test('флаг напоминаний: явное значение и прежнее переключение', async () => {
+  // напоминания локальные, но флаг хранится на сервере — приложение шлёт явное значение
+  const explicitOff = await api('/api/notifications/toggle', { method: 'POST', token: TOKEN, body: { enabled: false } });
+  assert.strictEqual(explicitOff.status, 200);
+  assert.strictEqual(explicitOff.body.notify_enabled, 0);
+  const explicitOn = await api('/api/notifications/toggle', { method: 'POST', token: TOKEN, body: { enabled: true } });
+  assert.strictEqual(explicitOn.body.notify_enabled, 1);
+
   const users = await api('/api/admin/users', { admin: true });
   assert.strictEqual(users.status, 200, 'админка отвечает при верном токене');
   assert.strictEqual((await api('/api/admin/users')).status, 403, 'без токена админка закрыта');
 
-  const on = await api('/api/notifications/toggle', { method: 'POST', token: TOKEN, body: {} });
-  assert.strictEqual(on.status, 200);
-  assert.notStrictEqual(on.body.notify_enabled, off.body.notify_enabled);
+  // без тела — прежнее поведение (переключение), меню настроек его больше не использует
+  const flipped = await api('/api/notifications/toggle', { method: 'POST', token: TOKEN, body: {} });
+  assert.strictEqual(flipped.status, 200);
+  assert.strictEqual(flipped.body.notify_enabled, 0);
 });
 
 /* ---------- 7. Удаление аккаунта ---------- */

@@ -6,7 +6,6 @@
 <meta name="theme-color" content="#F2F7FC">
 <title>GuideFit</title>
 <link rel="manifest" href="/manifest.webmanifest">
-<script src="https://telegram.org/js/telegram-web-app.js"></script>
 <!-- Шрифты — локально (см. static/fonts.css): без обращения к fonts.googleapis.com -->
 <link rel="preload" href="/fonts/manrope-cyrillic.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="/fonts/manrope-latin.woff2" as="font" type="font/woff2" crossorigin>
@@ -29,7 +28,7 @@ img{max-width:100%}
 h1{font-family:'Bebas Neue';font-size:36px;font-weight:400;line-height:1.02;letter-spacing:.015em}
 h2{font-family:'Bebas Neue';font-size:26px;font-weight:400;letter-spacing:.015em}
 h3{font-family:'Bebas Neue';font-size:19px;font-weight:400;letter-spacing:.03em}
-.flex{display:flex}.gap{gap:8px}.gap2{gap:10px}.between{justify-content:space-between}.items-center{align-items:center}
+.flex{display:flex}.gap1{gap:6px}.gap{gap:8px}.gap2{gap:10px}.between{justify-content:space-between}.items-center{align-items:center}
 .grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .mb1{margin-bottom:6px}.mb2{margin-bottom:10px}.mb3{margin-bottom:16px}.mb4{margin-bottom:20px}
 .mt2{margin-top:10px}.mt3{margin-top:16px}.mt4{margin-top:22px}
@@ -56,7 +55,9 @@ h3{font-family:'Bebas Neue';font-size:19px;font-weight:400;letter-spacing:.03em}
 .input-label{display:block;font-size:11.5px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;color:var(--text3);margin-bottom:7px}
 .input{width:100%;background:var(--surface);border:1.5px solid var(--border);border-radius:15px;padding:14px;font-size:15px;font-weight:600;color:var(--text);outline:none;transition:border-color .15s ease}
 .input:focus{border-color:var(--accent)}
-select.input{appearance:none}
+/* v31.3: у select отключена нативная стрелка — без своей иконки поле выглядело как
+   обычный текстовый ввод и было непонятно, что это выпадающий список. */
+select.input{appearance:none;-webkit-appearance:none;padding-right:40px;background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%237C90A8' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'/></svg>");background-repeat:no-repeat;background-position:right 14px center;background-size:14px}
 .sel-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(0,1fr));gap:9px}
 .sel-btn{display:flex;flex-direction:column;align-items:center;gap:8px;background:var(--surface);border:1.5px solid var(--border);border-radius:18px;padding:14px 8px;font-size:12.5px;font-weight:700;color:var(--text2);transition:all .15s ease}
 .sel-btn .ic{display:flex;background:var(--solid);border-radius:13px;padding:9px;color:var(--accent);transition:all .15s ease}
@@ -168,6 +169,12 @@ select.input{appearance:none}
 
 /* Оверлей юридических документов: открывает privacy/terms внутри приложения (iframe),
    не трогает историю навигации — «Назад» не сбрасывает регистрацию/онбординг */
+/* v32: экран повторного согласия после изменения документов (152-ФЗ, ст. 9).
+   z-index ниже .doc-overlay (250): политику/соглашение можно открыть поверх него,
+   сам экран на время просмотра документа скрывается (см. gateOpenDoc). */
+.consent-gate{position:fixed;inset:0;background:var(--bg);z-index:245;display:none;overflow-y:auto;padding:28px 18px calc(28px + env(safe-area-inset-bottom,0px))}
+.consent-gate.show{display:block;animation:fadeUp .25s ease}
+.consent-gate-card{max-width:520px;margin:0 auto}
 .doc-overlay{position:fixed;inset:0;background:var(--bg);z-index:250;display:none;flex-direction:column}
 .doc-overlay.show{display:flex}
 .doc-topbar{display:flex;align-items:center;gap:10px;padding:12px 16px;border-bottom:1px solid var(--border);background:var(--surface);flex-shrink:0}
@@ -256,7 +263,7 @@ body{touch-action:manipulation}
 <body>
 <div class="app">
 <div class="toast" id="toast"></div>
-<!-- v28: модальные подтверждения вместо нативного confirm() — в Telegram Mini App (особенно iOS)
+<!-- v28: модальные подтверждения вместо нативного confirm() — в WebView (особенно iOS)
      window.confirm может не отображаться и всегда возвращать false: из-за этого «висли» экран
      тренировки (navigate блокировался) и не работали кнопки удаления данных -->
 <div class="modal-wrap" id="modalWrap" role="dialog" aria-modal="true">
@@ -278,7 +285,7 @@ body{touch-action:manipulation}
 <!-- ОНБОРДИНГ (пошаговый мастер) -->
 <div class="screen active" id="screen-onboard"><div id="onboardBox" style="padding-top:28px"></div></div>
 
-<!-- ВХОД (standalone-режим без Telegram: VK ID + Одноклассники) -->
+<!-- ВХОД (APK/standalone: VK ID + Одноклассники) -->
 <div class="screen" id="screen-login">
   <div style="padding-top:48px;text-align:center">
     <div class="badge badge-accent mb2">GuideFit</div>
@@ -421,7 +428,8 @@ body{touch-action:manipulation}
 
 <script>
 /* ============ базовые helpers ============ */
-const tg = window.Telegram && window.Telegram.WebApp ? window.Telegram.WebApp : null;
+/* Мост в Android-обёртку (RuStore-сборка): локальные уведомления. В браузере/PWA его нет. */
+const NATIVE = (typeof window.GuideFitNative !== 'undefined') ? window.GuideFitNative : null;
 const API = window.location.origin;
 let currentUser = null;
 let workoutTimer = null, workoutSeconds = 0, timerPaused = false;
@@ -429,7 +437,6 @@ let currentExercises = [];
 let currentProgramId = null, currentProgramDay = null, isProgramWorkout = false;
 let currentMealRecipe = null, currentMealCategory = 'breakfast';
 let restTimer = null, restRemaining = 0;
-let backTarget = null;
 let _wzExit = false; // явный выход из активной тренировки (сохранение/прерывание) — без лишнего confirm
 
 function $(id){ return document.getElementById(id); }
@@ -445,7 +452,7 @@ function openActiveProgram(){
   navigate('workouts');
 }
 function plural(n, one, few, many){ n = Math.abs(n)%100; const d = n%10; if(n===1) return one; if(n>1&&n<5) return few; if(n>=5&&n<21) return many; if(d===1) return one; if(d>1&&d<5) return few; return many; }
-function haptic(style){ try{ if(tg && tg.HapticFeedback){ if(style==='ok') tg.HapticFeedback.notificationOccurred('success'); else if(style==='err') tg.HapticFeedback.notificationOccurred('error'); else tg.HapticFeedback.impactOccurred('light'); } }catch(e){} }
+function haptic(style){ try{ if(navigator.vibrate){ navigator.vibrate(style==='err' ? [24, 40, 24] : 12); } }catch(e){} }
 
 /* ============ SVG-иконки (вместо эмодзи) ============ */
 const ICONS = {
@@ -500,7 +507,7 @@ function showError(m){ showToast(m,'error'); haptic('err'); }
 function showSuccess(m){ showToast(m,'success'); haptic('ok'); }
 
 /* v28: модальное подтверждение (Promise<boolean>) — замена window.confirm,
-   который в Telegram Mini App на iOS не показывается и вечно отвечает false:
+   который в WebView на iOS не показывается и вечно отвечает false:
    это «замораживало» экран тренировки и блокировало удаление данных. */
 function uiConfirm(title, text, okLabel, danger){
   return new Promise(function(resolve){
@@ -571,15 +578,90 @@ function closeDoc(back){
   setTimeout(function(){ if(f) f.src = 'about:blank'; }, 250);
   try{ if(window._docStatePushed){ history.back(); window._docStatePushed = false; } }catch(e){}
   if(back === false) return; // закрытие из popstate: навигацию не дублируем
+  /* документ открыли из экрана повторного согласия — возвращаем этот экран */
+  if(_docBack === 'consentGate'){ const g = document.getElementById('consentGate'); if(g) g.style.display = ''; }
   /* шаг согласий отображается как «шаг 10 из 11», внутренний индекс — 9 */
   if(_docBack === 'obStep10'){ if(typeof obGo === 'function') obGo(9); }
   else if(_docBack === 'settings' && typeof navigate === 'function'){ const ss = document.getElementById('screen-settings'); if(ss && !ss.classList.contains('active')) navigate('settings'); }
 }
 window._closeDoc = closeDoc;
 
+/* ---- согласие на актуальную редакцию документов (152-ФЗ, ст. 9)
+        Если privacy.html/terms.html менялись по существу, прежнее согласие покрывает
+        старую редакцию. При запуске сравниваем свою редакцию с текущей по серверу и,
+        если они разошлись, просим подтвердить согласие заново (журнал consent_log). ---- */
+let _consentGateBusy = false;
+async function ensureCurrentConsent(){
+  if(_consentGateBusy) return;
+  if(!currentUser || !currentUser.goal) return; // в онбординге согласие берётся отдельным шагом
+  try{
+    const c = await api('/api/user/consent');
+    if(!c || !c.current) return;
+    if(c.accepted === c.current) return;
+    showConsentGate(c.current);
+  }catch(e){}
+}
+function consentRowHtml(id, text){
+  return '<label class="pressable" style="display:flex;gap:10px;align-items:flex-start;margin-bottom:14px;text-align:left;cursor:pointer">' +
+    '<input type="checkbox" id="' + id + '" style="width:20px;height:20px;margin-top:2px;accent-color:var(--accent);flex-shrink:0">' +
+    '<span style="font-size:12.5px;line-height:1.55">' + text + '</span></label>';
+}
+function showConsentGate(version){
+  if(document.getElementById('consentGate')) return;
+  _consentGateBusy = true;
+  const ov = document.createElement('div');
+  ov.id = 'consentGate';
+  ov.className = 'consent-gate';
+  ov.innerHTML =
+    '<div class="consent-gate-card">' +
+      '<div class="badge badge-accent mb2">GuideFit</div>' +
+      '<h1 style="margin:0 0 8px;font-size:20px">Документы обновились</h1>' +
+      '<p class="muted" style="font-size:13px;line-height:1.55;margin:0 0 18px">Мы обновили Политику обработки персональных данных и Пользовательское соглашение (редакция ' + esc(version) + '). Чтобы продолжить работу, подтвердите согласие с новой редакцией.</p>' +
+      consentRowHtml('cgPrivacy', 'Я даю согласие на обработку персональных данных и принимаю <a href="javascript:void(0)" style="color:var(--accent-dark)" onclick="event.stopPropagation();gateOpenDoc(\'/privacy.html\')">Политику обработки персональных данных</a>.') +
+      consentRowHtml('cgTerms', 'Я принимаю <a href="javascript:void(0)" style="color:var(--accent-dark)" onclick="event.stopPropagation();gateOpenDoc(\'/terms.html\')">Пользовательское соглашение</a>.') +
+      consentRowHtml('cgHealth', 'Я даю отдельное согласие на обработку данных о здоровье (вес, рост, калории, дневник питания и тренировок).') +
+      '<p class="ob-err" id="cgErr" style="display:none">Отметь все галочки, чтобы продолжить</p>' +
+      '<button class="btn btn-primary btn-block pressable" style="margin-top:6px" onclick="acceptConsentGate()">Подтвердить и продолжить</button>' +
+      '<button class="btn btn-ghost btn-block pressable" style="margin-top:8px;color:var(--red)" onclick="declineConsentGate()">Не согласен — удалить мои данные</button>' +
+    '</div>';
+  document.body.appendChild(ov);
+  requestAnimationFrame(function(){ ov.classList.add('show'); });
+}
+/* документ открывается ВЫШЕ экрана согласия (z-index 250 против 245) */
+function gateOpenDoc(path){
+  try{ haptic(); }catch(e){}
+  const ov = document.getElementById('consentGate');
+  if(ov) ov.style.display = 'none';
+  _docContext = 'consentGate';
+  openDoc(path);
+}
+async function acceptConsentGate(){
+  const ok = ['cgPrivacy','cgTerms','cgHealth'].every(function(id){
+    const el = document.getElementById(id); return !!(el && el.checked);
+  });
+  const err = document.getElementById('cgErr');
+  if(!ok){ if(err) err.style.display = 'block'; return; }
+  try{
+    await api('/api/user/consent', { method:'POST', body:{ consents:{ privacy:true, terms:true, health:true } } });
+    closeConsentGate();
+    showSuccess('Согласие обновлено');
+  }catch(e){ showError((e && e.message) || 'Не удалось сохранить согласие'); }
+}
+async function declineConsentGate(){
+  const yes = await uiConfirm('Отозвать согласие?', 'Без согласия мы не можем обрабатывать ваши данные. Аккаунт и все дневники будут удалены безвозвратно.', 'Отозвать и удалить', true);
+  if(!yes) return;
+  try{ await api('/api/user/delete', { method:'POST', body:{} }); }catch(e){}
+  try{ localStorage.clear(); }catch(e){}
+  location.reload();
+}
+function closeConsentGate(){
+  const ov = document.getElementById('consentGate');
+  if(ov){ ov.classList.remove('show'); setTimeout(function(){ try{ ov.remove(); }catch(e){} }, 250); }
+  _consentGateBusy = false;
+}
+
 async function api(endpoint, opts = {}){
   const headers = { 'Content-Type':'application/json' };
-  if(tg && tg.initData) headers['X-Telegram-Init-Data'] = tg.initData;
   try{ const s = localStorage.getItem('gf_session'); if(s) headers['X-Session-Token'] = s; }catch(e){}
   const res = await fetch(API + endpoint, { ...opts, headers, body: opts.body ? JSON.stringify(opts.body) : undefined });
   if(!res.ok){
@@ -591,13 +673,10 @@ async function api(endpoint, opts = {}){
   return res.json();
 }
 
-/* ============ вход: Telegram либо сессия VK (standalone/APK) ============ */
+/* ============ вход: сессия устройства (анонимный аккаунт) либо VK ID ============ */
 /* v24: intent — откуда пришли: 'login' (кнопка входа/возврат по сессии) | 'register' (кнопка регистрации) | 'session' */
-function tgUid(){
-  try{
-    if(tg && tg.initDataUnsafe && tg.initDataUnsafe.user && tg.initDataUnsafe.user.id) return String(tg.initDataUnsafe.user.id);
-  }catch(e){}
-  return null;
+function hasSession(){
+  try{ return !!localStorage.getItem('gf_session'); }catch(e){ return false; }
 }
 
 async function enterWithSession(tgId, intent){
@@ -607,7 +686,7 @@ async function enterWithSession(tgId, intent){
     const user = await api('/api/user/' + encodeURIComponent(tgId));
     currentUser = user;
     if(!user.goal){
-      // v25: имя из VK/анонимного входа НЕ подставляем — поле всегда пустое (Telegram-флоу не задет)
+      // v25: имя из VK/анонимного входа НЕ подставляем — поле всегда пустое (заполняет сам пользователь)
       // v26: meal_count по умолчанию 2; экран онбординга открываем явно, иначе визард остаётся скрытым
       ob = { step: 0, total: 11, meal_count: user.meal_count || 2, name: '' };
       navigate('onboard');
@@ -619,8 +698,13 @@ async function enterWithSession(tgId, intent){
     $('bottomNav').style.display = 'flex';
     navigate('home');
     setTimeout(function(){ if(typeof renderHomeDonuts === 'function'){ try{ renderHomeDonuts(); }catch(e){} } }, 700);
+    ensureCurrentConsent(); // документы могли поменяться с прошлого запуска
   }catch(e){
     if(e && e.status === 404){ ob = { step: 0, total: 11, meal_count: 2 }; navigate('onboard'); obRender(); }
+    // сессия протухла или отозвана: выбрасываем её, иначе регистрация будет пытаться
+    // писать профиль по недействительному ключу и получит 401 (v32)
+    else if(e && e.status === 401){ try{ localStorage.removeItem('gf_session'); }catch(e2){}
+      if(intent === 'session') startRegister(); else showLoginScreen(); }
     else if(intent === 'session'){ startRegister(); } // v26: первый запуск без сессии — сразу на регистрацию
     else showLoginScreen();
   }
@@ -752,7 +836,7 @@ function startRegister(){
    смог смержить уже введённые данные в VK-аккаунт (mergeAnonymousInto). */
 async function obVkPrepare(){
   try{
-    if(!tgUid() && !localStorage.getItem('gf_session')){
+    if(!hasSession()){
       const d = await api('/api/auth/anonymous', { method:'POST' });
       if(d && d.session){ try{ localStorage.setItem('gf_session', d.session); }catch(e){} }
     }
@@ -797,11 +881,6 @@ async function onVkLogin(payload, intent){
   }catch(e){ showError((e && e.message) || 'Не удалось войти через VK'); }
 }
 
-/* ============ тема Telegram ============ */
-function applyTelegramTheme(){
-  /* Дизайн-система фиксированная (светлая, голубая). Тему Telegram не подхватываем. */
-}
-
 /* ============ навигация ============ */
 const TABS = ['home','stats','workouts','nutrition','profile'];
 const SCREEN_PARENT = {program:'workouts', 'active-workout':'workouts', settings:'profile'};
@@ -843,14 +922,10 @@ function navigate(screen){
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
   const parent = SCREEN_PARENT[screen] || screen;
   const b = document.querySelector('.nav-item[data-tab="'+parent+'"]'); if(b) b.classList.add('active');
-  window.scrollTo(0,0);
-  backTarget = null;
-  if(tg && tg.BackButton){
-    if(screen==='program'){ backTarget='workouts'; tg.BackButton.show(); }
-    else if(screen==='active-workout'){ tg.BackButton.show(); }
-    else if(SCREEN_PARENT[screen]){ backTarget = SCREEN_PARENT[screen]; tg.BackButton.show(); }
-    else tg.BackButton.hide();
-  }
+  /* v31.3: мгновенный скролл вверх. При html{scroll-behavior:smooth} вызов
+     window.scrollTo(0,0) анимировался и старый экран визуально «уезжал» вверх уже
+     после подмены контента — при переключении вкладок из длинного списка было видно рывок. */
+  try{ window.scrollTo({ top: 0, left: 0, behavior: 'auto' }); }catch(e){ window.scrollTo(0,0); }
   if(screen==='home') loadDashboard();
   if(screen==='stats') loadStats();
   if(screen==='workouts') loadWorkouts();
@@ -864,14 +939,6 @@ function navigate(screen){
     loadSettings();
   }
 }
-if(tg && tg.BackButton){
-  tg.BackButton.onClick(()=>{
-    haptic();
-    if(backTarget) navigate(backTarget);
-    else if($('screen-active-workout').classList.contains('active')) abortWorkout();
-  });
-}
-
 /* хаптика на все кнопки */
 document.addEventListener('click', e => {
   if(e.target.closest('.btn,.chip,.nav-item,.loc-card,.sel-btn,.meal-add,.icon-btn,.set-check')) haptic();
@@ -898,23 +965,8 @@ document.addEventListener('click', e => {
 })();
 
 /* ============ инициализация ============ */
-function myTgId(){
-  try{
-    const q = new URLSearchParams(window.location.search).get('tg_id');
-    if(q) return String(q);
-    if(tg && tg.initDataUnsafe && tg.initDataUnsafe.user && tg.initDataUnsafe.user.id) return String(tg.initDataUnsafe.user.id);
-  }catch(e){}
-  return 'demo_user';
-}
-
 async function initApp(){
-  applyTelegramTheme();
   document.querySelectorAll('[data-ic]').forEach(function(el){ el.innerHTML = ic(el.getAttribute('data-ic'), parseInt(el.getAttribute('data-sz') || '22', 10)); });
-  if(tg){
-    tg.ready(); tg.expand();
-    try{ tg.setHeaderColor('bg_color'); tg.setBackgroundColor('bg_color'); }catch(e){}
-    haptic();
-  }
   if('serviceWorker' in navigator){ navigator.serviceWorker.register('/sw.js').catch(()=>{}); }
   try{
     const sq = new URLSearchParams(window.location.search).get('session');
@@ -927,36 +979,19 @@ async function initApp(){
       try{ history.replaceState(null, '', location.pathname); }catch(e){}
     }
   }catch(e){}
-  if(tgUid()){
-    // штатный вход через Telegram — без изменений
-    const tgId = myTgId();
-    try{
-    const user = await api('/api/user/' + tgId);
-    currentUser = user;
-    renderAvatar(user.name, user.avatar);
-      $('bottomNav').style.display = 'flex';
-      navigate('home');
-    }catch(e){
-      ob = { step: 0, total: 11, meal_count: 2 };
-      navigate('onboard');
-      obRender();
-    }
-    return;
-  }  // standalone/APK: возврат из VK (vkcode) → сохранённая сессия → иначе сразу регистрация (v26)
+  // APK: возврат из VK (vkcode) → сохранённая сессия → иначе сразу регистрация
   if(await handleVkRedirect()) return;
 
   // v24: сохранённая сессия — если профиль заполнен, экран входа вообще не показывается (сразу дашборд)
-  // v26: сессии нет — сразу на регистрацию (анонимного входа больше нет)
-  try{ if(!localStorage.getItem('gf_session')){ startRegister(); return; } }catch(e){ startRegister(); return; }
+  // v26: сессии нет — сразу на регистрацию (аккаунт создаётся на этом устройстве)
+  if(!hasSession()){ startRegister(); return; }
   await enterWithSession(null, 'session');
 }
 
 function renderAvatar(name, avatar){
   const el = $('homeAvatar');
   if(!el) return;
-  const tUser = tg && tg.initDataUnsafe ? tg.initDataUnsafe.user : null;
   if(avatar){ el.innerHTML = '<img src="' + esc(avatar) + '" alt="" referrerpolicy="no-referrer">'; }
-  else if(tUser && tUser.photo_url){ el.innerHTML = '<img src="' + esc(tUser.photo_url) + '" alt="">'; }
   else el.textContent = (name || 'U').charAt(0).toUpperCase();
 }
 
@@ -1046,17 +1081,26 @@ async function obFinish(){
     showError('Отметь все галочки: политику, соглашение и данные о здоровье');
     return;
   }
-  const data = { tg_id: myTgId(), name: ob.name, gender: ob.gender, age: ob.age, height: ob.height,
+  const data = { name: ob.name, gender: ob.gender, age: ob.age, height: ob.height,
     current_weight: ob.weight, target_weight: ob.target, goal: ob.goal, activity_level: ob.activity,
     meal_count: ob.meal_count || 2, consents: obConsentsPayload() };
   try{
+    /* Страховка: аккаунт создаётся на устройстве, и профиль нельзя записать без сессии.
+       Сессию обычно уже создал obVkPrepare на шаге 10, но если пользователь попал сюда иначе — создаём здесь. */
+    if(!hasSession()){
+      try{
+        const anon = await api('/api/auth/anonymous', { method:'POST' });
+        if(anon && anon.session) localStorage.setItem('gf_session', anon.session);
+      }catch(e){}
+    }
     const r = await api('/api/user/init', { method:'POST', body:data });
-    let myId = data.tg_id;
-    if(!tgUid()){ try{ const me = await api('/api/auth/me'); if(me && me.tg_id) myId = me.tg_id; }catch(e){} }
+    let myId = null;
+    try{ const me = await api('/api/auth/me'); if(me && me.tg_id) myId = me.tg_id; }catch(e){}
     currentUser = { ...data, tg_id: myId, calorie_norm: r.calorie_norm, meal_count: data.meal_count, avatar: r.avatar || (currentUser && currentUser.avatar) || null };
     /* v29.1: guard шага 10 больше не нужен — снимаем якорь истории */
     try{ if(window._obStatePushed){ window._obStatePushed = false; history.back(); } }catch(e){}
     renderAvatar(data.name, currentUser.avatar);
+    setNotifyEnabled(pushEnabled()); // напоминания по умолчанию выключены — синхронизируем флаг
     $('bottomNav').style.display = 'flex';
     navigate('home');
     showSuccess('Готово! Регистрация завершена');
@@ -1391,7 +1435,7 @@ function startRest(seconds){
     if(restRemaining <= 0){
       clearInterval(restTimer); restTimer = null;
       $('restOverlay').classList.remove('show');
-      try{ if(tg && tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success'); }catch(e){}
+      try{ haptic('ok'); }catch(e){}
       if(navigator.vibrate) navigator.vibrate([120, 60, 120]);
       showSuccess('Отдых окончен. Следующий подход');
     } else $('restTime').textContent = restRemaining;
@@ -1802,7 +1846,7 @@ function renderWeightChart(history, currentWeightFromProfile){
   const px = i => vals.length === 1 ? W / 2 : padY * 0.4 + (i / (vals.length - 1)) * (W - padY * 0.8);
   const py = w => H - padY - ((w - min) / range) * (H - padY * 2);
   let grid = '';
-  for(let i = 0; i <= 3; i++){ const gy = padY + (i / 3) * (H - padY * 2); grid += '<line x1="0" y1="' + gy.toFixed(1) + '" x2="' + W + '" y2="' + gy.toFixed(1) + '" stroke="rgba(12,34,51,.07)"/>'; }
+  for(let i = 0; i <= 3; i++){ const gy = padY + (i / 3) * (H - padY * 2); grid += '<line x1="0" y1="' + gy.toFixed(1) + '" x2="' + W + '" y2="' + gy.toFixed(1) + '" stroke="var(--border)"/>'; }
   let goalLine = '';
   if(goal){
     const gy = py(goal);
@@ -2282,6 +2326,10 @@ try{
 [data-theme="dark"] .shimmer{background:linear-gradient(90deg,var(--solid) 25%,#25344A 50%,var(--solid) 75%);background-size:200% 100%}
 [data-theme="dark"] .toast{box-shadow:0 10px 30px rgba(0,0,0,.6)}
 [data-theme="dark"] .hero-card{box-shadow:0 16px 36px rgba(9,110,180,.35)}
+/* v31.3: .badge-blue и .tooltip b используют жёсткий #0891B2 — на тёмном фоне
+   давали слабый контраст. В тёмной теме берём переменную --cyan. */
+[data-theme="dark"] .badge-blue{color:var(--cyan)}
+[data-theme="dark"] .tooltip b{color:var(--cyan)}
 [data-theme="dark"] input, [data-theme="dark"] select{color-scheme:dark}
 .th-btn{flex:1;display:flex;align-items:center;justify-content:center;gap:7px;padding:13px;border-radius:15px;background:var(--solid);border:1.5px solid var(--border);font-size:13.5px;font-weight:800;color:var(--text2)}
 .th-btn.active{background:var(--accent);border-color:var(--accent);color:#fff}
@@ -2433,8 +2481,6 @@ function setProfAvatar(user){
     const av = document.getElementById('profAvatar');
     if(!av) return;
     if(user && user.avatar){ av.innerHTML = '<img src="' + esc(user.avatar) + '" referrerpolicy="no-referrer" loading="lazy" decoding="async" alt="">'; return; }
-    const tgu = (typeof tg !== 'undefined' && tg && tg.initDataUnsafe && tg.initDataUnsafe.user) ? tg.initDataUnsafe.user : null;
-    if(tgu && tgu.photo_url){ av.innerHTML = '<img src="' + esc(tgu.photo_url) + '" referrerpolicy="no-referrer" loading="lazy" decoding="async" alt="">'; }
   }catch(e){}
 }
 /* v29: профиль рендерится МГНОВЕННО из локальных данных, секции дозагружаются независимо
@@ -2552,14 +2598,12 @@ function toggleAchGroup(g){
   }catch(e){}
 }
 /* v28: файл больше не «формируется в никуда» — получаем одноразовый токен и качаем
-   обычным GET с Content-Disposition (a[download] с blob не работает в webview Telegram).
-   v29: в Telegram WebView a[download] молча игнорируется → открываем URL через tg.openLink
-   (откроется в системном браузере, где загрузка работает). Фолбэк — ссылка в чате «Избранное». */
+   обычным GET с Content-Disposition (a[download] с blob в WebView часто не работает).
+   v29: открываем ссылку в системном браузере — там загрузка проходит надёжно.
+   Фолбэк — ссылка «Последняя выгрузка» в настройках. */
 function tgOpenLink(url){
-  try{
-    if(typeof tg !== 'undefined' && tg && typeof tg.openLink === 'function'){ tg.openLink(url); return; }
-  }catch(e){}
-  window.open(url, '_blank', 'noopener');
+  try{ window.open(url, '_blank', 'noopener'); return; }catch(e){}
+  try{ window.location.href = url; }catch(e){}
 }
 /* v29.1: одноразовый токен живёт 2 минуты — «последняя ссылка» всегда выдаёт СВЕЖУЮ,
    иначе старая ссылка уже недействительна и открывается ошибка вместо файла */
@@ -2588,8 +2632,8 @@ function aboutBlock(){
   return '<div class="card mb4"><h3 class="mb3">О приложении</h3>' +
     '<div class="flex between" style="font-size:12.5px;padding:5px 0"><span class="muted">Версия</span><b id="aboutVersion">—</b></div>' +
     '<div class="flex between" style="font-size:12.5px;padding:5px 0"><span class="muted">Оператор</span><b>ИП Солдатенко Я. П.</b></div>' +
-    '<div class="flex between" style="font-size:12.5px;padding:5px 0"><span class="muted">ОГРНИП</span><b>325246800130330</b></div>' +
-    '<p class="subtle mt2" style="font-size:11px;line-height:1.6">Возрастная категория: 12+. Приложение не является медицинским изделием и не заменяет консультацию врача. Расчёты и программы носят информационный характер. Время напоминаний — по выбранному вами часовому поясу.</p>' +
+    '<div class="flex between" style="font-size:12.5px;padding:5px 0"><span class="muted">ИНН / ОГРНИП</span><b>245905941928 / 325246800130330</b></div>' +
+    '<p class="subtle mt2" style="font-size:11px;line-height:1.6">Возрастная категория: 12+. Приложение не является медицинским изделием и не заменяет консультацию врача. Расчёты и программы носят информационный характер. Напоминания формируются на вашем устройстве по выбранному часовому поясу.</p>' +
     '<div style="border-top:1px solid rgba(128,128,128,.18);margin:12px 0;padding-top:10px"><p class="subtle" style="font-size:10px;font-weight:700;margin-bottom:6px">ИСТОЧНИКИ ДАННЫХ</p>' +
     '<p class="muted" style="font-size:11.5px;line-height:1.7;margin-bottom:8px">База рецептов: собственная база GuideFit — блюда сгенерированы ИИ под нормы КБЖУ (1500–3500 ккал/сутки), простые продукты, доступные в РФ.</p>' +
     '<p class="muted" style="font-size:11.5px;line-height:1.7">Фотографии: <a href="https://www.pexels.com" onclick="tgOpenLink(\'https://www.pexels.com\');return false" style="color:var(--accent);text-decoration:underline">Pexels</a> — бесплатная лицензия Pexels, без указания авторства (благодарим фотографов!).</p>' +
@@ -2609,7 +2653,7 @@ let setTab = 'profile';
 function setTabGo(t){ setTab = t; loadSettings(); }
 function openSupportTab(){ setTab = 'support'; window._setTabKeep = true; navigate('settings'); }
 /* ---- встроенный чат поддержки (v28): сообщения хранятся на сервере по tg_id,
-        админу приходит уведомление в Telegram, его ответ виден здесь же ---- */
+        ответ поддержки приходит сюда же (опрос раз в 15 с) ---- */
 function supportChatHtml(){
   return '<div class="card mb4"><h3 class="mb3">Чат поддержки</h3>' +
     '<p class="subtle" style="font-size:11.5px;margin-bottom:10px">Напишите вопрос — ответ появится здесь. Обычно отвечаем в течение дня.</p>' +
@@ -2662,27 +2706,99 @@ async function sendSupportMsg(){
     loadSupportChat();
   }catch(e){ showError((e && e.message) || 'Не удалось отправить'); inp.value = text; }
 }
-/* ---- push-уведомления (v28): системный запрос разрешения вместо «подключить напоминания».
-        Не чаще 2 push в день; время — по выбранному часовому поясу ---- */
-function pushSupported(){ return typeof Notification !== 'undefined'; }
+/* ---- уведомления (v32): только ЛОКАЛЬНЫЕ, данные никуда не уходят.
+        В APK (RuStore) их планирует Android через мост window.GuideFitNative
+        (AlarmManager → системное уведомление), поэтому они приходят и при закрытом приложении.
+        В браузере/PWA — запасной вариант через Notification API, пока страница открыта.
+        Не чаще 2 в день; время — по выбранному пользователем часовому поясу. ---- */
+const REMINDER_SLOTS = [
+  { id:'day',     hour:11, title:'GuideFit', text:'Пора проверить дневник: вода, питание и тренировка 💪' },
+  { id:'evening', hour:20, title:'GuideFit', text:'Как прошёл день? Запиши питание и активность 💪' }
+];
+function nativeAvailable(){ return !!(NATIVE && typeof NATIVE.setReminders === 'function'); }
+/* Флаг напоминаний на сервере: виден в админке и в выгрузке данных. Сами напоминания
+   локальные, поэтому сеть здесь необязательна — ошибку молча глотаем. */
+function setNotifyEnabled(on){
+  if(!currentUser) return;
+  api('/api/notifications/toggle', { method:'POST', body:{ enabled: !!on } }).catch(function(){});
+}
+function pushSupported(){ return nativeAvailable() || typeof Notification !== 'undefined'; }
 function pushEnabled(){ try{ return localStorage.getItem('gf_push') === '1'; }catch(e){ return false; } }
+
+/* Сдвиг «время в выбранном поясе минус локальное время устройства», в минутах.
+   Нужен, чтобы разбудить телефон в 11:00 именно по поясу пользователя, а не по поясу телефона. */
+function tzOffsetMinutes(tz){
+  try{
+    const now = new Date();
+    const parts = new Intl.DateTimeFormat('en-GB', { hour:'2-digit', minute:'2-digit', hour12:false, timeZone: tz || 'Europe/Moscow' }).formatToParts(now);
+    const h = parseInt((parts.find(function(p){ return p.type === 'hour'; }) || {}).value, 10);
+    const m = parseInt((parts.find(function(p){ return p.type === 'minute'; }) || {}).value, 10);
+    if(isNaN(h) || isNaN(m)) return 0;
+    return (h * 60 + m) - (now.getHours() * 60 + now.getMinutes());
+  }catch(e){ return 0; }
+}
+function localHourInDevice(tz, hour){
+  let m = hour * 60 - tzOffsetMinutes(tz);
+  m = ((m % 1440) + 1440) % 1440;
+  return Math.floor(m / 60) % 24;
+}
+function reminderPayload(){
+  const tz = (currentUser && currentUser.timezone) || 'Europe/Moscow';
+  return {
+    enabled: true,
+    entries: REMINDER_SLOTS.map(function(s){
+      return { id: s.id, hour: localHourInDevice(tz, s.hour), minute: 0, title: s.title, text: s.text };
+    })
+  };
+}
+/* Передаём расписание в Android (или снимаем его). В браузере ничего не делаем. */
+function syncRemindersToNative(){
+  if(!nativeAvailable()) return;
+  try{
+    if(pushEnabled()) NATIVE.setReminders(JSON.stringify(reminderPayload()));
+    else if(typeof NATIVE.clearReminders === 'function') NATIVE.clearReminders();
+  }catch(e){}
+}
 async function enablePush(){
-  if(!pushSupported()){ showError('Устройство не поддерживает push-уведомления'); return; }
-  let perm = Notification.permission;
-  if(perm === 'default'){
-    try{ perm = await Notification.requestPermission(); }catch(e){ perm = 'denied'; }
+  if(!pushSupported()){ showError('Устройство не поддерживает уведомления'); return; }
+  if(nativeAvailable()){
+    try{ NATIVE.requestNotifications(); }catch(e){}
+    /* Системный диалог разрешений асинхронный. Фиксированная пауза была ошибкой:
+       если человек читал диалог дольше 1,2 с, мы считали отказ и не включали напоминания.
+       Ждём ответ до 6 секунд и только потом решаем. */
+    let granted = false;
+    for(let i = 0; i < 10; i++){
+      await new Promise(function(r){ setTimeout(r, 600); });
+      try{
+        granted = (typeof NATIVE.notificationsAllowed !== 'function') || !!NATIVE.notificationsAllowed();
+      }catch(e){ granted = true; }
+      if(granted) break;
+    }
+    if(!granted){
+      showError('Разрешите уведомления для GuideFit в настройках Android');
+      return;
+    }
+  } else {
+    let perm = Notification.permission;
+    if(perm === 'default'){
+      try{ perm = await Notification.requestPermission(); }catch(e){ perm = 'denied'; }
+    }
+    if(perm !== 'granted'){ showError('Разрешение на уведомления не выдано'); return; }
   }
-  if(perm !== 'granted'){ showError('Разрешение на уведомления не выдано'); return; }
   try{ localStorage.setItem('gf_push', '1'); }catch(e){}
+  setNotifyEnabled(true);
   if(typeof haptic === 'function') haptic('ok');
-  showSuccess('Push-уведомления включены');
+  showSuccess('Напоминания включены');
+  syncRemindersToNative();
   scheduleLocalPush();
   loadSettings();
 }
 function disablePush(){
   try{ localStorage.setItem('gf_push', '0'); }catch(e){}
+  setNotifyEnabled(false);
   if(window._pushTimer){ clearTimeout(window._pushTimer); window._pushTimer = null; }
-  showSuccess('Push-уведомления выключены');
+  try{ if(nativeAvailable() && typeof NATIVE.clearReminders === 'function') NATIVE.clearReminders(); }catch(e){}
+  showSuccess('Напоминания выключены');
   loadSettings();
 }
 function nextPushAt(){
@@ -2696,7 +2812,10 @@ function nextPushAt(){
     const d = mk(11); d.setDate(d.getDate() + 1); return d;
   }catch(e){ return new Date(Date.now() + 3600000); }
 }
+/* Запасной вариант для браузера/PWA: пока вкладка открыта, показываем системное уведомление.
+   В APK не используется — там расписанием занимается Android (см. syncRemindersToNative). */
 function scheduleLocalPush(){
+  if(nativeAvailable()) return; // в APK работает AlarmManager, дублировать нельзя
   if(!pushSupported() || Notification.permission !== 'granted') return;
   if(!pushEnabled()) return;
   if(window._pushTimer){ clearTimeout(window._pushTimer); window._pushTimer = null; }
@@ -2713,7 +2832,19 @@ function scheduleLocalPush(){
     scheduleLocalPush();
   }, Math.max(at.getTime() - Date.now(), 5000));
 }
-try{ if(pushSupported() && Notification.permission === 'granted'){ setTimeout(scheduleLocalPush, 4000); } }catch(e){}
+/* при запуске: в APK — перепланируем системные напоминания по актуальному часовому поясу,
+   в браузере — возобновляем таймер, если разрешение уже выдано */
+try{
+  if(nativeAvailable()){ setTimeout(syncRemindersToNative, 1500); }
+  else if(pushSupported() && Notification.permission === 'granted'){ setTimeout(scheduleLocalPush, 4000); }
+}catch(e){}
+/* Возврат в приложение (в т.ч. после выдачи разрешения в настройках Android):
+   пересобираем расписание — иначе выданное позже разрешение так и не заработало бы. */
+try{
+  document.addEventListener('visibilitychange', function(){
+    if(document.visibilityState === 'visible') syncRemindersToNative();
+  });
+}catch(e){}
 /* ---- часовой пояс: выбор из списка зон России (без геолокации) ---- */
 const RU_TZ = [
   ['Europe/Kaliningrad','Калининград (UTC+2)'],
@@ -2732,19 +2863,22 @@ async function saveTimezone(v){
   try{
     await api('/api/user/update', { method:'POST', body:{ tg_id: currentUser.tg_id, timezone: v } });
     currentUser.timezone = v;
+    syncRemindersToNative(); // время напоминаний в APK привязано к выбранному поясу
     if(typeof haptic === 'function') haptic('ok');
     showSuccess('Часовой пояс сохранён');
   }catch(e){ showError(e.message); }
 }
 function pushNotifyBlock(){
-  const on = pushSupported() && Notification.permission === 'granted' && pushEnabled();
+  const native = nativeAvailable();
+  const allowed = native ? (!NATIVE.notificationsAllowed || NATIVE.notificationsAllowed()) : (typeof Notification !== 'undefined' && Notification.permission === 'granted');
+  const on = pushSupported() && allowed && pushEnabled();
   let h = '<div class="card mb4"><h3 class="mb3">Уведомления</h3>';
   if(on){
-    h += '<p class="muted" style="font-size:12.5px;line-height:1.55;margin-bottom:12px">Push-напоминания включены: не чаще двух в день, в удобное время по вашему часовому поясу.</p>' +
-      '<button class="btn btn-ghost btn-block pressable" onclick="disablePush()">Выключить push-уведомления</button>';
+    h += '<p class="muted" style="font-size:12.5px;line-height:1.55;margin-bottom:12px">Напоминания включены: не чаще двух в день, в удобное время по вашему часовому поясу.</p>' +
+      '<button class="btn btn-ghost btn-block pressable" onclick="disablePush()">Выключить напоминания</button>';
   } else {
-    h += '<p class="muted" style="font-size:12.5px;line-height:1.55;margin-bottom:12px">Включите push-напоминания о воде, питании и взвешивании. Не чаще двух раз в день — без спама.</p>' +
-      '<button class="btn btn-primary btn-block pressable" onclick="enablePush()">Включить push-уведомления</button>';
+    h += '<p class="muted" style="font-size:12.5px;line-height:1.55;margin-bottom:12px">Включите напоминания о питании, воде и активности. Не чаще двух раз в день — без спама.</p>' +
+      '<button class="btn btn-primary btn-block pressable" onclick="enablePush()">Включить напоминания</button>';
   }
   const curTz = (currentUser && currentUser.timezone) || 'Europe/Moscow';
   h += '<div class="set-field" style="margin-top:16px"><label class="input-label">Ваш часовой пояс</label>' +
@@ -2806,13 +2940,13 @@ function loadSettings(){
   }
   c.innerHTML = '<div class="set-tabs">' + tabs + '</div>' + body +
     '<div class="flex gap2" style="margin-top:24px">' +
-      '<button class="btn btn-ghost pressable" style="flex:1;color:#e0504b" onclick="doLogout()"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg> Выйти</button>' +
+      '<button class="btn btn-ghost pressable" style="flex:1;color:var(--red)" onclick="doLogout()"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg> Выйти</button>' +
       '<button class="btn btn-danger pressable" style="flex:1" onclick="doDeleteProfile()">Удалить профиль</button>' +
     '</div>';
   if(tab === 'support'){ loadSupportChat(); scheduleSupportChatPoll(); }
   if(tab === 'profile'){
     try{
-      if(/^anon:/.test(String(u.tg_id || '')) && !tgUid()){
+      if(/^anon:/.test(String(u.tg_id || ''))){
         initVkLogin('setVkSlot', 'setVkMsg', function(p){ settingsVkLogin(p); });
       }
     }catch(e){}
@@ -2834,9 +2968,8 @@ async function doDeleteProfile(){
 async function doLogout(){
   /* v28: подтверждение выхода. Для анонимного аккаунта (без VK/OK) выход реально
      отрезает доступ к данным — предупреждаем явно. window.confirm заменён модальным окном. */
-  const anon = currentUser && /^anon:/.test(String(currentUser.tg_id || ''));
   const vkLinked = !!(currentUser && currentUser.provider === 'vk');
-  if(anon || (!vkLinked && !tgUid())){
+  if(!vkLinked){
     const ok = await uiConfirm('Выйти из аккаунта?', 'Вы уверены, что хотите выйти? Ваши данные будут недоступны без повторной авторизации.', 'Выйти', true);
     if(!ok) return;
   }
@@ -2860,8 +2993,12 @@ async function doDeleteData(){
 }
 try{
   document.addEventListener('change', function(e){
-    if(e.target && e.target.name === 'setGoal'){
-      document.querySelectorAll('label.chip').forEach(function(l){ l.classList.remove('active'); });
+    // v31.3: и цель, и уровень подготовки — radio-чипы. Для setLevel обработчика не было,
+    // поэтому клик по уровню менял скрытый radio, но подсветка (label.chip.active) оставалась на старом.
+    if(e.target && (e.target.name === 'setGoal' || e.target.name === 'setLevel')){
+      document.querySelectorAll('input[name="' + e.target.name + '"]').forEach(function(inp){
+        const l = inp.closest('label.chip'); if(l) l.classList.toggle('active', inp.checked);
+      });
       const lab = e.target.closest('label.chip'); if(lab) lab.classList.add('active');
     }
   });
@@ -3079,6 +3216,10 @@ function openMealSelector(category){
   currentMealCategory = category;
   _mealPickMode = true;
   navigate('nutrition');
+  /* v31.2: флаг нужен был только чтобы navigate('nutrition') не затирал экран выбора блюда.
+     Раньше он оставался включённым — и тогда кнопка «Назад» в выборе блюда и переход на
+     вкладку «Еда» из таббара молча ничего не делали (второй клик). Снимаем сразу после навигации. */
+  _mealPickMode = false;
   const names = { breakfast:'Завтрак', lunch:'Обед', snack:'Перекус', dinner:'Ужин' };
   document.getElementById('nutritionContent').innerHTML =
     '<div class="flex items-center gap2 mb4"><button class="icon-btn pressable" onclick="loadNutrition()">' + ic('chevronL',18) + '</button><h3>' + names[category] + '</h3></div><div id="mealCardArea"></div>';
@@ -3122,8 +3263,8 @@ function copyShopList(){
 <script>
 /* v29.1: патч «Помощь»-карточки в профиле удалён — кнопка чата поддержки теперь есть
    в самом профиле (profButtonsHtml) и во вкладке «Поддержка» настроек; дубликат убран. */
-/* v28: тумблер Telegram-напоминаний и привязка бота удалены вместе с их UI —
-   заменены на push-уведомления (Настройки → Профиль) и встроенный чат поддержки. */
+/* v32: Telegram удалён из продукта. Reminders теперь локальные (AlarmManager в APK),
+   поддержка — встроенный чат в настройках. */
 </script>
 <style>
 .pg-bar{height:10px;border-radius:99px;background:var(--solid);overflow:hidden;margin-top:8px}
@@ -3241,6 +3382,9 @@ async function addWater(){
     await api('/api/water', { method: 'POST', body: { tg_id: currentUser.tg_id, amount: 250 } });
     if(typeof haptic === 'function') haptic();
     if(typeof loadDashboard === 'function') loadDashboard();
+    // на экране «Питание» та же кнопка воды: без перерисовки счётчик там оставался старым
+    const ns = document.getElementById('screen-nutrition');
+    if(ns && ns.classList.contains('active') && typeof loadNutrition === 'function') loadNutrition();
     setTimeout(renderHomeDonuts, 600);
     setTimeout(renderHomeDonuts, 1400);
   }catch(e){ showToast('Ошибка', 'err'); }
@@ -3252,6 +3396,8 @@ async function undoWater(){
     if(r && r.removed){ if(typeof haptic === 'function') haptic(); showToast('−250 мл', ''); }
     else showToast('Отменять нечего', 'err');
     if(typeof loadDashboard === 'function') loadDashboard();
+    const ns = document.getElementById('screen-nutrition');
+    if(ns && ns.classList.contains('active') && typeof loadNutrition === 'function') loadNutrition();
     setTimeout(renderHomeDonuts, 600);
   }catch(e){ showToast('Ошибка', 'err'); }
 }
