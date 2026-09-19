@@ -1714,10 +1714,11 @@ app.use((err, req, res, next) => {
 // только ОДИН раз на конкретный запрос фото; повторные отдаём локально.
 let sharpLib = null;
 try { sharpLib = require('sharp'); } catch (e) { sharpLib = null; }
-const IMG_DIR = path.join(__dirname, 'static', 'images', 'cache');
-
-async function cacheImageLocally(remoteUrl, slugBase) {
-  try {
+const IMG_DIR = path.join(__dirname, 'static', 'images', 'cache');async function cacheImageLocally(remoteUrl, slugBase) {
+  try{
+    // Скачивать имеет смысл только удалённый файл: относительный путь — это уже наш
+    // локальный файл, и fetch("/images/...") в Node падает с "Failed to parse URL".
+    if (!/^https?:\/\//i.test(String(remoteUrl || ''))) return null;
     const slug = crypto.createHash('md5').update(String(slugBase || remoteUrl)).digest('hex').slice(0, 16) + '.webp';
     const localPath = path.join(IMG_DIR, slug);
     const localUrl = '/images/cache/' + slug;
@@ -1739,8 +1740,12 @@ app.get('/api/recipe-image/:id', async (req, res) => {
     if (!row) return res.status(404).json({ error: 'Not found' });
     const hasReal = row.image_url && row.image_url.length > 3 && row.image_url !== 'empty.jpg';
     if (hasReal) {
-      // уже локально — отдаём как есть
-      if (String(row.image_url).startsWith('/images/cache/')) return res.json({ image_url: row.image_url, cached: true });
+      // Любой относительный путь — уже локальный файл на нашем сервере: и кеш Pexels
+      // (/images/cache/...), и блюда генератора (/images/dishes/...).
+      // Раньше проверялся только /images/cache/, поэтому блюда из /images/dishes/
+      // уходили в cacheImageLocally и падали в fetch("/images/...")
+      // с "Failed to parse URL from /images/..." — по ошибке на каждую картинку.
+      if (/^\//.test(String(row.image_url))) return res.json({ image_url: row.image_url, cached: true });
       // удалённый URL (Pexels) — переносим в локальный кеш, чтобы не тянуть повторно
       const local = await cacheImageLocally(row.image_url, row.photo_query || row.title || row.image_url);
       if (local) {
