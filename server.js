@@ -1,7 +1,9 @@
 const express = require('express');
 require('dotenv').config();
-// Часовой пояс приложения: от него зависят «сегодня» (localDate), SQLite 'localtime' и часы напоминаний.
-// По умолчанию — Москва: без этого сервер живёт в UTC и день пользователя переключался в 03:00 МСК.
+/* Часовой пояс СЕРВЕРА — только для служебных величин (сводка админки) и
+   значений по умолчанию для аккаунтов без выбранного пояса.
+   Всё пользовательское («сегодня», день недели, час подсказки) считается
+   в поясе самого пользователя — см. блок helpers ниже. */
 if (!process.env.TZ) process.env.TZ = 'Europe/Moscow';
 const crypto = require('crypto');
 const fs = require('fs');
@@ -34,13 +36,25 @@ app.use(express.static('static'));
 
 app.use('/api/', (req, res, next) => { res.type('json'); next(); });
 
-/* ================= helpers: локальная дата ================= */
-function pad(n) { return String(n).padStart(2, '0'); }
-function localDate(offsetDays = 0) {
-  const d = new Date();
-  d.setDate(d.getDate() + offsetDays);
-  return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
+/* ================= helpers: дата и часовой пояс =================
+   Сама логика поясов живёт в time.js — чистыми функциями, чтобы её можно было
+   покрыть тестами без запуска сервера (см. tests/tz.test.js).
+   Здесь остаётся только то, что знает про запрос: чей это пояс и какой у
+   пользователя день. */
+const { APP_TZ, tzOffsetMinutes, tzModifier, dateIn } = require('./time');
+
+/** День пользователя из запроса (его пояс; без пояса — пояс сервера). */
+function userDay(req, offsetDays) { return dateIn((req && req.tgTz) || APP_TZ, offsetDays); }
+function userTzMod(req) { return tzModifier((req && req.tgTz) || APP_TZ); }
+
+/** Текущий час в поясе пользователя — от него зависит подсказка «следующий приём»:
+    для пользователя во Владивостоке серверный час врал на 7 часов. */
+function userHour(req) {
+  return parseInt(new Intl.DateTimeFormat('en-GB', {
+    hour: '2-digit', hour12: false, timeZone: (req && req.tgTz) || APP_TZ
+  }).format(new Date()), 10);
 }
+
 function dayDiff(a, b) {
   return Math.round((Date.parse(a + 'T00:00:00') - Date.parse(b + 'T00:00:00')) / 86400000);
 }
@@ -54,8 +68,12 @@ app.use('/api', (req, res, next) => {
   // (анонимный аккаунт или вход через VK ID). Telegram initData больше не принимается.
   const sess = String(req.headers['x-session-token'] || '');
   if (!sess) return next();
-  db.get("SELECT tg_id FROM sessions WHERE token = ? AND created_at > ?", [sess, sessionCutoff()], (err, row) => {
-    if (!err && row && row.tg_id) req.tgUserId = row.tg_id;
+  // Пояс пользователя тянем тем же запросом (JOIN, а не второй round-trip): от него
+  // зависят все «дни» — дневник, вода, вес и серии.
+  db.get(`SELECT s.tg_id, u.timezone FROM sessions s
+          LEFT JOIN users u ON u.tg_id = s.tg_id
+          WHERE s.token = ? AND s.created_at > ?`, [sess, sessionCutoff()], (err, row) => {
+    if (!err && row && row.tg_id) { req.tgUserId = row.tg_id; req.tgTz = row.timezone || null; }
     next();
   });
 });
@@ -70,7 +88,7 @@ function resolveTgId(req) {
 // Последний визит (для админки: "последний вход")
 function touchSeen(tgId) {
   if (!tgId) return;
-  db.run("UPDATE users SET last_seen = datetime('now','localtime') WHERE tg_id = ?", [tgId], () => {});
+  db.run("UPDATE users SET last_seen = datetime('now') WHERE tg_id = ?", [tgId], () => {});
 }
 
 /* ================= журнал согласий (152-ФЗ, ст. 9/10) =================
@@ -111,11 +129,11 @@ function calcNorms(user) {
   return { calories: kcal, protein, fat, carbs, water };
 }
 
-function calcStreak(tg_id, callback) {
-  db.all("SELECT date FROM workout_logs WHERE tg_id = ? ORDER BY date DESC", [tg_id], (err, rows) => {
+function calcStreak(tg_id, tz, callback) {
+  db.all("SELECT date FROM workout_logs WHERE tg_id = ? ORDER BY date DESC LIMIT 400", [tg_id], (err, rows) => {
     if (err || !rows || !rows.length) return callback(0);
     const dates = [...new Set(rows.map(r => r.date))].sort().reverse();
-    if (dates[0] !== localDate() && dates[0] !== localDate(-1)) return callback(0);
+    if (dates[0] !== dateIn(tz) && dates[0] !== dateIn(tz, -1)) return callback(0);
     let streak = 1;
     for (let i = 1; i < dates.length; i++) {
       if (dayDiff(dates[i - 1], dates[i]) === 1) streak++;
@@ -149,7 +167,9 @@ function bumpAchievements(tg_id) {
 
 function checkAchievements(tg_id) {
   if (!tg_id || tg_id === 'demo_user') return;
-  db.get("SELECT current_weight, tg_id FROM users WHERE tg_id = ?", [tg_id], (err, u) => {
+  // пояс тянем здесь же: серии считаются днями ПОЛЬЗОВАТЕЛЯ, не сервера
+  db.get("SELECT current_weight, timezone FROM users WHERE tg_id = ?", [tg_id], (err, u) => {
+    const tz = (u && u.timezone) || APP_TZ;
     const waterNorm = Math.round((Number(u?.current_weight) || 70) * 30);
     db.all("SELECT achievement_id FROM user_achievements WHERE tg_id = ?", [tg_id], (err2, ua) => {
       const unlocked = new Set((ua || []).map(a => a.achievement_id));
@@ -157,14 +177,14 @@ function checkAchievements(tg_id) {
         if (err3) return;
         db.get("SELECT COUNT(*) c, COALESCE(SUM(total_volume),0) v FROM workout_logs WHERE tg_id = ?", [tg_id], (err4, w) => {
           db.get("SELECT COUNT(*) c FROM food_logs WHERE tg_id = ?", [tg_id], (err5, m) => {
-            calcStreak(tg_id, (streak) => {
+            calcStreak(tg_id, tz, (streak) => {
               // серия дней с выполненной нормой воды
               let waterStreak = 0;
               db.all("SELECT date, amount_ml FROM water_logs WHERE tg_id = ? ORDER BY date DESC LIMIT 30", [tg_id], (err6, wr) => {
                 const wmap = {};
                 (wr || []).forEach(r => wmap[r.date] = r.amount_ml);
                 for (let i = 0; ; i++) {
-                  const d = localDate(-i);
+                  const d = dateIn(tz, -i);
                   if (wmap[d] === undefined) { if (i === 0) continue; else break; }
                   if (wmap[d] >= waterNorm) waterStreak++;
                   else break;
@@ -315,12 +335,13 @@ app.post('/api/user/init', (req, res) => {
   // определяем заранее: строки ещё нет (Telegram) либо профиль ещё не заполнен (анонимный/VK).
   db.get("SELECT goal FROM users WHERE tg_id = ?", [tgId], (e0, before) => {
     const isNewAccount = !e0 && (!before || !before.goal);
-    // created_at задан явно локальным временем: раньше Telegram-аккаунты получали
-    // UTC (DEFAULT CURRENT_TIMESTAMP), а анонимные/VK — МСК (datetime('now','localtime')).
-    // Из-за микса админка и отчёт «новых за 7 дней» показывали разное время для разных типов аккаунтов.
+    // v32: created_at пишем в UTC, как и всё остальное время в базе.
+    // Раньше разные типы аккаунтов получали разное время: DEFAULT CURRENT_TIMESTAMP
+    // давал UTC, а explicit datetime('now','localtime') — МСК; из-за микса админка
+    // и отчёт «новых за 7 дней» показывали несравнимые числа.
     db.run(
       `INSERT INTO users (tg_id, name, goal, gender, age, height, current_weight, target_weight, calorie_norm, activity_level, meal_count, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now','localtime'))
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
        ON CONFLICT(tg_id) DO UPDATE SET
          name=excluded.name, goal=excluded.goal, gender=excluded.gender, age=excluded.age,
          height=excluded.height, current_weight=excluded.current_weight,
@@ -488,7 +509,7 @@ app.post('/api/auth/anonymous', (req, res) => {
       if (err) { console.error('anon check:', err.message); return res.status(500).json({ error: 'Database error' }); }
       if (row) { if (attempt < 5) return create(attempt + 1); return res.status(500).json({ error: 'Database error' }); }
       // name намеренно NULL — юзер заполнит его в визарде
-      db.run("INSERT INTO users (tg_id, provider, notify_enabled, created_at) VALUES (?, 'anon', 1, datetime('now','localtime'))",
+      db.run("INSERT INTO users (tg_id, provider, notify_enabled, created_at) VALUES (?, 'anon', 1, datetime('now'))",
         [tgId], (err2) => {
           if (err2) { console.error('anon insert:', err2.message); return res.status(500).json({ error: 'Database error' }); }
           const session = crypto.randomBytes(32).toString('hex');
@@ -571,10 +592,10 @@ app.post('/api/auth/vk/exchange', async (req, res) => {
     const now = Math.floor(Date.now() / 1000);
     await new Promise((resolve, reject) => {
       db.run(`INSERT INTO users (tg_id, avatar, provider, created_at, notify_enabled)
-        VALUES (?, ?, 'vk', datetime('now','localtime'), 1)
+        VALUES (?, ?, 'vk', datetime('now'), 1)
         ON CONFLICT(tg_id) DO UPDATE SET
           avatar = CASE WHEN excluded.avatar IS NULL OR excluded.avatar = '' THEN users.avatar ELSE excluded.avatar END,
-          last_seen = datetime('now','localtime')`,
+          last_seen = datetime('now')`,
         [tgId, vkAvatar], (e) => e ? reject(e) : resolve());
     });
     // Если человек пользовался анонимным аккаунтом и потом вошёл через ВК — переносим прогресс,
@@ -672,8 +693,10 @@ app.get('/api/user/export', (req, res) => {
   db.get("SELECT * FROM users WHERE tg_id = ?", [tgId], (e0, u) => {
     if (e0) { console.error('export user:', e0.message); return res.status(500).json({ error: 'Database error' }); }
     if (!u) return res.status(404).json({ error: 'User not found' });
-    db.all(`SELECT fl.timestamp, r.title, r.category, r.calories, r.protein, r.fat, r.carbs
-        FROM food_logs fl LEFT JOIN recipes r ON fl.recipe_id = r.id WHERE fl.tg_id = ? ORDER BY fl.timestamp`, [tgId], (e1, meals) => {
+    // в выгрузке время показываем в поясе пользователя (в базе — UTC), иначе
+    // в своём же архиве человек не узнавал, когда что записал
+    db.all(`SELECT datetime(fl.timestamp, ?) AS timestamp, r.title, r.category, r.calories, r.protein, r.fat, r.carbs
+        FROM food_logs fl LEFT JOIN recipes r ON fl.recipe_id = r.id WHERE fl.tg_id = ? ORDER BY fl.timestamp`, [userTzMod(req), tgId], (e1, meals) => {
       db.all("SELECT date, amount_ml FROM water_logs WHERE tg_id = ? ORDER BY date", [tgId], (e2, water) => {
         db.all("SELECT date, weight FROM weight_logs WHERE tg_id = ? ORDER BY date", [tgId], (e3, weights) => {
           db.all("SELECT date, duration_minutes, total_volume, notes FROM workout_logs WHERE tg_id = ? ORDER BY date", [tgId], (e4, workouts) => {
@@ -727,11 +750,13 @@ function requireAdmin(req, res, next) {
 }
 
 app.get('/api/admin/stats', requireAdmin, (req, res) => {
-  const today = localDate();
+  // Сводка админки — глобальная, без пояса конкретного пользователя: считаем по поясу сервера.
+  const today = dateIn(APP_TZ);
+  const tzMod = tzModifier(APP_TZ);
   db.get("SELECT COUNT(*) c FROM users", [], (e1, u) => {
-    db.get("SELECT COUNT(*) c FROM users WHERE date(last_seen) = ?", [today], (e2, t) => {
-      db.get("SELECT COUNT(*) c FROM users WHERE date(last_seen) >= date('now','localtime','-7 days')", [], (e3, w) => {
-        db.get("SELECT COUNT(*) c FROM users WHERE date(created_at) >= date('now','localtime','-7 days')", [], (e4, n) => {
+    db.get("SELECT COUNT(*) c FROM users WHERE date(last_seen, ?) = ?", [tzMod, today], (e2, t) => {
+      db.get("SELECT COUNT(*) c FROM users WHERE date(last_seen, ?) >= date('now', ?, '-7 days')", [tzMod, tzMod], (e3, w) => {
+        db.get("SELECT COUNT(*) c FROM users WHERE date(created_at, ?) >= date('now', ?, '-7 days')", [tzMod, tzMod], (e4, n) => {
           if (e1 || e2 || e3 || e4) return res.status(500).json({ error: 'Database error' });
           res.json({ users: u.c, activeToday: t.c, active7d: w.c, new7d: n.c });
         });
@@ -832,7 +857,8 @@ app.get('/api/support/messages', (req, res) => {
   const tgId = resolveTgId(req);
   if (!tgId) return res.status(401).json({ error: 'Unauthorized' });
   // sender <> 'system' — служебные записи (уведомление о регистрации для админа) пользователю не показываем
-  db.all("SELECT id, sender, text, datetime(created_at,'localtime') AS time FROM support_messages WHERE tg_id = ? AND sender <> 'system' ORDER BY id DESC LIMIT 100", [tgId], (err, rows) => {
+  // время сообщений показываем в поясе пользователя (в базе — UTC)
+  db.all("SELECT id, sender, text, datetime(created_at, ?) AS time FROM support_messages WHERE tg_id = ? AND sender <> 'system' ORDER BY id DESC LIMIT 100", [userTzMod(req), tgId], (err, rows) => {
     if (err) return res.status(500).json({ error: err.message });
     res.json({ messages: (rows || []).reverse() });
   });
@@ -883,19 +909,22 @@ app.get('/api/ex-photo', async (req, res) => {
 app.get('/api/stats/:tgId', (req, res) => {
   const tgId = resolveTgId(req);
   if (!tgId) return res.status(401).json({ error: 'Unauthorized' });
-  const today = localDate();
-  const dayOfWeek = new Date().getDay() || 7;
+  /* Недельная сетка и «сегодня» — в поясе пользователя (день недели берём из его
+     даты, а не из серверной). */
+  const tzMod = userTzMod(req);
+  const today = userDay(req);
+  const dayOfWeek = new Date(today + 'T00:00:00').getDay() || 7;
   const days = [];
-  for (let i = 0; i < 7; i++) days.push(localDate(i - dayOfWeek + 1));
+  for (let i = 0; i < 7; i++) days.push(userDay(req, i - dayOfWeek + 1));
   db.get("SELECT calorie_norm, current_weight FROM users WHERE tg_id = ?", [tgId], (err, user) => {
     if (err) console.error('stats user:', err.message);
     const target = user?.calorie_norm || 2000;
     const currentWeight = user?.current_weight || null;
     const placeholders = days.map(() => '?').join(',');
-    db.all(`SELECT date(fl.timestamp) as dt, SUM(r.calories) as cals
+    db.all(`SELECT date(fl.timestamp, ?) as dt, SUM(r.calories) as cals
         FROM food_logs fl JOIN recipes r ON fl.recipe_id = r.id
-        WHERE fl.tg_id = ? AND date(fl.timestamp) IN (${placeholders})
-        GROUP BY date(fl.timestamp)`, [tgId, ...days], (err, calRows) => {
+        WHERE fl.tg_id = ? AND date(fl.timestamp, ?) IN (${placeholders})
+        GROUP BY date(fl.timestamp, ?)`, [tzMod, tgId, tzMod, ...days, tzMod], (err, calRows) => {
       const calMap = {};
       (calRows || []).forEach(r => calMap[r.dt] = r.cals);
       db.all(`SELECT date, duration_minutes FROM workout_logs WHERE tg_id = ? AND date IN (${placeholders})`,
@@ -936,9 +965,9 @@ app.post('/api/dashboard', (req, res) => {
     if (err) return res.status(500).json({ error: 'Database error' });
     if (!user) return res.status(404).json({ error: 'User not found' });
     touchSeen(tgId);
-    const today = localDate();
+    const today = userDay(req);
     db.all(`SELECT r.* FROM food_logs fl JOIN recipes r ON fl.recipe_id = r.id
-        WHERE fl.tg_id = ? AND date(fl.timestamp) = ?`, [tgId, today], (err, meals) => {
+        WHERE fl.tg_id = ? AND date(fl.timestamp, ?) = ?`, [tgId, userTzMod(req), today], (err, meals) => {
       if (err) console.error('dashboard meals:', err.message);
       const consumption = { calories: 0, protein: 0, fat: 0, carbs: 0 };
       (meals || []).forEach(m => {
@@ -953,7 +982,7 @@ app.post('/api/dashboard', (req, res) => {
               FROM user_programs up JOIN programs p ON up.program_id = p.id
               WHERE up.tg_id = ? AND up.active = 1`, [tgId], (err, program) => {
             const finish = (programWithDays) => {
-              const hour = new Date().getHours();
+              const hour = userHour(req);
               let nextMeal = 'breakfast';
               if (hour >= 10) nextMeal = 'lunch';
               if (hour >= 15) nextMeal = 'snack';
@@ -1064,7 +1093,8 @@ app.post('/api/log-meal', (req, res) => {
   db.get("SELECT 1 AS x FROM recipes WHERE id = ?", [recipe_id], (e0, r0) => {
     if (e0) return res.status(500).json({ error: e0.message });
     if (!r0) return res.status(404).json({ error: 'Recipe not found' });
-    db.run("INSERT INTO food_logs (tg_id, recipe_id, timestamp) VALUES (?, ?, datetime('now','localtime'))",
+    // время пишем в UTC: 'день' записи считается по поясу пользователя при чтении
+    db.run("INSERT INTO food_logs (tg_id, recipe_id, timestamp) VALUES (?, ?, datetime('now'))",
       [tgId, recipe_id], (err) => {
         if (err) return res.status(500).json({ error: err.message });
         bumpAchievements(tgId);
@@ -1086,10 +1116,11 @@ app.delete('/api/food-log/:id', (req, res) => {
 app.get('/api/food-log/today/:tgId', (req, res) => {
   const tgId = resolveTgId(req);
   if (!tgId) return res.status(401).json({ error: 'Unauthorized' });
+  // timestamp в базе — UTC, поэтому день пользователя получаем модификатором пояса
   db.all(`SELECT fl.id as log_id, r.*, fl.timestamp
       FROM food_logs fl JOIN recipes r ON fl.recipe_id = r.id
-      WHERE fl.tg_id = ? AND date(fl.timestamp) = ?
-      ORDER BY fl.timestamp DESC`, [tgId, localDate()], (err, rows) => {
+      WHERE fl.tg_id = ? AND date(fl.timestamp, ?) = ?
+      ORDER BY fl.timestamp DESC`, [tgId, userTzMod(req), userDay(req)], (err, rows) => {
     if (err) return res.status(500).json({ error: err.message });
     res.json({ meals: rows || [] });
   });
@@ -1098,9 +1129,10 @@ app.get('/api/food-log/today/:tgId', (req, res) => {
 app.get('/api/shopping-list/:tgId', (req, res) => {
   const tgId = resolveTgId(req);
   if (!tgId) return res.status(401).json({ error: 'Unauthorized' });
+  const tzMod = userTzMod(req);
   db.all(`SELECT r.ingredients FROM food_logs f JOIN recipes r ON f.recipe_id = r.id
-      WHERE f.tg_id = ? AND date(f.timestamp) >= date('now','localtime','-7 days')`,
-    [tgId], (err, rows) => {
+      WHERE f.tg_id = ? AND date(f.timestamp, ?) >= date('now', ?, '-7 days')`,
+    [tgId, tzMod, tzMod], (err, rows) => {
       if (err) return res.status(500).json({ error: err.message });
       const SMALL = /(ст\.?\s*л|столов|ч\.?\s*л|чайн|щепот|по вкусу|зубч|пуч|доль|ломт|лист|веточ|горсть)/i;
       const reAmt = /^(.*?)[\s\u2014\u2013-]+(\d+(?:[.,]\d+)?)\s*(г|гр|грамм(?:а|ов)?|мл|кг|л|шт|штук(?:и|а)?|стакан(?:а)?|чашк(?:а|и)|банк(?:а|и)|упаковк(?:а|и)|пакет(?:а)?|кус(?:ок|ка)|порци(?:я|и))\.?$/i;
@@ -1140,12 +1172,14 @@ app.get('/api/shopping-list/:tgId', (req, res) => {
 app.get('/api/weekly-report/:tgId', (req, res) => {
   const tgId = resolveTgId(req);
   if (!tgId) return res.status(401).json({ error: 'Unauthorized' });
+  const weekAgo = userDay(req, -7);
+  const tzMod = userTzMod(req);
   db.all("SELECT date, duration_minutes, total_volume FROM workout_logs WHERE tg_id = ? AND date >= ? ORDER BY date",
-    [tgId, localDate(-7)], (err, workouts) => {
+    [tgId, weekAgo], (err, workouts) => {
       db.all("SELECT date, weight FROM weight_logs WHERE tg_id = ? AND date >= ? ORDER BY date",
-        [tgId, localDate(-7)], (err, weights) => {
+        [tgId, weekAgo], (err, weights) => {
           db.all(`SELECT r.calories FROM food_logs fl JOIN recipes r ON fl.recipe_id = r.id
-              WHERE fl.tg_id = ? AND date(fl.timestamp) >= ?`, [tgId, localDate(-7)], (err, meals) => {
+              WHERE fl.tg_id = ? AND date(fl.timestamp, ?) >= ?`, [tgId, tzMod, weekAgo], (err, meals) => {
             const totalMinutes = (workouts || []).reduce((s, w) => s + (w.duration_minutes || 0), 0);
             const totalVolume = (workouts || []).reduce((s, w) => s + (w.total_volume || 0), 0);
             const avgCals = meals?.length ? Math.round(meals.reduce((s, m) => s + (m.calories || 0), 0) / 7) : 0;
@@ -1275,7 +1309,7 @@ app.post('/api/user/program/start', (req, res) => {
   if (!program_id) return res.status(400).json({ error: 'Missing fields' });
   db.run("UPDATE user_programs SET active = 0 WHERE tg_id = ?", [tgId], () => {
     db.run(`INSERT INTO user_programs (tg_id, program_id, start_date, current_week, current_day, active)
-        VALUES (?, ?, ?, 1, 1, 1)`, [tgId, program_id, localDate()], (err) => {
+        VALUES (?, ?, ?, 1, 1, 1)`, [tgId, program_id, userDay(req)], (err) => {
       if (err) return res.status(500).json({ error: err.message });
       res.json({ status: 'ok' });
     });
@@ -1404,7 +1438,7 @@ app.post('/api/fit/start', (req, res) => {
       if (!d) return res.status(404).json({ error: 'Program has no days' });
       db.run("UPDATE user_programs_v2 SET active = 0 WHERE tg_id = ?", [tgId], () => {
         db.run(`INSERT INTO user_programs_v2 (tg_id, program_id, current_day_id, start_date, active)
-              VALUES (?, ?, ?, ?, 1)`, [tgId, pid, d.id, localDate()], (err3) => {
+              VALUES (?, ?, ?, ?, 1)`, [tgId, pid, d.id, userDay(req)], (err3) => {
           if (err3) return res.status(500).json({ error: err3.message });
           touchSeen(tgId);
           res.json({ status: 'ok' });
@@ -1515,7 +1549,7 @@ app.post('/api/workout/log', (req, res) => {
   touchSeen(tgId);
   db.run(`INSERT INTO workout_logs (tg_id, program_id, program_day_id, date, duration_minutes, total_volume, notes)
       VALUES (?, ?, ?, ?, ?, ?, ?)`,
-    [tgId, program_id || null, program_day_id || null, localDate(),
+    [tgId, program_id || null, program_day_id || null, userDay(req),
      Math.min(Number(duration_minutes) || 0, 600), _totalVolume, String(notes || '').slice(0, 300)],
     function (err) {
       if (err) return res.status(500).json({ error: err.message });
@@ -1566,7 +1600,7 @@ app.get('/api/workout/log/:id', (req, res) => {
 app.post('/api/water/undo', (req, res) => {
   const tgId = resolveTgId(req);
   if (!tgId) return res.status(401).json({ error: 'Unauthorized' });
-  const today = localDate();
+  const today = userDay(req);
   const STEP = 250; // один стакан
   // v24: вода хранится ОДНОЙ строкой на день (UNIQUE(tg_id,date), amount_ml копится через UPDATE +250).
   // Прежний DELETE сносил строку целиком — «−» убирал сразу всю воду за день. Теперь снимаем ровно один стакан, ниже нуля не идём.
@@ -1607,7 +1641,7 @@ app.post('/api/water', (req, res) => {
   const { amount } = req.body;
   if (!amount || !(amount > 0) || amount > 5000) return res.status(400).json({ error: 'Invalid amount' });
   touchSeen(tgId);
-  const today = localDate();
+  const today = userDay(req);
   const respondWithTotal = () => {
     db.get("SELECT amount_ml FROM water_logs WHERE tg_id = ? AND date = ?", [tgId, today], (e, r) => {
       bumpAchievements(tgId);
@@ -1628,7 +1662,7 @@ app.post('/api/water', (req, res) => {
 app.get('/api/water/:tgId', (req, res) => {
   const tgId = resolveTgId(req);
   if (!tgId) return res.status(401).json({ error: 'Unauthorized' });
-  db.get("SELECT amount_ml FROM water_logs WHERE tg_id = ? AND date = ?", [tgId, localDate()], (err, row) => {
+  db.get("SELECT amount_ml FROM water_logs WHERE tg_id = ? AND date = ?", [tgId, userDay(req)], (err, row) => {
     if (err) return res.status(500).json({ error: err.message });
     res.json({ amount: row ? row.amount_ml : 0 });
   });
@@ -1644,7 +1678,7 @@ app.post('/api/weight', (req, res) => {
      история прошлых дней сохраняется; INSERT OR REPLACE теперь работает корректно */
   db.run("INSERT INTO weight_logs (tg_id, date, weight) VALUES (?, ?, ?) " +
     "ON CONFLICT(tg_id, date) DO UPDATE SET weight = excluded.weight",
-    [tgId, localDate(), weight], (err) => {
+    [tgId, userDay(req), weight], (err) => {
       if (err) return res.status(500).json({ error: err.message });
       db.get("SELECT gender, height, age, activity_level, goal FROM users WHERE tg_id = ?", [tgId], (e2, u) => {
         bumpAchievements(tgId);

@@ -61,6 +61,36 @@ db.serialize(() => {
     id INTEGER PRIMARY KEY AUTOINCREMENT, tg_id TEXT, recipe_id INTEGER,
     timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
   )`);
+  /* v32: все моменты времени в базе — UTC, а «день» записи считается по поясу
+     пользователя при чтении (см. helpers в server.js).
+     До этой версии server.js писал food_logs.timestamp как
+     datetime('now','localtime'), то есть по поясу СЕРВЕРА (по умолчанию
+     Europe/Moscow = UTC+3, без перехода на летнее время).
+     Разово сдвигаем старые строки на -180 минут; метка в meta не даёт выполнить
+     пересчёт дважды (иначе после перезапуска время уехало бы ещё раз). */
+  db.get("SELECT value FROM meta WHERE key = 'tz:food_logs_utc'", [], (eTz, rowTz) => {
+    if (eTz || rowTz) return;
+    db.run("UPDATE food_logs SET timestamp = datetime(timestamp, '-180 minutes')", (eMig) => {
+      if (eMig) return console.error('tz migration:', eMig.message);
+      db.run("INSERT OR REPLACE INTO meta (key, value) VALUES ('tz:food_logs_utc', ?)",
+        [new Date().toISOString()], (eMeta) => {
+          if (eMeta) return console.error('tz migration meta:', eMeta.message);
+          console.log('Миграция времени: food_logs.timestamp переведён в UTC');
+        });
+    });
+  });
+  /* v32: пояс, который пользователь не выбрал, делаем явным.
+     NULL и раньше означал пояс сервера — но явное значение видно в выгрузке
+     данных, в админке и не выглядит как «поле забыли заполнить». */
+  db.get("SELECT value FROM meta WHERE key = 'tz:backfill'", [], (eB, rowB) => {
+    if (eB || rowB) return;
+    db.run("UPDATE users SET timezone = ? WHERE timezone IS NULL",
+      [process.env.TZ || 'Europe/Moscow'], (eB2) => {
+        if (eB2) return console.error('tz backfill:', eB2.message);
+        db.run("INSERT OR REPLACE INTO meta (key, value) VALUES ('tz:backfill', ?)",
+          [new Date().toISOString()], (eB3) => { if (eB3) console.error('tz backfill meta:', eB3.message); });
+      });
+  });
   // photo_query объявлен прямо в CREATE TABLE: раньше колонка добавлялась только
   // запоздалым ALTER, и на ЧИСТОЙ базе сидирование каталога падало
   // (SQLITE_ERROR: table recipes has no column named photo_query).
