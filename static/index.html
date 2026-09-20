@@ -2819,11 +2819,17 @@ function nextPushAt(){
   try{
     const tz = (currentUser && currentUser.timezone) || 'Europe/Moscow';
     const now = new Date();
+    /* Слот выбираем по часам в поясе ПОЛЬЗОВАТЕЛЯ, а будильник ставим в локальном
+       времени УСТРОЙСТВА — так же, как reminderPayload() делает для APK.
+       Раньше час решения считался в поясе пользователя, а setHours() ставил время
+       в поясе устройства: при выборе пояса, отличного от системного, напоминание
+       уезжало на разницу этих поясов (до 9 часов). */
     const h = parseInt(new Intl.DateTimeFormat('en-GB', { hour:'2-digit', hour12:false, timeZone:tz }).format(now), 10);
+    const slot = (h >= 20) ? 11 : (h < 11 ? 11 : 20); // после 20:00 утреннее — уже на завтра
     const mk = function(hh){ const d = new Date(now); d.setHours(hh, 0, 0, 0); return d; };
-    if(h < 11) return mk(11);
-    if(h < 20) return mk(20);
-    const d = mk(11); d.setDate(d.getDate() + 1); return d;
+    const at = mk(localHourInDevice(tz, slot));
+    if(at.getTime() <= now.getTime()) at.setDate(at.getDate() + 1);
+    return at;
   }catch(e){ return new Date(Date.now() + 3600000); }
 }
 /* Запасной вариант для браузера/PWA: пока вкладка открыта, показываем системное уведомление.
@@ -2836,7 +2842,10 @@ function scheduleLocalPush(){
   const at = nextPushAt();
   window._pushTimer = setTimeout(function(){
     try{
-      const key = 'gf_push_d' + new Date().toISOString().slice(0, 10);
+      // ключ дедупликации — по ДАТЕ В ПОЯСЕ ПОЛЬЗОВАТЕЛЯ, а не по UTC:
+      // toISOString() давал вчерашний день для Москвы между 00:00 и 03:00
+      const pushTz = (currentUser && currentUser.timezone) || 'Europe/Moscow';
+      const key = 'gf_push_d' + new Intl.DateTimeFormat('en-CA', { timeZone: pushTz, year:'numeric', month:'2-digit', day:'2-digit' }).format(new Date());
       const n = parseInt(localStorage.getItem(key) || '0', 10);
       if(n < 2){
         localStorage.setItem(key, String(n + 1));

@@ -156,7 +156,8 @@ db.serialize(() => {
   });
   /* v29.1: одна запись веса на аккаунт за день (день = ключ графика; иначе дубли ломают оси) */
   db.run("DELETE FROM weight_logs WHERE id NOT IN (SELECT MIN(id) FROM weight_logs GROUP BY tg_id, date)");
-  db.run("CREATE UNIQUE INDEX IF NOT EXISTS idx_weight_day ON weight_logs(tg_id, date)");
+  /* v32: уникальность (tg_id,date) обеспечивает uq_weight_tg_date ниже — второй
+     одинаковый UNIQUE-индекс (idx_weight_day) только дублировал его и замедлял запись. */
   db.run(`CREATE TABLE IF NOT EXISTS achievements (
     id INTEGER PRIMARY KEY, title TEXT, description TEXT, icon TEXT,
     condition_type TEXT, condition_value INTEGER
@@ -175,10 +176,9 @@ db.serialize(() => {
   )`);
   db.run(`CREATE INDEX IF NOT EXISTS idx_support_tg ON support_messages(tg_id)`);
 
-  db.run(`CREATE INDEX IF NOT EXISTS idx_food_logs_tg ON food_logs(tg_id)`);
-  db.run(`CREATE INDEX IF NOT EXISTS idx_workout_logs_tg ON workout_logs(tg_id)`);
-  db.run(`CREATE INDEX IF NOT EXISTS idx_water_logs_tg ON water_logs(tg_id)`);
-  db.run(`CREATE INDEX IF NOT EXISTS idx_weight_logs_tg ON weight_logs(tg_id)`);
+  /* v32: одиночные индексы по tg_id убраны — SQLite берёт их из составных
+     (правый/левый префикс): (tg_id,date) и (tg_id,timestamp) покрывают WHERE tg_id = ?.
+     EXPLAIN QUERY PLAN подтверждал, что одиночные никогда не выбирались. */
   db.run(`CREATE TABLE IF NOT EXISTS yoga_flows (
     id INTEGER PRIMARY KEY, title TEXT, focus TEXT, level TEXT,
     minutes INTEGER, description TEXT
@@ -219,8 +219,8 @@ db.serialize(() => {
   db.run(`CREATE INDEX IF NOT EXISTS idx_user_programs_tg ON user_programs(tg_id)`);
   db.run(`CREATE INDEX IF NOT EXISTS idx_workout_sets_log ON workout_sets(log_id)`);
   db.run(`CREATE INDEX IF NOT EXISTS idx_workout_logs_tg_date ON workout_logs(tg_id, date)`);
-  db.run(`CREATE INDEX IF NOT EXISTS idx_water_logs_tg_date ON water_logs(tg_id, date)`);
-  db.run(`CREATE INDEX IF NOT EXISTS idx_weight_logs_tg_date ON weight_logs(tg_id, date)`);
+  /* v32: у water_logs и weight_logs недублирующие индексы по (tg_id,date) не нужны —
+     уникальные uq_water_tg_date / uq_weight_tg_date уже индексируют те же колонки. */
   db.run(`CREATE INDEX IF NOT EXISTS idx_food_logs_tg_ts ON food_logs(tg_id, timestamp)`);
 
   // дедупликация + уникальность на день (защита от гонок параллельных записей)
