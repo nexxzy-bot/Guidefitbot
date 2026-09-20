@@ -1,8 +1,10 @@
 # GuideFit
 
-Приложение для питания и тренировок: нормы калорий/БЖУ/воды, рецепты под цель,
-дневник питания, вода, вес, программы тренировок с логом подходов, практики йоги,
-достижения и напоминания.
+Приложение для питания и тренировок: нормы калорий/БЖУ/воды, подбор блюд под цель,
+дневник питания и список покупок, вода, вес, программы тренировок с логом подходов,
+практики йоги, достижения и напоминания.
+
+Текущая версия — **2.7.0** (берётся из `package.json`, показывается в «О приложении» и `/api/health`).
 
 Распространяется **только как Android-приложение (RuStore)** — Telegram из продукта
 удалён (v32). Вход: **анонимная регистрация** на устройстве (без номера телефона) или
@@ -11,32 +13,68 @@
 Напоминания — **локальные**: системные уведомления Android (AlarmManager) по выбранному
 часовому поясу. Сервер их не рассылает, данные наружу не уходят.
 
+## Возможности
+
+- **Питание:** подбор блюда под норму калорий профиля (диапазон считается по приёму пищи,
+  числу приёмов и цели), дневник за день, «Список покупок за неделю», отчёт за неделю.
+- **Вода и вес:** вода стаканами по 250 мл (кнопка «−» снимает ровно один стакан,
+  норма 30 мл/кг); вес — одно взвешивание в день с пересчётом нормы калорий.
+- **Тренировки:** 30 новых программ (жиросжигание/набор/кардио, дом и улица) с GIF-анимациями
+  упражнений,  29 практик йоги (5 уровней) и легаси-программы для отката.
+- **Достижения:** 6 наград; разблокировка сразу после события (тренировка, вода, вес, дневник).
+- **Настройки:** тема (светлая/тёмная/системная), часовой пояс, уведомления, поддержка,
+  выгрузка и удаление данных.
+- **Поддержка:** встроенный чат (вопрос пользователя → ответ виден в админ-панели).
+
 ## Стек
 
-Node.js >= 18, Express 4, SQLite (`sqlite3`), Android SDK (без Gradle).
+Node.js >= 18, Express 4, SQLite (`sqlite3`), `sharp` (локальный кеш фото),
+`@google/generative-ai` (генератор блюд), Android SDK (без Gradle).
 Фронтенд — **один файл** `static/index.html` без фреймворков и сборки
 (конвенция проекта: вся вёрстка, стили и логика в одном файле).
 
-## Файлы
+## Структура проекта
 
-| Файл | Назначение |
+| Путь | Назначение |
 |---|---|
-| `server.js` | API, расчёты норм, достижения, сессии, админка, CSP |
-| `db.js` | схема SQLite, индексы, каталоги из JSON (пересев только при изменении файла) |
+| `server.js` | API, расчёты норм, достижения, сессии, поддержка, админка, CSP |
+| `db.js` | схема SQLite, индексы, миграции, каталоги из JSON (пересев только при изменении файла) |
 | `android/` | APK-обёртка: WebView + нативные экран/сплэш и локальные напоминания |
 | `static/index.html` | весь фронтенд |
 | `static/fonts.css`, `static/fonts/` | локальные шрифты (без Google Fonts) |
 | `static/sw.js`, `static/manifest.webmanifest` | PWA: офлайн-режим, установка |
+| `static/vkid-sdk.js` | самохостинг VK ID SDK (без внешнего CDN) |
 | `static/privacy.html`, `static/terms.html` | политика обработки ПДн и пользовательское соглашение |
 | `static/admin.html` | админка (`ADMIN_TOKEN`) |
+| `static/images/{cache,dishes,exercises}/` | локальный кеш фото (в git не попадает) |
+| `exercises.json` | каталог упражнений (38 позиций, только дом/улица) |
+| `programs.json`, `yoga.json` | каталоги легаси-программ и практик йоги |
+| `recipes.json` | легаси-зеркало блюд; сидер `db.js` отключён, файл в прод-потоке не читается |
+| `data/unitools-recipes-v1.json` | датасет Unitools Recipes (CC BY-SA 4.0); легаси-источник, нужен тестам |
 | `scripts/backup-db.js` | резервная копия базы (`VACUUM INTO`) с ротацией |
 | `scripts/preheat-images.js` | прогрев фото блюд (Pexels → WebP) |
-| `scripts/generate-dishes.js` | генерация блюд через Gemini |
+| `scripts/gen-pp-dishes.js` | **текущий** источник каталога: генерация блюд через Gemini |
+| `scripts/import-unitools.js` | легаси-импорт Unitools; прод-каталог им не наполняется, скрипт нужен тестам |
+| `scripts/match-exercises.js` | сопоставление упражнений с датасетом и медиа (Gym visual) |
+| `scripts/seed-fit-v2.js` | сидер 30 программ тренировок и 29 практик йоги |
+| `scripts/gen-icons.js` | генерация иконок Android и `ic-store-512.png` (RuStore) |
+| `scripts/check-frontend.js`, `scripts/check-handlers.js` | проверки `index.html` (синтаксис script-блоков, существование обработчиков) |
 | `scripts/send-build.js` | доставка собранного APK владельцу в Telegram (`npm run send-build`) |
 | `tests/api.test.js` | smoke-тесты API на отдельной временной базе |
+| `tests/data-integrity.test.js` | целостность каталогов (уникальные id, существующие ссылки) |
+| `tests/gen-pp.test.js` | генератор блюд: валидация, стейт, продолжение без сброса |
 | `deploy/nginx-guidefit-app.conf` | эталон конфига nginx (проброс реального IP и т.д.) |
+| `.agents/skills/` | локальные скиллы аудита для ИИ-агентов; в git не коммитятся (на рантайм не влияют) |
 
-## Запуск
+В корне лежали мёртвые артефакты трёх прошлых подходов к каталогу: `sync_recipes.js`
+и `sync_recipes2.js` (FatSecret → Gemini → Pexels в `recipes.json`),
+`generate_recipes.py` (офлайн-генератор на `random.seed(42)`), `gemini.js`
+(генерация в `static/ai-img/`, папка больше не создаётся) и `gf_patch.py`
+(одноразовые патчи `server.js`/фронта). Ни один из них не был связан с текущим
+кодом — ссылок не осталось ни в одном файле, всё удалено в v32
+(история сохранена в git). Каталог ведёт `scripts/gen-pp-dishes.js`.
+
+## Быстрый старт
 
 ```bash
 npm install
@@ -54,12 +92,82 @@ pm2 start server.js --name guidefit-app
 pm2 save
 ```
 
+## Каталоги данных
+
+### Блюда
+
+Каталог ведётся **нормализованными таблицами** `dishes` / `ingredients` /
+`dish_ingredients` / `dish_steps` (появились в v2.4.0), а таблица `recipes`
+остаётся **рабочим зеркалом**: именно на неё ссылаются `food_logs`, дашборд,
+статистика и подбор блюда. Полного удаления `recipes` не было — это совместимая
+миграция «рядом».
+
+- Текущий источник каталога — генератор `scripts/gen-pp-dishes.js` (Gemini).
+  У всех блюд `attribution = "Gemini API (автогенерация GuideFit)"`; блюд из Unitools
+  в проде **0**.
+- `scripts/import-unitools.js` и `data/unitools-recipes-v1.json` — легаси-артефакты:
+  прод-каталог ими не наполняется, скрипт используется только тестами
+  (`tests/api.test.js`, `tests/gen-pp.test.js`) для наполнения тестовой базы.
+- Легаси-сидер `recipes.json` отключён (no-op); файл остаётся в репозитории.
+- КБЖУ и фото: `preheat-images.js` качает фото (Pexels → WebP) и пишет путь в `recipes.image_url`.
+  После полной перегенерации каталога прогрев нужно запускать заново — иначе фото
+  останутся от прежних id (в `static/images/dishes/` могут лежать неактуальные файлы).
+  Прогрев идемпотентен: уже скачанные файлы пропускаются без обращения к Pexels,
+  поэтому прерванный запуск можно просто повторить.
+- **Два поля под фото — это осознанное решение, а не рассинхрон.** Пайплайн прогрева
+  пишет только `recipes.image_url`; `dishes.photo_url` остаётся пустым у всех 1841 блюда.
+  Причина: сервер отдаёт фото **исключительно** из зеркала `recipes`
+  (`GET /api/recipe-image/:id`), а нормализованная таблица `dishes` сейчас не читается
+  ни одним эндпоинтом — заполнять её поле было бы «писать в никуда». Поле оставлено
+  заготовкой на будущий переход API на `dishes`; если это произойдёт, в
+  `preheat-images.js` достаточно добавить второй `UPDATE dishes SET photo_url = ?`.
+
+### Тренировки
+
+- Новая система: `fit_programs` / `fit_days` / `fit_exercises` (30 программ) и
+  `yoga_programs` (29 практик); прогресс — в `user_programs_v2` (v31+).
+- GIF-анимации упражнений лежат в `static/images/exercises/`, пути — в `meta`
+  (`exercise:gif:<id>`, 66 записей, атрибуция © Gym visual). Сопоставление —
+  `scripts/match-exercises.js`.
+- Легаси-каталоги (`programs`, `program_days`, `program_exercises`, `yoga_flows`,
+  `yoga_poses`) сохранены для отката; сброс и наполнение — `scripts/seed-fit-v2.js`.
+- Остальные каталоги (`exercises`, `programs`, `yoga`) пересеиваются из JSON
+  **только при изменении файла** (sha256 в `meta`), принудительно — `SEED_FORCE=1`.
+
+### Объём каталога в рабочей базе
+
+1841 блюдо, 294 ингредиента, 9956 связей блюдо–ингредиент, 8484 шага;
+38 упражнений, 30 программ тренировок, 719 тренировочных дней, 2074 упражнения
+в программах, 29 практик йоги, 66 GIF-ключей.
+
+План генератора — 2000 блюд (5 профилей × 4 приёма × 100), сейчас записано 1841,
+остаток добирается `npm run generate` по стейту `data/gen-state.json`.
+
+### Структура таблиц (31)
+
+| Группа | Таблицы | Назначение |
+|---|---|---|
+| Аккаунт | `users`, `sessions`, `consent_log` | профиль, сессии (`x-session-token`, 180 дней), журнал согласий 152-ФЗ |
+| Дневник | `food_logs`, `water_logs`, `weight_logs`, `workout_logs`, `workout_sets` | записи пользователя; вес — одна запись на день (уникальный индекс) |
+| Каталог блюд (источник) | `dishes`, `ingredients`, `dish_ingredients`, `dish_steps` | нормализованный каталог |
+| Зеркало блюд | `recipes`, `image_store` | то, что читает API/дневник/статистика; `image_store` пуста и не используется |
+| Тренировки | `fit_programs`, `fit_days`, `fit_exercises`, `user_programs_v2` | новая система (30 программ, 719 дней) |
+| Легаси тренировок | `programs`, `program_days`, `program_exercises`, `user_programs`, `exercises` | старые программы для отката; `exercises` живёт (каталог 38) |
+| Йога | `yoga_programs`, `yoga_flows`, `yoga_flow_poses`, `yoga_poses` | 29 практик + легаси-потоки для отката |
+| Прочее | `achievements`, `user_achievements`, `support_messages`, `meta` | достижения, чат поддержки, служебные ключи (хэши каталогов, GIF-атрибуция) |
+
+Удалены в v32 как техдолг Telegram-эпохи: `link_codes` (1 запись) и
+`notification_log` (90 записей). Код их не создавал и не читал — ссылок не было
+ни в одном файле, включая тесты.
+
 ## Проверки и обслуживание
 
 ```bash
-npm run check    # синтаксис всех серверных файлов и service worker
+npm run check    # синтаксис серверных файлов, service worker и frontend-проверки
 npm test         # smoke-тесты API + целостность каталогов (отдельная база)
 npm run backup   # резервная копия базы (VACUUM INTO, ротация 14 дней)
+npm run preheat  # прогрев фото блюд (Pexels → WebP)
+npm run generate # генерация блюд через Gemini (scripts/gen-pp-dishes.js)
 ```
 
 Крон для ежедневного бэкапа:
@@ -76,27 +184,61 @@ npm run backup   # резервная копия базы (VACUUM INTO, рота
 Ключевые: `MINIAPP_PORT`, `MINIAPP_URL`, `ADMIN_TOKEN`, `VK_CLIENT_ID`,
 `VK_CLIENT_SECRET`, `TZ` (по умолчанию `Europe/Moscow`).
 
-Только для доставки сборок (приложение Telegram не использует): `TELEGRAM_TOKEN`,
-`BUILD_CHAT_ID` (или `ADMIN_ID`).
+Прочее: `MIN_VERSION` / `FORCE_UPDATE` (принудительное обновление APK),
+`DB_PATH`, `BACKUP_DIR`, `BACKUP_KEEP_DAYS`, `SEED_FORCE`.
+
+Только для генерации контента и доставки сборок (приложение их не использует):
+`PEXELS_API_KEY`, `GEMINI_API_KEY`, `TELEGRAM_TOKEN`, `BUILD_CHAT_ID` (или `ADMIN_ID`).
 
 ## API (основное)
+
+**Служебное**
+
+- `GET /api/health` — статус + проверка базы + версия
+- `GET /api/app-version` — latest/min/force, ссылка на RuStore, редакция документов
+
+**Авторизация и профиль**
 
 - `POST /api/auth/anonymous` — анонимная регистрация (rate-limit 10 аккаунтов/час на IP)
 - `POST /api/auth/vk/exchange` — обмен кода VK ID на сессию (имя из VK не подставляется)
 - `GET /api/auth/me` — кто я по текущей сессии
-- `POST /api/user/init` — завершение визарда (возраст 12–100)
-- `GET /api/user/export` — выгрузка всех своих данных (право на доступ, 152-ФЗ)
-- `POST /api/user/delete` — удаление аккаунта вместе с сессиями
-- `GET /api/health` — статус + проверка базы + версия
+- `POST /api/user/init` — завершение визарда (возраст 12–100, три согласия)
+- `GET /api/user/:id`, `POST /api/user/update` — профиль
+- `GET /api/user/consent`, `POST /api/user/consent` — редакция документов и повторное согласие
+- `POST /api/user/export/token`, `GET /api/user/export` — выгрузка данных (152-ФЗ)
+- `POST /api/user/delete` — удаление аккаунта вместе с сессиями и журналом согласий
+
+**Питание, вода, вес, тренировки**
+
+- `POST /api/meal` — подбор блюда (гостю тоже доступен выбор, запись требует сессии)
+- `POST /api/log-meal`, `DELETE /api/food-log/:id`, `GET /api/food-log/today/:tgId`
+- `GET /api/shopping-list/:tgId`, `GET /api/weekly-report/:tgId`
+- `POST /api/water`, `POST /api/water/undo`, `GET /api/water/:tgId`
+- `POST /api/weight`, `GET /api/weight/:tgId`
+- `GET /api/exercises`, `GET /api/exercise/:id`, `GET /api/programs`, `GET /api/program/:id`
+- `POST /api/workout/log`, `GET /api/workout/logs/:tgId`, `GET /api/workout/log/:id`
+- `GET /api/fit/programs`, `GET /api/fit/program/:id`, `POST /api/fit/start`,
+  `GET /api/fit/active`, `POST /api/fit/progress` — новая система программ
+- `GET /api/yoga2/programs`, `GET /api/yoga2/program/:id` — практики йоги
+- `GET /api/stats/:tgId`, `POST /api/dashboard`, `GET /api/achievements/:tgId`
+
+**Поддержка и админка** (последняя — заголовок `x-admin-token`)
+
+- `POST /api/support/message`, `GET /api/support/messages`
+- `GET /api/admin/stats`, `GET /api/admin/users`, `GET /api/admin/user/:id`
+- `GET /api/admin/support/threads`, `GET /api/admin/support/thread/:id`,
+  `POST /api/admin/support/reply`
 
 ## Безопасность и приватность
 
 - CSP, HSTS, `X-Content-Type-Options`, `Referrer-Policy`, `Permissions-Policy`.
-  Страницу нельзя встроить в чужой фрейм (`frame-ancestors 'self'`).
+  Страницу нельзя встроить в чужой фрейм (`frame-ancestors 'self'`), админка — `X-Frame-Options: DENY`.
 - `app.set('trust proxy', 1)` + заголовки `X-Real-IP`/`X-Forwarded-For` в nginx:
   без этого все лимиты считались бы по одному IP прокси.
-- Шрифты хостятся локально: IP пользователя не уходит в Google.
+- Шрифты и VK ID SDK хостятся локально: IP пользователя не уходит в Google и внешний CDN.
 - Сторонняя аналитика VK ID SDK (Top.Mail.ru) заблокирована политикой CSP.
+- Идентификатор аккаунта берётся **только из проверенной сессии** — `tg_id` из тела
+  или параметров запроса игнорируется, чужой аккаунт недоступен.
 - Сессии живут 180 дней, удаляются вместе с аккаунтом и чистятся фоновым заданием.
 - Напоминания формируются на устройстве (AlarmManager) — сервер их не рассылает
   и данные для этого никуда не передаёт.
@@ -112,7 +254,8 @@ npm run backup   # резервная копия базы (VACUUM INTO, рота
   152-ФЗ), пользовательское соглашение и отдельное согласие на данные о
   здоровье (ст. 10 152-ФЗ). Факт согласия, время и версии документов
   фиксируются в журнале согласий (таблица `consent_log`), который удаляется
-  вместе с аккаунтом.
+  вместе с аккаунтом. При смене редакции документов приложение просит подтвердить
+  согласие заново (`/api/user/consent`).
 - Возрастная категория 12+ указана в интерфейсе и документах (436-ФЗ);
   до 18 лет — с согласия законного представителя.
 - Дисклеймер: приложение не медицинское изделие и не заменяет врача.
@@ -122,6 +265,18 @@ npm run backup   # резервная копия базы (VACUUM INTO, рота
 - Оператор: ИП Солдатенко Ярослав Павлович (ИНН 245905941928,
   ОГРНИП 325246800130330, г. Красноярск).
 
+## Android и RuStore
+
+Сборка и чек-лист публикации — в `android/README.md`. Кратко:
+
+- WebView-обёртка без Gradle (`aapt`/`javac`/`d8`/`apksigner`), package `ru.guidefit.app`.
+- Локальные напоминания через `ReminderScheduler` + `AlarmManager`, восстановление
+  расписания после перезагрузки (`BootReceiver`).
+- Проверка обновлений раз в 6 часов через `GET /api/app-version`; принудительное
+  обновление — `MIN_VERSION` / `FORCE_UPDATE=1` в `.env` сервера.
+- `versionName` синхронизирован с `package.json`, `versionCode` считается из версии
+  (major*100 + minor*10 + patch), при каждой публикации его нужно повышать.
+
 ## Деплой
 
 ```bash
@@ -130,5 +285,16 @@ pm2 restart guidefit-app --update-env
 curl -s localhost:3000/api/health
 ```
 
+> **Про доступ к репозиторию.** Токен GitHub не должен быть вшит в URL remote:
+> строка вида `https://<token>@github.com/...` в `.git/config` хранит его открытым
+> текстом, а `git remote -v` печатает его в любой лог и скриншот. Используйте
+> credential helper (`git config --global credential.helper store`) или SSH;
+> при подозрении на утечку токен нужно отозвать в настройках GitHub.
+
 При изменении `static/index.html` версия кэша в `static/sw.js` увеличивается —
 иначе PWA отдаст старую версию из кэша.
+
+## Лицензия
+
+MIT (см. `LICENSE`). Датасет блюд Unitools Recipes — CC BY-SA 4.0;
+медиа упражнений — © Gym visual; фото блюд — Pexels.

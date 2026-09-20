@@ -31,6 +31,21 @@ const fileArg = process.argv.indexOf('--file');
 const SRC = fileArg > -1 ? process.argv[fileArg + 1] : path.join(__dirname, '..', 'data', 'unitools-recipes-v1.json');
 const DRY = process.argv.includes('--dry');
 
+/* Защита от случайного запуска на боевой базе.
+   Скрипт легаси: он делает DELETE FROM recipes и пересобирает зеркало из датасета
+   Unitools, то есть полностью подменяет прод-каталог (сейчас им владеет генератор
+   scripts/gen-pp-dishes.js). Один запуск по невнимательности откатил бы каталог назад.
+   Тесты не затрагиваются: они всегда передают свой временный DB_PATH.
+   Осознанный запуск на бою: ALLOW_PROD_IMPORT=1 node scripts/import-unitools.js */
+const PROD_DB = path.resolve(__dirname, '..', 'guidefit.db');
+const TARGET_DB = path.resolve(process.env.DB_PATH || PROD_DB);
+if (!DRY && TARGET_DB === PROD_DB && process.env.ALLOW_PROD_IMPORT !== '1') {
+  console.error('Отказ: цель — боевая база (' + TARGET_DB + ').');
+  console.error('Этот скрипт легаси: он очистит recipes и пересоберёт каталог из Unitools.');
+  console.error('Тестам нужен отдельный DB_PATH; для осознанного запуска — ALLOW_PROD_IMPORT=1.');
+  process.exit(1);
+}
+
 /* --- Локальный словарь для дозаполнения русского перевода (несколько плейсхолдеров в датасете) --- */
 const LEXICON = {
   'salt': 'Соль', 'water': 'Вода', 'black pepper': 'Чёрный перец',
