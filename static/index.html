@@ -521,6 +521,32 @@ function showToast(msg, type){
 function showError(m){ showToast(m,'error'); haptic('err'); }
 function showSuccess(m){ showToast(m,'success'); haptic('ok'); }
 
+/* Сбой на старте (нет сети или сервер недоступен). Раньше initApp() отклонялся
+   без обработчика, и человек оставался на пустом экране с неотрисованным онбордингом. */
+function showBootError(e){
+  const offline = !!(e && e.offline);
+  let ov = document.getElementById('bootError');
+  if(!ov){
+    ov = document.createElement('div');
+    ov.id = 'bootError';
+    ov.className = 'consent-gate';
+    document.body.appendChild(ov);
+  }
+  ov.innerHTML = '<div class="consent-gate-card" style="padding-top:72px;text-align:center">' +
+    '<div class="badge badge-accent mb2">GuideFit</div>' +
+    '<h2 style="font-size:19px;margin-bottom:8px">' + (offline ? 'Нет подключения' : 'Сервер недоступен') + '</h2>' +
+    '<p class="muted" style="font-size:13.5px;line-height:1.55;margin-bottom:18px">' +
+      (offline ? 'Проверьте интернет и попробуйте снова. Записи в дневнике не теряются — они уже сохранены.'
+               : 'Не удалось загрузить данные. Попробуйте ещё раз через минуту.') + '</p>' +
+    '<button class="btn btn-primary btn-block pressable" onclick="retryBoot()">Повторить</button></div>';
+  ov.style.display = 'block';
+}
+function retryBoot(){
+  const ov = document.getElementById('bootError');
+  if(ov) ov.style.display = 'none';
+  initApp();
+}
+
 /* v28: модальное подтверждение (Promise<boolean>) — замена window.confirm,
    который в WebView на iOS не показывается и вечно отвечает false:
    это «замораживало» экран тренировки и блокировало удаление данных. */
@@ -678,7 +704,16 @@ function closeConsentGate(){
 async function api(endpoint, opts = {}){
   const headers = { 'Content-Type':'application/json' };
   try{ const s = localStorage.getItem('gf_session'); if(s) headers['X-Session-Token'] = s; }catch(e){}
-  const res = await fetch(API + endpoint, { ...opts, headers, body: opts.body ? JSON.stringify(opts.body) : undefined });
+  let res;
+  try{
+    res = await fetch(API + endpoint, { ...opts, headers, body: opts.body ? JSON.stringify(opts.body) : undefined });
+  }catch(netErr){
+    /* Нет сети или сервер недоступен: fetch отклоняется TypeError «Failed to fetch»,
+       и этот английский текст попадал прямо в русский интерфейс. */
+    const e = new Error('Нет подключения к интернету. Проверьте сеть и повторите.');
+    e.offline = true;
+    throw e;
+  }
   if(!res.ok){
     const err = await res.json().catch(()=>({}));
     const e = new Error(err.error || ('Ошибка ' + res.status));
@@ -1000,7 +1035,11 @@ async function initApp(){
   // v24: сохранённая сессия — если профиль заполнен, экран входа вообще не показывается (сразу дашборд)
   // v26: сессии нет — сразу на регистрацию (аккаунт создаётся на этом устройстве)
   if(!hasSession()){ startRegister(); return; }
-  await enterWithSession(null, 'session');
+  try{
+    await enterWithSession(null, 'session');
+  }catch(e){
+    showBootError(e);
+  }
 }
 
 function renderAvatar(name, avatar){
@@ -1948,7 +1987,7 @@ async function saveWeight(){
   }catch(e){ showError(e.message); }
 }
 
-initApp();
+initApp().catch(showBootError);
 </script>
 <style>
 .ex-why{font-size:11.5px;color:var(--text2);margin-top:6px;line-height:1.5}
@@ -2615,7 +2654,12 @@ function toggleAchGroup(g){
    обычным GET с Content-Disposition (a[download] с blob в WebView часто не работает).
    v29: открываем ссылку в системном браузере — там загрузка проходит надёжно.
    Фолбэк — ссылка «Последняя выгрузка» в настройках. */
+/* Внешние ссылки. В APK window.open внутри WebView не открывает ничего
+   (нет onCreateWindow), поэтому адрес уходит в нативный слой → системный браузер.
+   Это же чинит «Скачать копию данных»: файл отдаётся с Content-Disposition,
+   WebView без DownloadListener его не сохраняет, а браузер сохраняет в «Загрузки». */
 function tgOpenLink(url){
+  if(NATIVE && typeof NATIVE.openExternal === 'function'){ try{ NATIVE.openExternal(url); return; }catch(e){} }
   try{ window.open(url, '_blank', 'noopener'); return; }catch(e){}
   try{ window.location.href = url; }catch(e){}
 }
@@ -2652,6 +2696,13 @@ function aboutBlock(){
     '<p class="muted" style="font-size:11.5px;line-height:1.7;margin-bottom:8px">База рецептов: собственная база GuideFit — блюда сгенерированы ИИ под нормы КБЖУ (1500–3500 ккал/сутки), простые продукты, доступные в РФ.</p>' +
     '<p class="muted" style="font-size:11.5px;line-height:1.7">Фотографии: <a href="https://www.pexels.com" onclick="tgOpenLink(\'https://www.pexels.com\');return false" style="color:var(--accent);text-decoration:underline">Pexels</a> — бесплатная лицензия Pexels, без указания авторства (благодарим фотографов!).</p>' +
     '<p class="muted" style="font-size:11.5px;line-height:1.7">GIF-анимации упражнений: © Gym visual — <a href="https://gymvisual.com/" onclick="tgOpenLink(\'https://gymvisual.com/\');return false" style="color:var(--accent);text-decoration:underline">gymvisual.com</a> (через открытый датасет exercises-dataset, 180×180).</p></div>' +
+    /* Требования RuStore: состав разрешений должен быть доступен пользователю
+       внутри приложения, а у приложения с поддержкой должен быть контакт. */
+    '<div style="border-top:1px solid rgba(128,128,128,.18);margin:12px 0;padding-top:10px"><p class="subtle" style="font-size:10px;font-weight:700;margin-bottom:6px">РАЗРЕШЕНИЯ</p>' +
+    '<p class="muted" style="font-size:11.5px;line-height:1.7">Приложение запрашивает три разрешения: <b>уведомления</b> — показать напоминания о питании и воде; <b>автозапуск после перезагрузки</b> — восстановить это расписание; <b>доступ в интернет</b> — синхронизировать ваши записи. Камера, геолокация, контакты, микрофон и файлы не используются.</p></div>' +
+    '<div style="border-top:1px solid rgba(128,128,128,.18);margin:12px 0;padding-top:10px"><p class="subtle" style="font-size:10px;font-weight:700;margin-bottom:6px">ПОДДЕРЖКА</p>' +
+    '<p class="muted" style="font-size:11.5px;line-height:1.7;margin-bottom:8px">Вопросы по работе приложения и обращения по персональным данным: <b>nexxzy@vk.com</b>. Обычно отвечаем в течение дня.</p>' +
+    '<button class="btn btn-ghost btn-block pressable" onclick="setTabGo(\'support\')">Открыть чат поддержки</button></div>' +
     '</div>';
 }
 async function fillAboutVersion(){

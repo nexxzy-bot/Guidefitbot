@@ -24,6 +24,7 @@ import android.widget.FrameLayout;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -58,6 +59,8 @@ public class MainActivity extends Activity {
     // Домены, которые остаются внутри WebView (само приложение и вход по VK ID)
     private static final String[] INTERNAL_HOSTS = {
             "app.xn--80aag3axnld9b.xn--p1ai",
+            // любые поддомены vk/ok: виджет VK ID может редиректить
+            "vk.ru", "vk.com", "ok.ru",
             "id.vk.ru", "oauth.vk.ru", "login.vk.ru", "api.vk.ru",
             "id.vk.com", "oauth.vk.com", "login.vk.com", "api.vk.com",
             "connect.ok.ru", "api.ok.ru"
@@ -138,7 +141,14 @@ public class MainActivity extends Activity {
         webView.setWebViewClient(new WebViewClient() {
             @Override
             public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
-                return !isInternal(request.getUrl().toString());
+                String url = request.getUrl().toString();
+                // Своё приложение и вход VK ID — внутри WebView, всё остальное открываем
+                // в системном браузере. Раньше внешняя ссылка просто не открывалась:
+                // return true означает «навигацию обработал я», но обработки не было,
+                // поэтому ссылки (Pexels, gymvisual) и выгрузка данных молчали.
+                if (isInternal(url)) return false;
+                openInBrowser(url);
+                return true;
             }
 
             @Override
@@ -164,14 +174,46 @@ public class MainActivity extends Activity {
         }
     }
 
+    /**
+     * Доверенный ли адрес для загрузки ВНУТРИ WebView.
+     *
+     * Сравниваем разобранный host, а не подстроку: раньше проверка была
+     * url.contains("://" + host), поэтому https://evil.com/#://app.<наш-домен>
+     * считался «своим» и открывался в WebView — а мост GuideFitNative
+     * (addJavascriptInterface) доступен любой загруженной странице.
+     */
     private boolean isInternal(String url) {
-        if (url == null) return false;
-        for (String host : INTERNAL_HOSTS) {
-            if (url.contains("://" + host) || url.contains(".//" + host)) return true;
+        String host;
+        try {
+            host = new URL(url).getHost();
+        } catch (Exception e) {
+            return false; // относительные/нестандартные схемы (mailto:, intent:) — не наши
         }
-        // любые прочие vk/ok-домены тоже считаем внутренними (виджет VK ID может редиректить)
-        return url.contains("://vk.ru") || url.contains("://vk.com") || url.contains("://ok.ru")
-                || url.contains(".vk.ru/") || url.contains(".vk.com/") || url.contains(".ok.ru/");
+        if (host == null) return false;
+        host = host.toLowerCase();
+        for (String h : INTERNAL_HOSTS) {
+            if (host.equals(h) || host.endsWith("." + h)) return true;
+        }
+        return false;
+    }
+
+    /** Открыть внешний адрес в системном браузере (только http/https). */
+    private void openInBrowser(String url) {
+        if (url == null) return;
+        final String target = url.trim();
+        if (!target.startsWith("https://") && !target.startsWith("http://")) return;
+        try {
+            startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(target)));
+        } catch (Exception e) {
+            // браузера может не быть — не молчим, иначе кнопка выглядит сломанной
+            Toast.makeText(this, "Не удалось открыть ссылку", Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    /** Страницу какого домена сейчас показывает WebView (только UI-поток). */
+    private boolean trustedPage() {
+        String cur = webView == null ? null : webView.getUrl();
+        return cur != null && isInternal(cur);
     }
 
     @Override
@@ -203,7 +245,12 @@ public class MainActivity extends Activity {
 
         /** Расписание из приложения: {"enabled":true,"entries":[{id,hour,minute,title,text}]} */
         @JavascriptInterface
-        public void setReminders(String json) {
+        public void setReminders(final String json) {
+            // вызывают только страницы нашего домена: мост exposed любой странице WebView
+            runOnUiThread(() -> { if (trustedPage()) applyReminders(json); });
+        }
+
+        private void applyReminders(String json) {
             try {
                 JSONArray entries = null;
                 String t = json == null ? "" : json.trim();
@@ -223,7 +270,21 @@ public class MainActivity extends Activity {
 
         @JavascriptInterface
         public void clearReminders() {
-            ReminderScheduler.cancelAll(MainActivity.this);
+            runOnUiThread(() -> { if (trustedPage()) ReminderScheduler.cancelAll(MainActivity.this); });
+        }
+
+        /**
+         * Внешняя ссылка (в т.ч. «Скачать копию данных») → системный браузер.
+         * В WebView скачивание файлов не работает без DownloadListener, а сам файл
+         * приходит с Content-Disposition: attachment — браузер сохраняет его сам,
+         * без каких-либо разрешений на доступ к файлам.
+         */
+        @JavascriptInterface
+        public void openExternal(final String url) {
+            runOnUiThread(() -> {
+                if (!trustedPage()) return;
+                openInBrowser(url);
+            });
         }
 
         @JavascriptInterface

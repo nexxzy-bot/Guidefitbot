@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /* Генерация иконок GuideFit для Android (RuStore):
    — лаунчер-иконки всех плотностей, полностью залитый фон (alpha=255 по всей площади),
-   — ic-store-512.png (512×512) для карточки приложения в консоли RuStore.
+   — ic-store-512.png (512×512, RGB без alpha) для карточки приложения в консоли RuStore.
    Запуск: node scripts/gen-icons.js */
 const fs = require('fs');
 const path = require('path');
@@ -45,7 +45,10 @@ const svg = (size) => `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" h
   }
   // Иконка для карточки RuStore: 512×512, без прозрачности, ≤1MB
   const buf512 = Buffer.from(svg(512));
-  await sharp(buf512, { density: 300 }).resize(512, 512).png({ compressionLevel: 9 }).toFile(path.join(root, 'android', 'ic-store-512.png'));
+  // .flatten() убирает alpha-канал: фон залит целиком, а PNG с неиспользуемой
+  // прозрачностью валидаторы карточки RuStore считают «с прозрачностью».
+  await sharp(buf512, { density: 300 }).resize(512, 512).flatten({ background: '#0E7490' })
+    .png({ compressionLevel: 9 }).toFile(path.join(root, 'android', 'ic-store-512.png'));
   console.log('✓ ic-store-512.png (для консоли RuStore)');
 
   // Сплэш-экран 1080×1920: тот же знак, что у лаунчера, умеренного размера,
