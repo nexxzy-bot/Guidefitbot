@@ -100,11 +100,18 @@ let offset = 0; const LIMIT = 50; let total = 0;
 // 'tg' остался только для старых аккаунтов: Telegram удалён из приложения (v32)
 const PROVIDERS = { tg:'Старый аккаунт', vk:'VK', anon:'Аноним', yandex:'Яндекс', max:'Max' };
 function esc(s){ return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
-/* Все даты пользователей хранятся в локальном времени сервера (МСК): last_seen — через
-   datetime('now','localtime'), created_at — тем же способом при регистрации. Поэтому НЕ
-   дописываем 'Z' (это трактовало МСК как UTC и сдвигало время на +3 ч). Если строка уже
-   содержит явную зону (Z/+hh:mm), Date разберёт её сам. */
-function dt(s){ if(!s) return '—'; const str = String(s).replace(' ', 'T'); const d = new Date(str); return isNaN(d) ? esc(String(s).slice(0,16).replace('T',' ')) : d.toLocaleString('ru-RU',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}); }
+/* v32: все метки времени в базе — UTC (datetime('now'), CURRENT_TIMESTAMP), а не местное
+   время сервера, как было раньше. Поэтому '2026-09-20 02:15:00' — это UTC: строку БЕЗ явной
+   зоны дописываем 'Z', иначе браузер трактует её как локальную и время уезжает на смещение
+   зоны (для МСК — на 3 часа назад). Если зона указана явно (Z или +hh:mm), Date разберёт сам. */
+function dt(s){
+  if(!s) return '—';
+  const raw = String(s).trim();
+  const iso = raw.replace(' ', 'T');
+  const hasZone = /(?:Z|[+-]\d{2}:?\d{2})$/i.test(iso);
+  const d = new Date(hasZone ? iso : iso + 'Z');
+  return isNaN(d) ? esc(raw.slice(0,16).replace('T',' ')) : d.toLocaleString('ru-RU',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'});
+}
 async function call(path){
   const r = await fetch(path, { headers:{ 'X-Admin-Token': TOK } });
   if(r.status === 403) throw new Error('Нет доступа: неверный токен (или ADMIN_TOKEN не задан на сервере)');
@@ -161,7 +168,7 @@ async function detail(id){
       '<div class="kv"><b>Пол / возраст</b>' + esc(u.gender || '—') + ' / ' + esc(u.age || '—') + '</div>' +
       '<div class="kv"><b>Рост / вес</b>' + esc(u.height || '—') + ' / ' + esc(u.current_weight || '—') + ' → ' + esc(u.target_weight || '—') + '</div>' +
       '<div class="kv"><b>Цель</b>' + esc(u.goal || '—') + ' · ' + (u.calorie_norm || '—') + ' ккал</div></div>' +
-      '<div><b>Еда (10)</b><ul class="log">' + (d.meals.map(m => '<li>' + esc(String(m.timestamp).slice(0,16).replace('T',' ')) + ' · рецепт #' + m.recipe_id + '</li>').join('') || '<li class="sub">—</li>') + '</ul></div>' +
+      '<div><b>Еда (10)</b><ul class="log">' + (d.meals.map(m => '<li>' + dt(m.timestamp) + ' · рецепт #' + m.recipe_id + '</li>').join('') || '<li class="sub">—</li>') + '</ul></div>' +
       '<div><b>Тренировки (10)</b><ul class="log">' + (d.workouts.map(w => '<li>' + esc(w.date) + ' · ' + w.duration_minutes + ' мин · ' + Math.round(w.total_volume || 0) + ' кг</li>').join('') || '<li class="sub">—</li>') + '</ul></div>' +
       '<div><b>Вес (10)</b><ul class="log">' + (d.weights.map(w => '<li>' + esc(w.date) + ' · ' + w.weight + ' кг</li>').join('') || '<li class="sub">—</li>') + '</ul></div></div>';
     document.getElementById('detail').style.display = '';
