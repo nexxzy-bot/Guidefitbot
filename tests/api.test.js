@@ -6,7 +6,10 @@
 
    Что покрыто: health, заголовки безопасности, отказ без авторизации,
    анонимная регистрация, визард (валидация возраста), вода и её отмена,
-   дневник питания (проверка каталога), экспорт данных (152-ФЗ),
+   дневник питания (проверка каталога), дашборд и остальные читающие эндпоинты
+   экранов (регресс: падение процесса на /api/dashboard), чужое имя часового пояса,
+   мусорные запросы (ни один не должен гасить процесс — страховка `uncaughtException`
+   остаётся нетронутой: /api/health.errors = 0), экспорт данных (152-ФЗ),
    отсутствие удалённых Telegram-эндпоинтов, тумблер уведомлений, удаление аккаунта
    вместе с сессией и лимит на анонимные аккаунты. */
 const { test, before, after } = require('node:test');
@@ -44,6 +47,23 @@ function dbGet(sql, args = []) {
     const d = new sqlite3.Database(DB, sqlite3.OPEN_READONLY);
     d.get(sql, args, (e, row) => { d.close(); e ? reject(e) : resolve(row); });
   });
+}
+
+// Запись в тестовую базу — чтобы воспроизвести данные, которые уже могли попасть
+// в продакшн-базу до исправления (например, чужое имя часового пояса).
+function dbRun(sql, args = []) {
+  const sqlite3 = require('sqlite3');
+  return new Promise((resolve, reject) => {
+    const d = new sqlite3.Database(DB);
+    d.run(sql, args, (e) => { d.close(); e ? reject(e) : resolve(); });
+  });
+}
+
+// Сколько исключений в колбэках пережил процесс (/api/health.errors).
+// Любое значение > 0 означает, что какой-то запрос дошёл до страховки, — это уже ошибка.
+async function uncaughtErrors() {
+  const h = await api('/api/health');
+  return Number(h.body.errors || 0);
 }
 
 async function waitFor(pred, timeoutMs = 30000, stepMs = 300) {
@@ -281,6 +301,125 @@ test('дневник питания: мусорный рецепт не пише
   assert.strictEqual(today.status, 200);
   assert.ok(Array.isArray(today.body.meals) && today.body.meals.length >= 1, 'запись видна в дневнике');
   assert.ok(today.body.meals[0].title, 'в дневнике блюдо из каталога, а не пустая строка');
+});
+
+/* ---------- 4б. Главный экран и остальные экраны чтения ----------
+   Регресс: в /api/dashboard серия считалась как calcStreak(tgId, cb) — без пояса.
+   Пояс получал callback, сам callback оставался undefined, и TypeError в колбэке
+   SQLite ронял ВЕСЬ процесс (exit 1): любой вход в приложение аккаунтом без
+   тренировок гасил сервер для всех пользователей. Тест держит и сам dashboard,
+   и остальные читающие эндпоинты экранов. */
+test('дашборд и экраны чтения отвечают 200 (в т.ч. пустой аккаунт без тренировок)', async () => {
+  // пустой аккаунт: именно на нём падала серия
+  const reg = await api('/api/auth/anonymous', { method: 'POST' });
+  const emptyTok = reg.body.session;
+  const emptyMe = await api('/api/auth/me', { token: emptyTok });
+
+  const endpoints = [
+    ['POST', '/api/dashboard', emptyTok],
+    ['GET', '/api/stats/' + TG_ID, TOKEN],
+    ['GET', '/api/achievements/' + TG_ID, TOKEN],
+    ['GET', '/api/shopping-list/' + TG_ID, TOKEN],
+    ['GET', '/api/weekly-report/' + TG_ID, TOKEN],
+    ['GET', '/api/water/' + TG_ID, TOKEN],
+    ['GET', '/api/weight/' + TG_ID, TOKEN],
+    ['GET', '/api/food-log/today/' + TG_ID, TOKEN],
+    ['GET', '/api/workout/logs/' + TG_ID, TOKEN],
+    ['GET', '/api/user/program/' + TG_ID, TOKEN],
+    ['GET', '/api/fit/programs', null],
+    ['GET', '/api/fit/active', TOKEN],
+    ['GET', '/api/yoga2/programs', null],
+    ['GET', '/api/exercises', null],
+    ['GET', '/api/programs', null],
+    ['GET', '/api/yoga/flows', null],
+    ['GET', '/api/support/messages', TOKEN],
+    ['GET', '/api/user/consent', TOKEN],
+    ['GET', '/api/auth/providers', null],
+    ['GET', '/api/app-version', null]
+  ];
+  for (const [method, url, token] of endpoints) {
+    const r = await api(url, { method, token, body: method === 'POST' ? {} : undefined });
+    assert.strictEqual(r.status, 200, method + ' ' + url + ' → ' + r.status + ' ' + JSON.stringify(r.body));
+  }
+
+  // сама серия считается по поясу пользователя и отдаётся числом
+  const dash = await api('/api/dashboard', { method: 'POST', token: TOKEN, body: {} });
+  assert.strictEqual(typeof dash.body.streak, 'number', 'streak — число, а не объект/ошибка');
+  const emptyDash = await api('/api/dashboard', { method: 'POST', token: emptyTok, body: {} });
+  assert.strictEqual(emptyDash.body.streak, 0, 'на пустом аккаунте серия равна нулю');
+  assert.ok(emptyDash.body.norms && emptyDash.body.norms.calories > 0, 'нормы приходят даже без визарда');
+
+  // пояс пользователя участвует в расчёте: Владивосток и Москва дают разные «дни»
+  await api('/api/user/update', { method: 'POST', token: emptyTok, body: { timezone: 'Asia/Vladivostok' } });
+  const far = await api('/api/dashboard', { method: 'POST', token: emptyTok, body: {} });
+  assert.strictEqual(far.status, 200, 'пояс пользователя не ломает дашборд');
+  assert.strictEqual((await api('/api/auth/me', { token: emptyTok })).body.tg_id, emptyMe.body.tg_id);
+});
+
+/* ---------- 4в. Устойчивость: чужой пояс и мусор в запросах ----------
+   Регресс: имя пояса проверялось только по набору символов, поэтому «Foo/Bar»
+   спокойно сохранялось в профиль (как видно в сохранённой строке). Любой следующий
+   запрос такого пользователя падал на Intl с RangeError — и гасил процесс
+   (проверено на живом сервере: exit 1 после POST /api/dashboard). */
+test('чужое имя часового пояса: не принимается, а старые данные не роняют сервер', async () => {
+  const bad = await api('/api/user/update', { method: 'POST', token: TOKEN, body: { timezone: 'Foo/Bar' } });
+  assert.strictEqual(bad.status, 400, 'ненастоящий пояс в профиль не пишется');
+  assert.strictEqual((await api('/api/user/update', { method: 'POST', token: TOKEN, body: { timezone: 'Asia/Vladivostok' } })).status, 200, 'настоящий пояс принимается');
+
+  // данные могли сохраниться прошлой версией сервера — на них и проверяем чтение
+  await dbRun('UPDATE users SET timezone = ? WHERE tg_id = ?', ['Foo/Bar', TG_ID]);
+  const dash = await api('/api/dashboard', { method: 'POST', token: TOKEN, body: {} });
+  assert.strictEqual(dash.status, 200, 'незнакомый пояс в профиле не роняет дашборд (' + JSON.stringify(dash.body) + ')');
+  assert.strictEqual(typeof dash.body.streak, 'number', 'серия посчиталась по UTC-фолбэку');
+  for (const url of ['/api/stats/' + TG_ID, '/api/food-log/today/' + TG_ID, '/api/shopping-list/' + TG_ID, '/api/weekly-report/' + TG_ID, '/api/user/export']) {
+    assert.strictEqual((await api(url, { token: TOKEN })).status, 200, url + ' тоже читается');
+  }
+  await dbRun('UPDATE users SET timezone = ? WHERE tg_id = ?', ['Europe/Moscow', TG_ID]);
+});
+
+/* ---------- 4г. Мусорные запросы не должны гасить сервер ----------
+   Гарантия шире конкретных ручек: Express ловит исключения только из синхронной
+   части обработчика, а колбэки SQLite и промисы падали до уровня процесса.
+   Теперь такие ошибки ловятся (uncaughtException / unhandledRejection) и видны
+   счётчиком в /api/health — тест требует, чтобы счётчик остался НУЛЁМ:
+   значит, ни один запрос даже не дошёл до страховки. */
+test('мусор в запросах: сервер отвечает, не падает и не копит исключения', async () => {
+  const garbage = [
+    ['POST', '/api/dashboard', TG_ID],                     // вместо объекта — строка id
+    ['POST', '/api/dashboard', [1, 2, 3]],
+    ['POST', '/api/water', { amount: 'NaN' }],
+    ['POST', '/api/water', { amount: -100 }],
+    ['POST', '/api/weight', { weight: {} }],
+    ['POST', '/api/log-meal', { recipe_id: { a: 1 } }],
+    ['POST', '/api/meal', { category: ['breakfast'] }],
+    ['POST', '/api/meal', { category: 'breakfast', exclude_id: 'x'.repeat(500) }],
+    ['POST', '/api/user/update', { timezone: 42 }],
+    ['POST', '/api/user/update', { name: 'x'.repeat(5000) }],
+    ['POST', '/api/user/init', { name: ['a'], age: 'тридцать' }],
+    ['POST', '/api/workout/log', { sets: 'нет' }],
+    ['POST', '/api/workout/log', { sets: new Array(90).fill({ reps: 10, weight: 5 }) }],
+    ['POST', '/api/support/message', { text: 'x'.repeat(5000) }],
+    ['POST', '/api/notifications/toggle', { enabled: 'да' }]
+  ];
+  for (const [method, url, body] of garbage) {
+    const r = await api(url, { method, token: TOKEN, body });
+    assert.ok(r.status < 500, method + ' ' + url + ' → ' + r.status + ' (ожидался 2xx/4xx, не 5xx)');
+  }
+
+  // запросы без JSON-тела и без Content-Type вообще
+  for (const url of ['/api/user/export/token', '/api/water/undo', '/api/dashboard', '/api/user/delete']) {
+    const r = await fetch(BASE + url, { method: 'POST' }); // без заголовков и тела
+    assert.ok(r.status < 500, url + ' без тела → ' + r.status);
+  }
+
+  // непонятные идентификаторы в пути (проверка чтения строк из URL)
+  for (const url of ['/api/recipe/abc', '/api/exercise/abc', '/api/stats/abc', "/api/admin/user/' OR 1=1 --"]) {
+    const r = await api(url, { token: TOKEN });
+    assert.ok(r.status < 500, url + ' → ' + r.status);
+  }
+
+  assert.strictEqual((await api('/api/health')).status, 200, 'сервер жив после мусора');
+  assert.strictEqual(await uncaughtErrors(), 0, 'ни один запрос не дошёл до страховки (uncaughtException)');
 });
 
 /* ---------- 5. Экспорт данных ---------- */

@@ -27,8 +27,8 @@ bash android/build.sh 2.3.1 231     # явные versionName и versionCode
 
 ## Манифест и версии
 
-- `versionName` синхронизирован с `package.json` (сейчас 2.7.1)
-- `versionCode` считается из версии: major*100 + minor*10 + patch (2.7.1 → 271)
+- `versionName` синхронизирован с `package.json` (сейчас 2.7.2)
+- `versionCode` считается из версии: major*100 + minor*10 + patch (2.7.2 → 272)
 - при каждой публикации в RuStore повышай versionCode
 - `targetSdk 35` (актуальное требование магазина для новых версий), `minSdk 24`
 

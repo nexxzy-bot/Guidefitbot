@@ -20,7 +20,8 @@ db.serialize(() => {
     calorie_norm INTEGER, activity_level TEXT DEFAULT 'moderate',
     meal_count INTEGER DEFAULT 4, created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     notify_enabled INTEGER DEFAULT 1, last_seen DATETIME,
-    provider TEXT DEFAULT 'anon', avatar TEXT
+    provider TEXT DEFAULT 'anon', avatar TEXT,
+    timezone TEXT, fitness_level INTEGER
   )`);
   db.run(`CREATE TABLE IF NOT EXISTS sessions (
     token TEXT PRIMARY KEY, tg_id TEXT, created_at INTEGER
@@ -30,6 +31,11 @@ db.serialize(() => {
     // v31: уровень подготовки (1 начинающий … 5 профессионал) — от него зависят рекомендации программ и йоги
     if (!e2 && cols2 && !cols2.some(c => c.name === 'fitness_level')) db.run("ALTER TABLE users ADD COLUMN fitness_level INTEGER");
   });
+  /* timezone/fitness_level объявлены прямо в CREATE TABLE: раньше они добавлялись
+     только запоздалым ALTER, и на ЧИСТОЙ базе разовая миграция tz:backfill
+     (UPDATE users SET timezone = … WHERE timezone IS NULL) падала с
+     SQLITE_ERROR: no such column: timezone — в логе ошибка при каждом первом старте.
+     ALTER-ы ниже остаются для баз, созданных до этой правки. */
   // админка + мультиавторизация (ВК/Яндекс/Max): последний визит и провайдер.
   // tg_id остаётся единым внутренним идентификатором аккаунта ('anon:…', 'vk:456', …) —
   // это просто имя ключа в базе, назад к Telegram он отношения не имеет.

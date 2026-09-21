@@ -41,19 +41,50 @@ app.use('/api/', (req, res, next) => { res.type('json'); next(); });
    покрыть тестами без запуска сервера (см. tests/tz.test.js).
    Здесь остаётся только то, что знает про запрос: чей это пояс и какой у
    пользователя день. */
-const { APP_TZ, tzOffsetMinutes, tzModifier, dateIn } = require('./time');
+const { APP_TZ, safeTz, tzOffsetMinutes, tzModifier, dateIn } = require('./time');
 
 /** День пользователя из запроса (его пояс; без пояса — пояс сервера). */
 function userDay(req, offsetDays) { return dateIn((req && req.tgTz) || APP_TZ, offsetDays); }
 function userTzMod(req) { return tzModifier((req && req.tgTz) || APP_TZ); }
 
 /** Текущий час в поясе пользователя — от него зависит подсказка «следующий приём»:
-    для пользователя во Владивостоке серверный час врал на 7 часов. */
+    для пользователя во Владивостоке серверный час врал на 7 часов.
+    Пояс обязательно через safeTz(): имя пояса приходит от пользователя, и незнакомое
+    («Foo/Bar» проходит проверку набора символов) роняло Intl с RangeError прямо
+    внутри колбэка SQLite — то есть гасило весь сервер на одном запросе. */
 function userHour(req) {
   return parseInt(new Intl.DateTimeFormat('en-GB', {
-    hour: '2-digit', hour12: false, timeZone: (req && req.tgTz) || APP_TZ
+    hour: '2-digit', hour12: false, timeZone: safeTz((req && req.tgTz) || APP_TZ)
   }).format(new Date()), 10);
 }
+
+/** Ошибка «в коде», а не «в данных»: вызвали колбэк-хелпер без колбэка.
+    Раньше это давало TypeError в колбэке SQLite и завершало процесс (exit 1) —
+    теперь остаётся строкой в логе, а запрос доигрывает по фолбэку. */
+function missingCallback(where) {
+  console.error('Ошибка в коде: ' + where + ' вызван без колбэка — аргументы проверь!');
+}
+
+/* ================= страховка: ошибка в одном запросе не должна гасить сервер =================
+   Express ловит исключения только из СИНХРОННОЙ части обработчика. Колбэки SQLite и
+   промисы выполняются уже после его возврата, поэтому любое исключение внутри них
+   (TypeError на неожиданных данных, RangeError на имени пояса, любая опечатка)
+   поднималось до уровня процесса и Node завершался с кодом 1 — вместе с ним падал
+   API для ВСЕХ пользователей сразу, пока pm2 не поднимет процесс заново.
+   Такие ошибки относятся к одному запросу и состояние SQLite (WAL) на диске не портят,
+   поэтому логируем, считаем и продолжаем обслуживание. Счётчик виден в /api/health —
+   если он растёт, у сервера есть настоящая проблема, и молчать о ней нельзя.
+   Ошибки старта это не прячет: сервер поднимается синхронно, до listen() ловить нечего. */
+let uncaughtCount = 0;
+function noteUncaught(kind, err) {
+  uncaughtCount++;
+  const msg = (err && err.message) || String(err);
+  console.error(kind + ' #' + uncaughtCount + ': ' + msg);
+  // стек печатаем только для первых двадцати — иначе одна сломанная ручка зальёт лог
+  if (uncaughtCount <= 20 && err && err.stack) console.error(err.stack);
+}
+process.on('uncaughtException', (err) => noteUncaught('Необработанное исключение', err));
+process.on('unhandledRejection', (err) => noteUncaught('Необработанный reject промиса', err));
 
 function dayDiff(a, b) {
   return Math.round((Date.parse(a + 'T00:00:00') - Date.parse(b + 'T00:00:00')) / 86400000);
@@ -130,6 +161,11 @@ function calcNorms(user) {
 }
 
 function calcStreak(tg_id, tz, callback) {
+  /* Устойчивость к прежнему вызову в два аргумента — calcStreak(tg_id, callback).
+     Именно так он вызывался в /api/dashboard: поясом становился колбэк, а сам колбэк
+     оставался undefined, и TypeError в колбэке SQLite убивал процесс целиком. */
+  if (typeof tz === 'function' && callback === undefined) { callback = tz; tz = APP_TZ; }
+  if (typeof callback !== 'function') return missingCallback('calcStreak');
   db.all("SELECT date FROM workout_logs WHERE tg_id = ? ORDER BY date DESC LIMIT 400", [tg_id], (err, rows) => {
     if (err || !rows || !rows.length) return callback(0);
     const dates = [...new Set(rows.map(r => r.date))].sort().reverse();
@@ -265,7 +301,9 @@ app.use('/api', (req, res, next) => {
 app.get('/api/health', (req, res) => {
   db.get('SELECT 1 AS ok', [], (err) => {
     if (err) { console.error('health db:', err.message); return res.status(503).json({ status: 'degraded', db: 'error' }); }
-    res.json({ status: 'ok', db: 'ok', version: APP_VERSION, uptime: Math.round(process.uptime()) });
+    // errors — сколько исключений в колбэках/промисах пережил процесс (см. страховку выше):
+    // по нему видно, что какой-то запрос падает с ошибкой, хотя сервер отвечает 200
+    res.json({ status: 'ok', db: 'ok', version: APP_VERSION, uptime: Math.round(process.uptime()), errors: uncaughtCount });
   });
 });
 
@@ -402,6 +440,11 @@ app.post('/api/user/update', (req, res) => {
     if (fields.timezone !== undefined) {
       const tzv = String(fields.timezone);
       if (!tzv || tzv.length > 64 || !/^[A-Za-z0-9_\-+/]+$/.test(tzv)) return res.status(400).json({ error: 'Invalid values' });
+      /* Проверка набора символов пропускала имена, которых нет в базе поясов («Foo/Bar»).
+         Такое имя сохранялось в профиль, и любой следующий запрос этого пользователя
+         падал на Intl с RangeError. Пояс принимаем только настоящий: safeTz() отдаёт
+         исходное имя, если оно валидно, и UTC — если нет. */
+      if (safeTz(tzv) !== tzv) return res.status(400).json({ error: 'Invalid values' });
     }
     if (req.body.meal_count !== undefined) {
       const mc = parseInt(req.body.meal_count);
@@ -615,6 +658,7 @@ app.post('/api/auth/vk/exchange', async (req, res) => {
 
 /* ================= перенос прогресса анонимного аккаунта в аккаунт ВК ================= */
 function mergeAnonymousInto(fromId, toId, cb) {
+  if (typeof cb !== 'function') return missingCallback('mergeAnonymousInto');
   if (!fromId || !toId || fromId === toId || !/^anon:/.test(String(fromId))) return cb(false);
   db.get("SELECT * FROM users WHERE tg_id = ?", [fromId], (e0, src) => {
     if (e0 || !src) return cb(false);
@@ -987,7 +1031,11 @@ app.post('/api/dashboard', (req, res) => {
               if (hour >= 10) nextMeal = 'lunch';
               if (hour >= 15) nextMeal = 'snack';
               if (hour >= 18) nextMeal = 'dinner';
-              calcStreak(tgId, (streak) => {
+              // пояс обязателен: calcStreak(tg_id, tz, callback) считает серию днями ПОЛЬЗОВАТЕЛЯ.
+              // Без него tz получал callback, а сам callback оставался undefined —
+              // TypeError в колбэке SQLite ронял весь процесс (exit 1) на каждом
+              // открытии главного экрана аккаунта без тренировок.
+              calcStreak(tgId, user.timezone || APP_TZ, (streak) => {
                 res.json({
                   streak,
                   consumption,
@@ -1226,6 +1274,7 @@ app.get('/api/exercise/:id', (req, res) => {
 /* v31: добавляет gif_url из meta (упавшему в кеш списку — один SQL-запрос вместо N) */
 let _gifMetaCache = null, _gifMetaAt = 0;
 function gifMap(cb) {
+  if (typeof cb !== 'function') return missingCallback('gifMap');
   if (_gifMetaCache && Date.now() - _gifMetaAt < 300000) return cb(_gifMetaCache);
   db.all("SELECT key, value FROM meta WHERE key LIKE 'exercise:gif:%' AND key != 'exercise:gif:source'", [], (e, rows) => {
     const m = {};
@@ -1235,6 +1284,7 @@ function gifMap(cb) {
   });
 }
 function attachGifs(rows, done) {
+  if (typeof done !== 'function') return missingCallback('attachGifs');
   gifMap(m => { (rows || []).forEach(r => { r.gif_url = m[r.id] || null; }); done(); });
 }
 
@@ -1738,9 +1788,19 @@ function pruneOld() {
 setInterval(pruneOld, 6 * 60 * 60 * 1000);
 setTimeout(pruneOld, 60 * 1000);
 
+/* Обработчик ошибок Express: сюда попадают синхронные броски обработчиков и ошибки
+   разбора тела от body-parser. У последних уже есть свой статус (битый JSON,
+   примитив вместо объекта при strict-разборе, тело больше лимита) — раньше на всё это
+   отдавалось 500 «Internal error», и клиент считал, что сломался сервер, хотя
+   виноват запрос. 4xx отдаём как есть, 5xx логируем со стеком. */
 app.use((err, req, res, next) => {
-  console.error('Unhandled error:', err);
-  res.status(500).json({ error: 'Internal error' });
+  const status = Number(err && (err.status || err.statusCode)) || 500;
+  if (status >= 500) {
+    console.error('Unhandled error ' + req.method + ' ' + req.originalUrl + ':', err);
+    return res.status(status).json({ error: 'Internal error' });
+  }
+  console.warn('Отклонён запрос ' + req.method + ' ' + req.originalUrl + ' (' + status + '): ' + (err.message || ''));
+  res.status(status).json({ error: 'Invalid request' });
 });
 
 // --- Фото упражнений/рецептов через Pexels (ключ в .env: PEXELS_API_KEY) ---
