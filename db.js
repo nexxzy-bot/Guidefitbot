@@ -280,6 +280,22 @@ db.serialize(() => {
   db.run(`CREATE UNIQUE INDEX IF NOT EXISTS uq_weight_tg_date ON weight_logs(tg_id, date)`);
   db.run(`CREATE UNIQUE INDEX IF NOT EXISTS uq_userach ON user_achievements(tg_id, achievement_id)`);
 
+  /* v2.7.3: разовая очистка «осиротевших» записей дневника — food_logs с recipe_id,
+     которого больше нет в зеркале recipes (старые id каталога до перегенерации блюд,
+     нынешний каталог живёт в диапазоне id 20000+). Такие строки невидимы пользователю
+     (JOIN их отбрасывает), но искажают счётчики достижений (meals), админки и выгрузку
+     данных (152-ФЗ). Метка 'cleanup:orphan_food_logs' — выполняется один раз;
+     новые осиротевшие записи невозможны: /api/log-meal проверяет существование рецепта. */
+  db.get("SELECT value FROM meta WHERE key = 'cleanup:orphan_food_logs'", [], (eC, rowC) => {
+    if (eC) return console.error('cleanup meta:', eC.message);
+    if (rowC) return;
+    db.run("DELETE FROM food_logs WHERE recipe_id IS NOT NULL AND recipe_id NOT IN (SELECT id FROM recipes)", function (e) {
+      if (e) return console.error('cleanup orphan food_logs:', e.message);
+      if (this.changes > 0) console.log('Очистка дневника: удалено записей с несуществующими рецептами: ' + this.changes);
+      db.run("INSERT OR REPLACE INTO meta (key, value) VALUES ('cleanup:orphan_food_logs', datetime('now'))");
+    });
+  });
+
   /* ═══════════ каталоги из JSON ═══════════
      v25: пересев выполняется ТОЛЬКО если файл-каталог изменился (sha256 в meta).
      Раньше recipes/programs/yoga сносились и вставлялись заново на каждом старте —
