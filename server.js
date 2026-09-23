@@ -32,6 +32,40 @@ const app = express();
 // 1 — доверяем ровно одному прокси впереди (nginx), реальный IP берём из X-Forwarded-For.
 app.set('trust proxy', 1);
 app.use(express.json({ limit: '1mb' }));
+// v2.7.3: CSP и middleware заголовков перенесены ВЫШЕ express.static (в v2.7.2 статика
+// отдавалась раньше них — CSP, HSTS, nosniff и Referrer-Policy доходили только до /api,
+// а HTML-страницы index.html/admin.html/privacy.html уходили без заголовков).
+// Заголовки безопасности. Приложение больше не работает внутри Telegram, поэтому
+// страницу нельзя встроить во фрейм вообще (frame-ancestors 'self').
+// Список источников сверен с реальными обращениями самохостингового VK ID SDK
+// (id.vk.ru / api.vk.ru / oauth.vk.ru / login.vk.ru) и с local-шрифтами.
+// Трекер Top.Mail.ru (mytopf.com), который SDK пытается подгрузить, намеренно
+// НЕ разрешён — без согласия пользователя сторонняя аналитика не подключается.
+const CSP = [
+  "default-src 'self'",
+  "script-src 'self' 'unsafe-inline'",
+  "style-src 'self' 'unsafe-inline'",
+  "img-src 'self' data: blob: https:",
+  "font-src 'self' data:",
+  "connect-src 'self' https://id.vk.ru https://api.vk.ru https://oauth.vk.ru https://login.vk.ru https://*.vk.ru https://*.vk.com https://*.userapi.com https://*.mycdn.me",
+  "frame-src https://id.vk.ru https://oauth.vk.ru https://login.vk.ru https://*.vk.ru https://*.vk.com https://*.vkid.ru https://connect.ok.ru https://*.ok.ru",
+  "frame-ancestors 'self'",
+  "form-action 'self' https://oauth.vk.ru https://oauth.vk.com https://id.vk.ru",
+  "base-uri 'self'",
+  "object-src 'none'"
+].join('; ');
+app.use((req, res, next) => {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('Content-Security-Policy', CSP);
+  res.setHeader('Referrer-Policy', 'same-origin');
+  res.setHeader('Permissions-Policy', 'geolocation=(), microphone=(), camera=(), payment=()');
+  res.setHeader('Strict-Transport-Security', 'max-age=15552000; includeSubDomains');
+  res.setHeader('Cross-Origin-Opener-Policy', 'same-origin-allow-popups');
+  // аудит: админку нельзя встроить в iframe (clickjacking с автоподстановкой токена)
+  if (req.path === '/admin.html') res.setHeader('X-Frame-Options', 'DENY');
+  next();
+});
+// статика — после заголовков: теперь CSP/HSTS накрывают и HTML-страницы
 app.use(express.static('static'));
 
 app.use('/api/', (req, res, next) => { res.type('json'); next(); });
@@ -255,36 +289,6 @@ function checkAchievements(tg_id) {
 /* ================= пользователь ================= */
 // --- безопасность без новых зависимостей ---
 app.disable('x-powered-by');
-// Заголовки безопасности. Приложение больше не работает внутри Telegram, поэтому
-// страницу нельзя встроить во фрейм вообще (frame-ancestors 'self').
-// Список источников сверен с реальными обращениями самохостингового VK ID SDK
-// (id.vk.ru / api.vk.ru / oauth.vk.ru / login.vk.ru) и с local-шрифтами.
-// Трекер Top.Mail.ru (mytopf.com), который SDK пытается подгрузить, намеренно
-// НЕ разрешён — без согласия пользователя сторонняя аналитика не подключается.
-const CSP = [
-  "default-src 'self'",
-  "script-src 'self' 'unsafe-inline'",
-  "style-src 'self' 'unsafe-inline'",
-  "img-src 'self' data: blob: https:",
-  "font-src 'self' data:",
-  "connect-src 'self' https://id.vk.ru https://api.vk.ru https://oauth.vk.ru https://login.vk.ru https://*.vk.ru https://*.vk.com https://*.userapi.com https://*.mycdn.me",
-  "frame-src https://id.vk.ru https://oauth.vk.ru https://login.vk.ru https://*.vk.ru https://*.vk.com https://*.vkid.ru https://connect.ok.ru https://*.ok.ru",
-  "frame-ancestors 'self'",
-  "form-action 'self' https://oauth.vk.ru https://oauth.vk.com https://id.vk.ru",
-  "base-uri 'self'",
-  "object-src 'none'"
-].join('; ');
-app.use((req, res, next) => {
-  res.setHeader('X-Content-Type-Options', 'nosniff');
-  res.setHeader('Content-Security-Policy', CSP);
-  res.setHeader('Referrer-Policy', 'same-origin');
-  res.setHeader('Permissions-Policy', 'geolocation=(), microphone=(), camera=(), payment=()');
-  res.setHeader('Strict-Transport-Security', 'max-age=15552000; includeSubDomains');
-  res.setHeader('Cross-Origin-Opener-Policy', 'same-origin-allow-popups');
-  // аудит: админку нельзя встроить в iframe (clickjacking с автоподстановкой токена)
-  if (req.path === '/admin.html') res.setHeader('X-Frame-Options', 'DENY');
-  next();
-});
 const rlHits = new Map();
 app.use('/api', (req, res, next) => {
   const key = req.ip + ':' + req.path;
@@ -879,6 +883,11 @@ app.post('/api/admin/support/reply', requireAdmin, (req, res) => {
   });
 });
 
+// v2.7.3: резервирование сегментов, совпадающих с /api/user/:tgId (см. комментарий там).
+// GET-ветка (export/consent) уже проброшена через next() — теперь и POST не примет
+// «export»/«consent» за чужой tg_id.
+['export', 'consent'].forEach(seg => app.post('/api/user/' + seg, (req, res, next) => next()));
+
 /* ================= чат поддержки (встроенный) =================
    v28: сообщения пользователя хранятся в БД с привязкой к аккаунту; ответ админа
    появляется в чате приложения. Telegram удалён — уведомления о новых сообщениях
@@ -1010,7 +1019,11 @@ app.post('/api/dashboard', (req, res) => {
     if (!user) return res.status(404).json({ error: 'User not found' });
     touchSeen(tgId);
     const today = userDay(req);
-    db.all(`SELECT r.* FROM food_logs fl JOIN recipes r ON fl.recipe_id = r.id
+    // v2.7.3: раньше тянули r.* — вместе с ingredients/recipe_steps/benefits,
+    // которые нужны только карточке блюда (до 1–2 КБ текста на строку дневника).
+    // Дашборду нужны 7 полей; todayMeals строится из них же.
+    db.all(`SELECT r.id, r.title, r.category, r.calories, r.protein, r.fat, r.carbs, r.image_url
+        FROM food_logs fl JOIN recipes r ON fl.recipe_id = r.id
         WHERE fl.tg_id = ? AND date(fl.timestamp, ?) = ?`, [tgId, userTzMod(req), today], (err, meals) => {
       if (err) console.error('dashboard meals:', err.message);
       const consumption = { calories: 0, protein: 0, fat: 0, carbs: 0 };
@@ -1597,10 +1610,12 @@ app.post('/api/workout/log', (req, res) => {
   }
   const _totalVolume = _cleanSets.reduce((sum, x) => sum + x.reps * x.weight, 0);
   touchSeen(tgId);
+  // v2.7.3: Math.max(0, …) — раньше отрицательная duration_minutes сохранялась в лог
+  // (в недельную статистику и отчёт ехал минус вместо нуля).
   db.run(`INSERT INTO workout_logs (tg_id, program_id, program_day_id, date, duration_minutes, total_volume, notes)
       VALUES (?, ?, ?, ?, ?, ?, ?)`,
     [tgId, program_id || null, program_day_id || null, userDay(req),
-     Math.min(Number(duration_minutes) || 0, 600), _totalVolume, String(notes || '').slice(0, 300)],
+     Math.max(0, Math.min(Number(duration_minutes) || 0, 600)), _totalVolume, String(notes || '').slice(0, 300)],
     function (err) {
       if (err) return res.status(500).json({ error: err.message });
       const logId = this.lastID;

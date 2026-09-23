@@ -9,6 +9,12 @@ const crypto = require('crypto');
 db.serialize(() => {
   db.run("PRAGMA journal_mode = WAL");
   db.run("PRAGMA busy_timeout = 15000");
+  // v2.7.3: производительность. synchronous=NORMAL при WAL не теряет данные
+  // (коммит WAL синхронизируется при чекпойнте, а не на каждую запись) — так советует
+  // официальная документация SQLite для WAL. cache_size −16 МБ для каталога на 2000 блюд.
+  db.run("PRAGMA synchronous = NORMAL");
+  db.run("PRAGMA cache_size = -16000");
+  db.run("PRAGMA foreign_keys = ON");
 });
 
 db.serialize(() => {
@@ -190,10 +196,6 @@ db.serialize(() => {
   db.all("PRAGMA table_info(recipes)", [], (eC, colsC) => {
     if (!eC && colsC && !colsC.some(c => c.name === 'category_hint')) db.run("ALTER TABLE recipes ADD COLUMN category_hint TEXT");
   });
-  /* v29.1: одна запись веса на аккаунт за день (день = ключ графика; иначе дубли ломают оси) */
-  db.run("DELETE FROM weight_logs WHERE id NOT IN (SELECT MIN(id) FROM weight_logs GROUP BY tg_id, date)");
-  /* v32: уникальность (tg_id,date) обеспечивает uq_weight_tg_date ниже — второй
-     одинаковый UNIQUE-индекс (idx_weight_day) только дублировал его и замедлял запись. */
   db.run(`CREATE TABLE IF NOT EXISTS achievements (
     id INTEGER PRIMARY KEY, title TEXT, description TEXT, icon TEXT,
     condition_type TEXT, condition_value INTEGER
@@ -259,13 +261,23 @@ db.serialize(() => {
      уникальные uq_water_tg_date / uq_weight_tg_date уже индексируют те же колонки. */
   db.run(`CREATE INDEX IF NOT EXISTS idx_food_logs_tg_ts ON food_logs(tg_id, timestamp)`);
 
-  // дедупликация + уникальность на день (защита от гонок параллельных записей)
-  db.run(`UPDATE water_logs SET amount_ml = (SELECT SUM(w2.amount_ml) FROM water_logs w2 WHERE w2.tg_id = water_logs.tg_id AND w2.date = water_logs.date) WHERE id IN (SELECT MIN(id) FROM water_logs GROUP BY tg_id, date)`);
-  db.run(`DELETE FROM water_logs WHERE id NOT IN (SELECT MIN(id) FROM water_logs GROUP BY tg_id, date)`);
+  /* v2.7.3: дедупликация water/weight/achievements выполняется ОДИН РАЗ под мета-меткой.
+     Раньше эти UPDATE/DELETE гонялись на КАЖДОМ старте по всем строкам — при каждом
+     рестарте pm2 база переписывалась заново. Метка 'dedup:v1' гарантирует
+     однократность; SEED_FORCE=1 принудительно повторяет дедупликацию. */
+  db.get("SELECT value FROM meta WHERE key = 'dedup:v1'", [], (eD, rowD) => {
+    if (eD) return console.error('dedup meta:', eD.message);
+    if (rowD && process.env.SEED_FORCE !== '1') return; // уже сделано — не переписываем базу на каждом старте
+    db.run("DELETE FROM weight_logs WHERE id NOT IN (SELECT MIN(id) FROM weight_logs GROUP BY tg_id, date)");
+    db.run(`UPDATE water_logs SET amount_ml = (SELECT SUM(w2.amount_ml) FROM water_logs w2 WHERE w2.tg_id = water_logs.tg_id AND w2.date = water_logs.date) WHERE id IN (SELECT MIN(id) FROM water_logs GROUP BY tg_id, date)`);
+    db.run("DELETE FROM water_logs WHERE id NOT IN (SELECT MIN(id) FROM water_logs GROUP BY tg_id, date)");
+    db.run("DELETE FROM user_achievements WHERE id NOT IN (SELECT MIN(id) FROM user_achievements GROUP BY tg_id, achievement_id)");
+    db.run("INSERT OR REPLACE INTO meta (key, value) VALUES ('dedup:v1', datetime('now'))");
+    console.log('Дедупликация water/weight/achievements выполнена (однократно)');
+  });
+  // защита от гонок параллельных записей: одна запись воды/веса/достижения на день (v29.1/v32)
   db.run(`CREATE UNIQUE INDEX IF NOT EXISTS uq_water_tg_date ON water_logs(tg_id, date)`);
-  db.run(`DELETE FROM weight_logs WHERE id NOT IN (SELECT MAX(id) FROM weight_logs GROUP BY tg_id, date)`);
   db.run(`CREATE UNIQUE INDEX IF NOT EXISTS uq_weight_tg_date ON weight_logs(tg_id, date)`);
-  db.run(`DELETE FROM user_achievements WHERE id NOT IN (SELECT MIN(id) FROM user_achievements GROUP BY tg_id, achievement_id)`);
   db.run(`CREATE UNIQUE INDEX IF NOT EXISTS uq_userach ON user_achievements(tg_id, achievement_id)`);
 
   /* ═══════════ каталоги из JSON ═══════════

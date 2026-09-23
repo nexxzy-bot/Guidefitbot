@@ -1,6 +1,6 @@
 {
   "name": "guidefit",
-  "version": "2.7.2",
+  "version": "2.7.3",
   "description": "GuideFit — Android-приложение (RuStore): дневник питания, воды, веса и тренировок",
   "main": "server.js",
   "scripts": {
