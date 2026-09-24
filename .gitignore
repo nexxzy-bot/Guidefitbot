@@ -1,5 +1,8 @@
 node_modules/
 .env
+# v2.7.4: локальные варианты и копии окружения тоже не должны попасть в репозиторий
+.env.*
+!.env.example
 guidefit.db
 guidefit.db-shm
 guidefit.db-wal

@@ -19,6 +19,9 @@ const path = require('path');
 const ROOT = path.resolve(__dirname, '..');
 const token = String(process.env.TELEGRAM_TOKEN || '').trim();
 const chatId = String(process.env.BUILD_CHAT_ID || process.env.ADMIN_ID || '').trim();
+// v2.7.4: токен печатать нельзя — только факт наличия/отсутствия. Значения секретов
+// (TELEGRAM_TOKEN, VK_CLIENT_SECRET, ADMIN_TOKEN, ключи Pexels/Gemini) не должны
+// попадать в логи, скриншоты и issue ни в каком виде.
 
 if (!token) { console.error('Нет TELEGRAM_TOKEN в .env — отправлять нечем.'); process.exit(1); }
 if (!chatId) { console.error('Нет BUILD_CHAT_ID (или ADMIN_ID) в .env — не знаю, куда отправлять.'); process.exit(1); }
