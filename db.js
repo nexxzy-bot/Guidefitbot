@@ -257,9 +257,22 @@ db.serialize(() => {
   db.run(`CREATE INDEX IF NOT EXISTS idx_user_programs_tg ON user_programs(tg_id)`);
   db.run(`CREATE INDEX IF NOT EXISTS idx_workout_sets_log ON workout_sets(log_id)`);
   db.run(`CREATE INDEX IF NOT EXISTS idx_workout_logs_tg_date ON workout_logs(tg_id, date)`);
+  /* v2.7.4: (tg_id, active) для легаси-программ — аналогично v31-индексу user_programs_v2.
+     Дашборд и /api/user/program/:tgId ищут активную программу этим фильтром на КАЖДОМ
+     открытии главного экрана; при росте таблицы сканирование всех программ пользователя
+     становилось бы заметным. */
+  db.run(`CREATE INDEX IF NOT EXISTS idx_user_programs_tg_active ON user_programs(tg_id, active)`);
   /* v32: у water_logs и weight_logs недублирующие индексы по (tg_id,date) не нужны —
      уникальные uq_water_tg_date / uq_weight_tg_date уже индексируют те же колонки. */
   db.run(`CREATE INDEX IF NOT EXISTS idx_food_logs_tg_ts ON food_logs(tg_id, timestamp)`);
+
+  /* v2.7.4: составные индексы к уникальным (tg_id, date) у воды и веса.
+     Серии достижений («7 дней нормы подряд») читают только amount_ml/weight за 30 дней:
+     уникальный индекс покрывал поиск строки, но не доставал значение — сканировалась
+     сама таблица (SELECT date, amount_ml … ORDER BY date DESC). Оба запроса
+     (и по дате, и по порядку дней) теперь идут целиком по индексу. */
+  db.run(`CREATE INDEX IF NOT EXISTS idx_water_tg_date_cover ON water_logs(tg_id, date, amount_ml)`);
+  db.run(`CREATE INDEX IF NOT EXISTS idx_weight_tg_date_cover ON weight_logs(tg_id, date, weight)`);
 
   /* v2.7.3: дедупликация water/weight/achievements выполняется ОДИН РАЗ под мета-меткой.
      Раньше эти UPDATE/DELETE гонялись на КАЖДОМ старте по всем строкам — при каждом
