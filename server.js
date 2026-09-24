@@ -66,7 +66,19 @@ app.use((req, res, next) => {
   next();
 });
 // статика — после заголовков: теперь CSP/HSTS накрывают и HTML-страницы
-app.use(express.static('static'));
+// v2.7.4: Cache-Control для статики. Раньше картинки кешировались браузером без правил
+// (по эвристике), а HTML/SW/манифест могли застревать в промежуточных кешах. Шрифты,
+// фото и GIF — контентные (365 дней); HTML/SW/манифест — без кеша (service worker
+// обновляется по своему циклу, PWA должна видеть новую версию index.html сразу).
+app.use(express.static('static', {
+  setHeaders(res, filePath) {
+    if (/\.(woff2?|png|jpe?g|webp|gif|svg|ico)$/i.test(filePath)) {
+      res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+    } else if (/\.(html|webmanifest|txt|xml)$/i.test(filePath) || filePath.endsWith('sw.js')) {
+      res.setHeader('Cache-Control', 'no-cache');
+    }
+  }
+}));
 
 app.use('/api/', (req, res, next) => { res.type('json'); next(); });
 
@@ -124,6 +136,25 @@ function dayDiff(a, b) {
   return Math.round((Date.parse(a + 'T00:00:00') - Date.parse(b + 'T00:00:00')) / 86400000);
 }
 
+/* v2.7.4: единый ответ на ошибку БД. Раньше в ~60 местах клиенту отдавалось
+   err.message из SQLite — в логах и ответах мелькали внутренние имена таблиц и
+   куски SQL (например, при переполнении числового параметра). Код и стек остаются
+   в журнале сервера, наружу — только общий текст. */
+function dbFail(res, where, err) {
+  console.error(where + ':', (err && err.stack) || err);
+  return res.status(500).json({ error: 'Database error' });
+}
+
+/* v2.7.4: проверка числовых идентификаторов в пути (/api/recipe/:id и т.п.).
+   Раньше «abc» или «1 OR 1=1» уходили в SQL параметром — инъекция при этом была
+   невозможна (подготовленные выражения), но запрос гарантированно сканировал таблицу
+   впустую и сравнение TEXT/INTEGER в SQLite сулило неожиданности. Все публичные
+   :id-эндпоинты теперь отсекают нечисловое значение до запроса. */
+function pathInt(req, name) {
+  const n = Number(req.params[name]);
+  return Number.isInteger(n) && n > 0 ? n : null;
+}
+
 // Срок жизни сессии standalone/APK. Токен лежит в localStorage, бесконечный срок = бесконечная утечка.
 const SESSION_TTL_SEC = 180 * 24 * 3600; // 180 дней
 function sessionCutoff() { return Math.floor(Date.now() / 1000) - SESSION_TTL_SEC; }
@@ -151,9 +182,18 @@ function resolveTgId(req) {
 }
 
 // Последний визит (для админки: "последний вход")
+// v2.7.4: троттлинг 10 минут. touchSeen вызывается почти на каждом запросе
+// (дашборд, вода, вес, подбор блюда); needless UPDATE = лишняя запись в WAL и
+// сброс кеша страниц SQLite на каждый чих. Достаточно минутной точности.
+const _touchSeenAt = new Map();
 function touchSeen(tgId) {
   if (!tgId) return;
-  db.run("UPDATE users SET last_seen = datetime('now') WHERE tg_id = ?", [tgId], () => {});
+  const now = Date.now();
+  const last = _touchSeenAt.get(tgId) || 0;
+  if (now - last < 600000) return;
+  _touchSeenAt.set(tgId, now);
+  if (_touchSeenAt.size > 50000) _touchSeenAt.clear(); // защита от роста на анонимном спаме
+  db.run("UPDATE users SET last_seen = datetime('now') WHERE tg_id = ? AND (last_seen IS NULL OR last_seen < datetime('now', '-10 minutes'))", [tgId], () => {});
 }
 
 /* ================= журнал согласий (152-ФЗ, ст. 9/10) =================
@@ -243,8 +283,8 @@ function checkAchievements(tg_id) {
     const waterNorm = Math.round((Number(u?.current_weight) || 70) * 30);
     db.all("SELECT achievement_id FROM user_achievements WHERE tg_id = ?", [tg_id], (err2, ua) => {
       const unlocked = new Set((ua || []).map(a => a.achievement_id));
-      db.all("SELECT * FROM achievements", [], (err3, all) => {
-        if (err3) return;
+      loadAchievements((err3, all) => {
+        if (err3 || !all) return;
         db.get("SELECT COUNT(*) c, COALESCE(SUM(total_volume),0) v FROM workout_logs WHERE tg_id = ?", [tg_id], (err4, w) => {
           db.get("SELECT COUNT(*) c FROM food_logs WHERE tg_id = ?", [tg_id], (err5, m) => {
             calcStreak(tg_id, tz, (streak) => {
@@ -283,6 +323,21 @@ function checkAchievements(tg_id) {
         });
       });
     });
+  });
+}
+
+/* ================= достижения: каталог в памяти =================
+   v2.7.4: каталог достижений меняется только в db.js, читать его из базы на каждый
+   пересчёт (bumpAchievements срабатывает на каждую еду/воду/тренировку/вес) — лишний
+   запрос. Кеш на 5 минут: изменение каталога подхватывается без рестарта. */
+let _achCache = null, _achCacheAt = 0;
+function loadAchievements(cb) {
+  if (typeof cb !== 'function') return missingCallback('loadAchievements');
+  if (_achCache && Date.now() - _achCacheAt < 300000) return cb(null, _achCache);
+  db.all("SELECT * FROM achievements", [], (err, rows) => {
+    if (err) return cb(err);
+    _achCache = rows || []; _achCacheAt = Date.now();
+    cb(null, _achCache);
   });
 }
 
@@ -412,7 +467,7 @@ app.get('/api/user/:tgId', (req, res, next) => {
   const tgId = resolveTgId(req);
   if (!tgId) return res.status(401).json({ error: 'Unauthorized' });
   db.get("SELECT * FROM users WHERE tg_id = ?", [tgId], (err, row) => {
-    if (err) return res.status(500).json({ error: err.message });
+    if (err) return dbFail(res, 'db', err);
     if (!row) return res.status(404).json({ error: 'User not found' });
     touchSeen(tgId);
     res.json(row);
@@ -423,7 +478,7 @@ app.post('/api/user/update', (req, res) => {
   const tgId = resolveTgId(req);
   if (!tgId) return res.status(401).json({ error: 'Unauthorized' });
   db.get("SELECT * FROM users WHERE tg_id = ?", [tgId], (err, user) => {
-    if (err) return res.status(500).json({ error: err.message });
+    if (err) return dbFail(res, 'db', err);
     if (!user) return res.status(404).json({ error: 'User not found' });
     const fields = {};
     ['current_weight', 'target_weight', 'goal', 'activity_level', 'name', 'age', 'height', 'timezone', 'fitness_level'].forEach(k => {
@@ -463,7 +518,7 @@ app.post('/api/user/update', (req, res) => {
     const keys = Object.keys(fields);
     const sql = "UPDATE users SET " + keys.map(k => k + " = ?").join(", ") + " WHERE tg_id = ?";
     db.run(sql, [...keys.map(k => fields[k]), tgId], (err2) => {
-      if (err2) return res.status(500).json({ error: err2.message });
+      if (err2) return dbFail(res, 'db', err2);
       res.json({ status: 'ok', calorie_norm, meal_count: merged.meal_count });
     });
   });
@@ -514,7 +569,7 @@ app.post('/api/user/delete', (req, res) => {
     // журнал согласий тоже: без него не остаётся следов ПДн после удаления аккаунта
     db.run("DELETE FROM consent_log WHERE tg_id = ?", [tgId]);
     db.run("DELETE FROM users WHERE tg_id = ?", [tgId], (err) => {
-      if (err) return res.status(500).json({ error: err.message });
+      if (err) return dbFail(res, 'db', err);
       res.json({ status: 'ok' });
     });
   });
@@ -817,17 +872,21 @@ app.get('/api/admin/users', requireAdmin, (req, res) => {
   const q = String(req.query.search || '').trim();
   const limit = Math.min(Math.max(parseInt(req.query.limit) || 50, 1), 200);
   const offset = Math.max(parseInt(req.query.offset) || 0, 0);
-  const where = q ? "WHERE tg_id LIKE ? OR name LIKE ?" : "";
-  const args = q ? ['%' + q + '%', '%' + q + '%'] : [];
+  /* v2.7.4: экранируем LIKE-символы (% и _) в пользовательском поиске. Раньше
+     запрос «%» от админа сканировал всю таблицу и ломал пагинацию (включая все
+     строки вместо точного совпадения). ESCAPE '\'-гарантирует предсказуемый поиск. */
+  const qLike = q.replace(/[\\%_]/g, c => '\\' + c);
+  const where = q ? "WHERE tg_id LIKE ? ESCAPE '\\' OR name LIKE ? ESCAPE '\\'" : "";
+  const args = q ? ['%' + qLike + '%', '%' + qLike + '%'] : [];
   db.get("SELECT COUNT(*) c FROM users " + where, args, (e1, cnt) => {
-    if (e1) return res.status(500).json({ error: e1.message });
+    if (e1) return dbFail(res, 'db', e1);
     db.all(`SELECT u.tg_id, u.name, u.provider, u.goal, u.gender, u.age, u.calorie_norm, u.meal_count,
         u.created_at, u.last_seen,
         (SELECT COUNT(*) FROM workout_logs w WHERE w.tg_id = u.tg_id) AS workouts,
         (SELECT COUNT(*) FROM food_logs f WHERE f.tg_id = u.tg_id) AS meals
       FROM users u ${where} ORDER BY datetime(COALESCE(u.last_seen, u.created_at)) DESC LIMIT ? OFFSET ?`,
       [...args, limit, offset], (e2, rows) => {
-        if (e2) return res.status(500).json({ error: e2.message });
+        if (e2) return dbFail(res, 'db', e2);
         res.json({ total: cnt.c, users: rows || [] });
       });
   });
@@ -836,7 +895,7 @@ app.get('/api/admin/users', requireAdmin, (req, res) => {
 app.get('/api/admin/user/:id', requireAdmin, (req, res) => {
   const id = String(req.params.id || '');
   db.get("SELECT * FROM users WHERE tg_id = ?", [id], (e1, user) => {
-    if (e1) return res.status(500).json({ error: e1.message });
+    if (e1) return dbFail(res, 'db', e1);
     if (!user) return res.status(404).json({ error: 'Not found' });
     db.all("SELECT timestamp, recipe_id FROM food_logs WHERE tg_id = ? ORDER BY timestamp DESC LIMIT 10", [id], (e2, meals) => {
       db.all("SELECT date, duration_minutes, total_volume FROM workout_logs WHERE tg_id = ? ORDER BY date DESC LIMIT 10", [id], (e3, workouts) => {
@@ -855,7 +914,7 @@ app.get('/api/admin/support/threads', requireAdmin, (req, res) => {
       (SELECT datetime(m3.created_at,'localtime') FROM support_messages m3 WHERE m3.tg_id = sm.tg_id ORDER BY m3.id DESC LIMIT 1) AS last_time
     FROM support_messages sm LEFT JOIN users u ON u.tg_id = sm.tg_id
     GROUP BY sm.tg_id ORDER BY MAX(sm.id) DESC LIMIT 200`, [], (err, rows) => {
-    if (err) return res.status(500).json({ error: err.message });
+    if (err) return dbFail(res, 'db', err);
     res.json({ threads: rows || [] });
   });
 });
@@ -863,7 +922,7 @@ app.get('/api/admin/support/threads', requireAdmin, (req, res) => {
 app.get('/api/admin/support/thread/:id', requireAdmin, (req, res) => {
   const id = String(req.params.id || '');
   db.all("SELECT id, sender, text, datetime(created_at,'localtime') AS time FROM support_messages WHERE tg_id = ? ORDER BY id ASC LIMIT 500", [id], (err, rows) => {
-    if (err) return res.status(500).json({ error: err.message });
+    if (err) return dbFail(res, 'db', err);
     db.get("SELECT name FROM users WHERE tg_id = ?", [id], (e2, u) => {
       res.json({ tg_id: id, name: (u && u.name) || '', messages: rows || [] });
     });
@@ -876,7 +935,7 @@ app.post('/api/admin/support/reply', requireAdmin, (req, res) => {
   if (!id || !text) return res.status(400).json({ error: 'Missing fields' });
   if (text.length > 1500) return res.status(400).json({ error: 'Слишком длинное сообщение' });
   db.run("INSERT INTO support_messages (tg_id, sender, text) VALUES (?, 'admin', ?)", [id, text], function (err) {
-    if (err) return res.status(500).json({ error: err.message });
+    if (err) return dbFail(res, 'db', err);
     // Telegram удалён: ответ админа пользователь видит в чате поддержки приложения
     // (вкладка «Поддержка» опрашивает сервер раз в 15 секунд, пока открыта)
     res.json({ status: 'ok', id: this.lastID });
@@ -901,7 +960,7 @@ app.post('/api/support/message', (req, res) => {
   if (text.length > 1500) return res.status(400).json({ error: 'Слишком длинное сообщение' });
   if (isLimited('support:' + tgId, 20, 3600000)) return res.status(429).json({ error: 'Слишком много сообщений. Попробуйте позже' });
   db.run("INSERT INTO support_messages (tg_id, sender, text) VALUES (?, 'user', ?)", [tgId, text], function (err) {
-    if (err) return res.status(500).json({ error: err.message });
+    if (err) return dbFail(res, 'db', err);
     res.json({ status: 'ok', id: this.lastID });
   });
 });
@@ -912,17 +971,25 @@ app.get('/api/support/messages', (req, res) => {
   // sender <> 'system' — служебные записи (уведомление о регистрации для админа) пользователю не показываем
   // время сообщений показываем в поясе пользователя (в базе — UTC)
   db.all("SELECT id, sender, text, datetime(created_at, ?) AS time FROM support_messages WHERE tg_id = ? AND sender <> 'system' ORDER BY id DESC LIMIT 100", [userTzMod(req), tgId], (err, rows) => {
-    if (err) return res.status(500).json({ error: err.message });
+    if (err) return dbFail(res, 'db', err);
     res.json({ messages: (rows || []).reverse() });
   });
 });
 
 /* ================= Pexels фото ================= */
+/* v2.7.4: поисковый запрос к Pexels составляется из данных каталога (photo_query, title)
+   и имени упражнения из query-параметра. Разрываем строку, чтобы «перенос строки» не мог
+   подменить заголовок HTTP-запроса к API (параметры в header уходят напрямую). */
+function pexelsQuerySanitize(q) {
+  return String(q || '').replace(/[\r\n\t\x0B\f\u00A0\u1680\u180E\u2000-\u200F\u2028\u2029\u202F\u205F\u3000\uFEFF]/g, ' ').slice(0, 120).trim();
+}
 async function fetchPexelsPhoto(query) {
   const key = process.env.PEXELS_API_KEY;
   if (!key) return null;
+  const q = pexelsQuerySanitize(query);
+  if (!q) return null;
   try {
-    const res = await fetch(`https://api.pexels.com/v1/search?query=${encodeURIComponent(query)}&per_page=1&orientation=square`, {
+    const res = await fetch(`https://api.pexels.com/v1/search?query=${encodeURIComponent(q)}&per_page=1&orientation=square`, {
       headers: { 'Authorization': key }
     });
     if (!res.ok) return null;
@@ -939,7 +1006,7 @@ async function fetchPexelsPhoto(query) {
 
 app.get('/api/ex-photo', async (req, res) => {
   try{
-    const q = String(req.query.q || '').slice(0, 80);
+    const q = pexelsQuerySanitize(String(req.query.q || '').slice(0, 80));
     if(!q) return res.json({ url: null });
     const slug = crypto.createHash('md5').update(q).digest('hex').slice(0, 16) + '.webp';
     const localPath = path.join(IMG_DIR, slug);
@@ -1088,6 +1155,11 @@ app.post('/api/meal', (req, res) => {
   // приёмы пищи — фиксированный набор из 4 категорий (никаких других не существует)
   const MEALS = new Set(['breakfast', 'lunch', 'dinner', 'snack']);
   if (!category || !MEALS.has(category)) return res.status(400).json({ error: 'Missing category' });
+  // v2.7.4: подбор без сессии ничего не пишет в базу, но гоняет SELECTы по каталогу
+  // на 2000 блюд с ORDER BY RANDOM(). Для гостя ограничиваем частоту, чтобы бот не
+  // выкачивал каталог через эту ручку (у авторизованных свой лимит 120 req/min).
+  const tgIdPre = resolveTgId(req);
+  if (!tgIdPre && isLimited('meal:' + req.ip, 30, 60000)) return res.status(429).json({ error: 'Too many requests' });
   const GOALS = new Set(['lose', 'maintain', 'gain']);
   const goalSafe = (typeof req.body.goal === 'string' && GOALS.has(req.body.goal)) ? req.body.goal : null;
 
@@ -1122,7 +1194,7 @@ app.post('/api/meal', (req, res) => {
       if (withExclude && exclude_id) { sql2 += " AND id != ?"; p2.push(exclude_id); }
       sql2 += " ORDER BY RANDOM() LIMIT 1";
       db.get(sql2, p2, (err, row) => {
-        if (err) return res.status(500).json({ error: err.message });
+        if (err) return dbFail(res, 'db', err);
         if (row) return serve(row);
         if (hiV) return attempt(Math.round(loV * 0.85), Math.round(hiV * 1.15), withExclude); // fallback +15%
         if (withExclude) return attempt(0, null, false); // «Другое» не падает в 404
@@ -1136,8 +1208,10 @@ app.post('/api/meal', (req, res) => {
 });
 
 app.get('/api/recipe/:id', (req, res) => {
-  db.get("SELECT * FROM recipes WHERE id = ?", [req.params.id], (err, row) => {
-    if (err) return res.status(500).json({ error: err.message });
+  const id = pathInt(req, 'id');
+  if (!id) return res.status(404).json({ error: 'Not found' });
+  db.get("SELECT * FROM recipes WHERE id = ?", [id], (err, row) => {
+    if (err) return dbFail(res, 'db', err);
     if (!row) return res.status(404).json({ error: 'Not found' });
     if (row.ingredients) try { row.ingredients = JSON.parse(row.ingredients); } catch (e) {}
     if (row.recipe_steps) try { row.recipe_steps = JSON.parse(row.recipe_steps); } catch (e) {}
@@ -1152,12 +1226,12 @@ app.post('/api/log-meal', (req, res) => {
   if (!recipe_id) return res.status(400).json({ error: 'Missing fields' });
   // без проверки каталога в дневник писался любой id и запись молча терялась в JOIN дашборда
   db.get("SELECT 1 AS x FROM recipes WHERE id = ?", [recipe_id], (e0, r0) => {
-    if (e0) return res.status(500).json({ error: e0.message });
+    if (e0) return dbFail(res, 'db', e0);
     if (!r0) return res.status(404).json({ error: 'Recipe not found' });
     // время пишем в UTC: 'день' записи считается по поясу пользователя при чтении
     db.run("INSERT INTO food_logs (tg_id, recipe_id, timestamp) VALUES (?, ?, datetime('now'))",
       [tgId, recipe_id], (err) => {
-        if (err) return res.status(500).json({ error: err.message });
+        if (err) return dbFail(res, 'db', err);
         bumpAchievements(tgId);
         touchSeen(tgId);
         res.json({ status: 'ok' });
@@ -1169,7 +1243,7 @@ app.delete('/api/food-log/:id', (req, res) => {
   const tgId = resolveTgId(req);
   if (!tgId) return res.status(401).json({ error: 'Unauthorized' });
   db.run("DELETE FROM food_logs WHERE id = ? AND tg_id = ?", [req.params.id, tgId], function (err) {
-    if (err) return res.status(500).json({ error: err.message });
+    if (err) return dbFail(res, 'db', err);
     res.json({ status: 'ok', deleted: this.changes });
   });
 });
@@ -1182,7 +1256,7 @@ app.get('/api/food-log/today/:tgId', (req, res) => {
       FROM food_logs fl JOIN recipes r ON fl.recipe_id = r.id
       WHERE fl.tg_id = ? AND date(fl.timestamp, ?) = ?
       ORDER BY fl.timestamp DESC`, [tgId, userTzMod(req), userDay(req)], (err, rows) => {
-    if (err) return res.status(500).json({ error: err.message });
+    if (err) return dbFail(res, 'db', err);
     res.json({ meals: rows || [] });
   });
 });
@@ -1194,7 +1268,7 @@ app.get('/api/shopping-list/:tgId', (req, res) => {
   db.all(`SELECT r.ingredients FROM food_logs f JOIN recipes r ON f.recipe_id = r.id
       WHERE f.tg_id = ? AND date(f.timestamp, ?) >= date('now', ?, '-7 days')`,
     [tgId, tzMod, tzMod], (err, rows) => {
-      if (err) return res.status(500).json({ error: err.message });
+      if (err) return dbFail(res, 'db', err);
       const SMALL = /(ст\.?\s*л|столов|ч\.?\s*л|чайн|щепот|по вкусу|зубч|пуч|доль|ломт|лист|веточ|горсть)/i;
       const reAmt = /^(.*?)[\s\u2014\u2013-]+(\d+(?:[.,]\d+)?)\s*(г|гр|грамм(?:а|ов)?|мл|кг|л|шт|штук(?:и|а)?|стакан(?:а)?|чашк(?:а|и)|банк(?:а|и)|упаковк(?:а|и)|пакет(?:а)?|кус(?:ок|ка)|порци(?:я|и))\.?$/i;
       const agg = new Map();
@@ -1269,15 +1343,17 @@ app.get('/api/exercises', (req, res) => {
   if (muscle) { sql += " AND muscle_group = ?"; params.push(muscle); }
   sql += " ORDER BY name";
   db.all(sql, params, (err, rows) => {
-    if (err) return res.status(500).json({ error: err.message });
+    if (err) return dbFail(res, 'db', err);
     rows.forEach(r => { r.tips = Array.isArray(r.tips) ? r.tips : (r.tips ? [r.tips] : []); });
     attachGifs(rows, () => res.json({ exercises: rows }));
   });
 });
 
 app.get('/api/exercise/:id', (req, res) => {
-  db.get("SELECT * FROM exercises WHERE id = ?", [req.params.id], (err, row) => {
-    if (err) return res.status(500).json({ error: err.message });
+  const id = pathInt(req, 'id');
+  if (!id) return res.status(404).json({ error: 'Not found' });
+  db.get("SELECT * FROM exercises WHERE id = ?", [id], (err, row) => {
+    if (err) return dbFail(res, 'db', err);
     if (!row) return res.status(404).json({ error: 'Not found' });
     row.tips = Array.isArray(row.tips) ? row.tips : (row.tips ? [row.tips] : []);
     attachGifs([row], () => res.json(row));
@@ -1305,17 +1381,17 @@ function attachGifs(rows, done) {
    при отсутствии пары в датасете — фото с Pexels (существующий пайплайн кеша). */
 app.get('/api/exercise-media/:id', async (req, res) => {
   try {
-    const exId = parseInt(req.params.id, 10) || 0;
+    const exId = pathInt(req, 'id') || 0;
     const name = String(req.query.name || '').slice(0, 80);
     let gifUrl = null, source = 'gif';
     if (exId) {
       const row = await new Promise((resolve) =>
         db.get("SELECT value FROM meta WHERE key = ?", ['exercise:gif:' + exId], (e, r) => resolve(r)));
-      if (row) { try { gifUrl = JSON.parse(row.value).gif || null; } catch (e) {} }
+      if (row) gifUrl = gifValueFromMeta(row.value);
     }
     if (!gifUrl) {
       source = 'photo';
-      const q = name || 'gym workout training';
+      const q = pexelsQuerySanitize(name) || 'gym workout training';
       const slug = crypto.createHash('md5').update('ex:' + q).digest('hex').slice(0, 16) + '.webp';
       const localPath = path.join(IMG_DIR, slug);
       if (fs.existsSync(localPath)) gifUrl = '/images/cache/' + slug;
@@ -1339,17 +1415,19 @@ app.get('/api/programs', (req, res) => {
   if (type) { sql += " AND type = ?"; params.push(type); }
   if (goal) { sql += " AND goal = ?"; params.push(goal); }
   db.all(sql, params, (err, rows) => {
-    if (err) return res.status(500).json({ error: err.message });
+    if (err) return dbFail(res, 'db', err);
     res.json({ programs: rows });
   });
 });
 
 app.get('/api/program/:id', (req, res) => {
-  db.get("SELECT * FROM programs WHERE id = ?", [req.params.id], (err, program) => {
-    if (err) return res.status(500).json({ error: err.message });
+  const id = pathInt(req, 'id');
+  if (!id) return res.status(404).json({ error: 'Not found' });
+  db.get("SELECT * FROM programs WHERE id = ?", [id], (err, program) => {
+    if (err) return dbFail(res, 'db', err);
     if (!program) return res.status(404).json({ error: 'Not found' });
     db.all("SELECT * FROM program_days WHERE program_id = ? ORDER BY week, day", [req.params.id], (err, days) => {
-      if (err) return res.status(500).json({ error: err.message });
+      if (err) return dbFail(res, 'db', err);
       if (!days || !days.length) return res.json({ program, days: [], total_days: 0 });
       const fetchExercises = (index) => {
         if (index >= days.length) return res.json({ program, days, total_days: days.length });
@@ -1373,7 +1451,7 @@ app.post('/api/user/program/start', (req, res) => {
   db.run("UPDATE user_programs SET active = 0 WHERE tg_id = ?", [tgId], () => {
     db.run(`INSERT INTO user_programs (tg_id, program_id, start_date, current_week, current_day, active)
         VALUES (?, ?, ?, 1, 1, 1)`, [tgId, program_id, userDay(req)], (err) => {
-      if (err) return res.status(500).json({ error: err.message });
+      if (err) return dbFail(res, 'db', err);
       res.json({ status: 'ok' });
     });
   });
@@ -1385,7 +1463,7 @@ app.get('/api/user/program/:tgId', (req, res) => {
   db.get(`SELECT up.*, p.name as program_name, p.location, p.type, p.duration_weeks, p.description, p.difficulty
       FROM user_programs up JOIN programs p ON up.program_id = p.id
       WHERE up.tg_id = ? AND up.active = 1`, [tgId], (err, row) => {
-    if (err) return res.status(500).json({ error: err.message });
+    if (err) return dbFail(res, 'db', err);
     if (!row) return res.json({ program: null });
     db.get("SELECT COUNT(*) c FROM program_days WHERE program_id = ?", [row.program_id], (err2, c) => {
       row.total_days = c?.c || 0;
@@ -1399,23 +1477,23 @@ app.post('/api/user/program/progress', (req, res) => {
   const tgId = resolveTgId(req);
   if (!tgId) return res.status(401).json({ error: 'Unauthorized' });
   db.get("SELECT * FROM user_programs WHERE tg_id = ? AND active = 1", [tgId], (err, up) => {
-    if (err) return res.status(500).json({ error: err.message });
+    if (err) return dbFail(res, 'db', err);
     if (!up) return res.status(404).json({ error: 'No active program' });
     db.all("SELECT * FROM program_days WHERE program_id = ? ORDER BY week, day", [up.program_id], (err, days) => {
-      if (err) return res.status(500).json({ error: err.message });
+      if (err) return dbFail(res, 'db', err);
       if (!days || !days.length) return res.status(404).json({ error: 'No program days' });
       const idx = days.findIndex(d => d.week === up.current_week && d.day === up.current_day);
       if (idx === -1) return res.status(404).json({ error: 'Current day not found' });
       const next = days[idx + 1];
       if (!next) {
         db.run("UPDATE user_programs SET active = 0, completed = 1 WHERE id = ?", [up.id], (err2) => {
-          if (err2) return res.status(500).json({ error: err2.message });
+          if (err2) return dbFail(res, 'db', err2);
           res.json({ status: 'ok', completed: true });
         });
       } else {
         db.run("UPDATE user_programs SET current_week = ?, current_day = ? WHERE id = ?",
           [next.week, next.day, up.id], (err2) => {
-            if (err2) return res.status(500).json({ error: err2.message });
+            if (err2) return dbFail(res, 'db', err2);
             res.json({ status: 'ok', completed: false, week: next.week, day: next.day });
           });
       }
@@ -1427,7 +1505,7 @@ app.post('/api/user/program/complete', (req, res) => {
   const tgId = resolveTgId(req);
   if (!tgId) return res.status(401).json({ error: 'Unauthorized' });
   db.run("UPDATE user_programs SET active = 0, completed = 1 WHERE tg_id = ? AND active = 1", [tgId], (err) => {
-    if (err) return res.status(500).json({ error: err.message });
+    if (err) return dbFail(res, 'db', err);
     res.json({ status: 'ok' });
   });
 });
@@ -1436,14 +1514,21 @@ app.post('/api/user/program/complete', (req, res) => {
    fit_programs (fat/muscle/cardio) + yoga_programs (5 уровней, фокусы).
    Старые /api/programs и /api/yoga/* остаются нетронутыми для отката. */
 const GOAL_TO_CATEGORY = { lose: 'fat', gain: 'muscle', maintain: 'cardio' };
+/* v2.7.4: в meta лежит JSON ({"gif": …}); раньше наружу уезжала СЫРАЯ строка,
+   и поле gif_url йоги было объектом-константой, а не путём. Достаём gif, как
+   делает gifMap() для легаси-эндпоинтов. */
+function gifValueFromMeta(raw) {
+  try { const j = JSON.parse(raw); return (j && typeof j.gif === 'string') ? j.gif : null; }
+  catch (e) { return null; }
+}
 function exerciseMedia(exerciseId) {
   return new Promise((resolve) => {
-    db.get("SELECT value FROM meta WHERE key = ?", ['exercise:gif:' + exerciseId], (e, r) => resolve((r && r.value) || null));
+    db.get("SELECT value FROM meta WHERE key = ?", ['exercise:gif:' + exerciseId], (e, r) => resolve(r ? gifValueFromMeta(r.value) : null));
   });
 }
 function yogaPoseMedia(poseId) {
   return new Promise((resolve) => {
-    db.get("SELECT value FROM meta WHERE key = ?", ['exercise:gif:yoga:' + poseId], (e, r) => resolve((r && r.value) || null));
+    db.get("SELECT value FROM meta WHERE key = ?", ['exercise:gif:yoga:' + poseId], (e, r) => resolve(r ? gifValueFromMeta(r.value) : null));
   });
 }
 
@@ -1456,7 +1541,7 @@ app.get('/api/fit/programs', async (req, res) => {
   if (lvl) { sql += " AND level = ?"; params.push(lvl); }
   sql += " ORDER BY level, id";
   db.all(sql, params, async (err, rows) => {
-    if (err) return res.status(500).json({ error: err.message });
+    if (err) return dbFail(res, 'db', err);
     // рекомендация по цели профиля (гость/без цели -> fat, как в ТЗ)
     let recommended = 'fat';
     const tgId = resolveTgId(req);
@@ -1469,21 +1554,39 @@ app.get('/api/fit/programs', async (req, res) => {
 });
 
 app.get('/api/fit/program/:id', (req, res) => {
-  db.get("SELECT * FROM fit_programs WHERE id = ?", [req.params.id], (err, program) => {
-    if (err) return res.status(500).json({ error: err.message });
+  const pid = pathInt(req, 'id');
+  if (!pid) return res.status(404).json({ error: 'Not found' });
+  db.get("SELECT * FROM fit_programs WHERE id = ?", [pid], (err, program) => {
+    if (err) return dbFail(res, 'fit program', err);
     if (!program) return res.status(404).json({ error: 'Not found' });
-    db.all("SELECT * FROM fit_days WHERE program_id = ? ORDER BY week, day", [program.id], async (err2, days) => {
-      if (err2) return res.status(500).json({ error: err2.message });
-      const enriched = await Promise.all((days || []).map(d => new Promise((resolve) => {
-        db.all(`SELECT fe.*, e.name as exercise_name, e.description as exercise_desc, e.muscle_group
-              FROM fit_exercises fe JOIN exercises e ON e.id = fe.exercise_id
-              WHERE fe.program_day_id = ? ORDER BY fe.id`, [d.id], async (err3, exes) => {
-          const list = exes || [];
-          await Promise.all(list.map(async (x) => { x.gif_url = await exerciseMedia(x.exercise_id); }));
-          resolve({ ...d, exercises: list });
-        });
-      })));
-      res.json({ program, days: enriched, total_days: enriched.length });
+    db.all("SELECT * FROM fit_days WHERE program_id = ? ORDER BY week, day", [program.id], (err2, days) => {
+      if (err2) return dbFail(res, 'fit days', err2);
+      const dayIds = (days || []).map(d => d.id);
+      if (!dayIds.length) return res.json({ program, days: [], total_days: 0 });
+      /* v2.7.4: было по 2 запроса на каждый день (N+1 ×2: упражнения + gif каждой
+         упражнения отдельно). Теперь три запроса на программу: упражнения всех дней
+         одним списком + карта gif одним LIKE по meta. */
+      const ph = dayIds.map(() => '?').join(',');
+      db.all(`SELECT fe.*, e.name as exercise_name, e.description as exercise_desc, e.muscle_group
+            FROM fit_exercises fe JOIN exercises e ON e.id = fe.exercise_id
+            WHERE fe.program_day_id IN (${ph}) ORDER BY fe.id`, dayIds, (err3, exRows) => {
+        if (err3) return dbFail(res, 'fit exercises', err3);
+        const exIds = [...new Set((exRows || []).map(x => x.exercise_id))];
+        const gifKeys = exIds.map(id => 'exercise:gif:' + id);
+        const gifPh = gifKeys.map(() => '?').join(',');
+        db.all(`SELECT key, value FROM meta WHERE key IN (${gifPh})`, gifKeys, (errG, gifRows) => {
+          if (errG) return dbFail(res, 'fit gifs', errG);
+            const gifMap2 = {};
+            (gifRows || []).forEach(r => {
+              const idNum = parseInt(String(r.key).slice(13), 10);
+              if (Number.isInteger(idNum)) gifMap2[idNum] = gifValueFromMeta(r.value);
+            });
+            const byDay = {};
+            (exRows || []).forEach(x => { (byDay[x.program_day_id] = byDay[x.program_day_id] || []).push({ ...x, gif_url: gifMap2[x.exercise_id] || null }); });
+            const enriched = days.map(d => ({ ...d, exercises: byDay[d.id] || [] }));
+            res.json({ program, days: enriched, total_days: enriched.length });
+          });
+      });
     });
   });
 });
@@ -1494,15 +1597,15 @@ app.post('/api/fit/start', (req, res) => {
   const pid = parseInt(req.body.program_id);
   if (!pid) return res.status(400).json({ error: 'Missing fields' });
   db.get("SELECT id FROM fit_programs WHERE id = ?", [pid], (err, p) => {
-    if (err) return res.status(500).json({ error: err.message });
+    if (err) return dbFail(res, 'db', err);
     if (!p) return res.status(404).json({ error: 'Not found' });
     db.get("SELECT id FROM fit_days WHERE program_id = ? ORDER BY week, day LIMIT 1", [pid], (err2, d) => {
-      if (err2) return res.status(500).json({ error: err2.message });
+      if (err2) return dbFail(res, 'db', err2);
       if (!d) return res.status(404).json({ error: 'Program has no days' });
       db.run("UPDATE user_programs_v2 SET active = 0 WHERE tg_id = ?", [tgId], () => {
         db.run(`INSERT INTO user_programs_v2 (tg_id, program_id, current_day_id, start_date, active)
               VALUES (?, ?, ?, ?, 1)`, [tgId, pid, d.id, userDay(req)], (err3) => {
-          if (err3) return res.status(500).json({ error: err3.message });
+          if (err3) return dbFail(res, 'db', err3);
           touchSeen(tgId);
           res.json({ status: 'ok' });
         });
@@ -1517,16 +1620,16 @@ app.get('/api/fit/active', (req, res) => {
   db.get(`SELECT upv.*, fp.name as program_name, fp.category, fp.level, fp.weeks, fp.days_per_week, fp.description
       FROM user_programs_v2 upv JOIN fit_programs fp ON fp.id = upv.program_id
       WHERE upv.tg_id = ? AND upv.active = 1`, [tgId], (err, row) => {
-    if (err) return res.status(500).json({ error: err.message });
+    if (err) return dbFail(res, 'db', err);
     if (!row) return res.json({ program: null });
     db.get("SELECT COUNT(*) c FROM fit_days WHERE program_id = ?", [row.program_id], (err2, c) => {
-      if (err2) return res.status(500).json({ error: err2.message });
+      if (err2) return dbFail(res, 'db', err2);
       db.get("SELECT week, day, title FROM fit_days WHERE id = ?", [row.current_day_id], (err3, cur) => {
-        if (err3) return res.status(500).json({ error: err3.message });
+        if (err3) return dbFail(res, 'db', err3);
         // выполненные дни: по фактическим логам тренировок (finishWorkout пишет program_day_id)
         db.all("SELECT DISTINCT program_day_id FROM workout_logs WHERE tg_id = ? AND program_day_id IN (SELECT id FROM fit_days WHERE program_id = ?)",
           [tgId, row.program_id], (err4, doneRows) => {
-            if (err4) return res.status(500).json({ error: err4.message });
+            if (err4) return dbFail(res, 'db', err4);
             row.total_days = (c && c.c) || 0;
             row.current = cur || null;
             row.done_day_ids = (doneRows || []).map(x => x.program_day_id);
@@ -1541,21 +1644,21 @@ app.post('/api/fit/progress', (req, res) => {
   const tgId = resolveTgId(req);
   if (!tgId) return res.status(401).json({ error: 'Unauthorized' });
   db.get("SELECT * FROM user_programs_v2 WHERE tg_id = ? AND active = 1", [tgId], (err, up) => {
-    if (err) return res.status(500).json({ error: err.message });
+    if (err) return dbFail(res, 'db', err);
     if (!up) return res.status(404).json({ error: 'No active program' });
     db.all("SELECT id FROM fit_days WHERE program_id = ? ORDER BY week, day", [up.program_id], (err2, days) => {
-      if (err2) return res.status(500).json({ error: err2.message });
+      if (err2) return dbFail(res, 'db', err2);
       const idx = (days || []).findIndex(d => d.id === up.current_day_id);
       if (idx === -1) return res.status(404).json({ error: 'Current day not found' });
       const next = days[idx + 1];
       if (!next) {
         db.run("UPDATE user_programs_v2 SET active = 0, completed = 1 WHERE id = ?", [up.id], (err3) => {
-          if (err3) return res.status(500).json({ error: err3.message });
+          if (err3) return dbFail(res, 'db', err3);
           res.json({ status: 'ok', completed: true });
         });
       } else {
         db.run("UPDATE user_programs_v2 SET current_day_id = ? WHERE id = ?", [next.id, up.id], (err3) => {
-          if (err3) return res.status(500).json({ error: err3.message });
+          if (err3) return dbFail(res, 'db', err3);
           res.json({ status: 'ok', completed: false });
         });
       }
@@ -1572,23 +1675,46 @@ app.get('/api/yoga2/programs', (req, res) => {
   if (focus) { sql += " AND focus = ?"; params.push(focus); }
   sql += " ORDER BY level, id";
   db.all(sql, params, (err, rows) => {
-    if (err) return res.status(500).json({ error: err.message });
+    if (err) return dbFail(res, 'db', err);
     res.json({ programs: rows || [] });
   });
 });
 
-app.get('/api/yoga2/program/:id', async (req, res) => {
-  db.get("SELECT * FROM yoga_programs WHERE id = ?", [req.params.id], async (err, program) => {
-    if (err) return res.status(500).json({ error: err.message });
+app.get('/api/yoga2/program/:id', (req, res) => {
+  const pid = pathInt(req, 'id');
+  if (!pid) return res.status(404).json({ error: 'Not found' });
+  db.get("SELECT * FROM yoga_programs WHERE id = ?", [pid], (err, program) => {
+    if (err) return dbFail(res, 'yoga program', err);
     if (!program) return res.status(404).json({ error: 'Not found' });
     let poses = [];
     try { poses = JSON.parse(program.poses || '[]'); } catch (e) { poses = []; }
-    const enriched = await Promise.all(poses.map(async (p) => {
-      const pose = await new Promise((resolve) => db.get("SELECT id, name, how, why FROM yoga_poses WHERE id = ?", [p.pose_id], (e, r) => resolve(r)));
-      return { ...pose, seconds: p.seconds, gif_url: await yogaPoseMedia(p.pose_id) };
-    }));
-    delete program.poses;
-    res.json({ program, poses: enriched.filter(p => p && p.id) });
+    poses = poses.filter(p => p && Number.isInteger(p.pose_id));
+    if (!poses.length) { const p0 = { ...program }; delete p0.poses; return res.json({ program: p0, poses: [] }); }
+    /* v2.7.4: было 2N последовательных запросов (поза + gif на каждую). Теперь два
+       общих запроса на программу. */
+    const poseIds = [...new Set(poses.map(p => p.pose_id))];
+    const ph = poseIds.map(() => '?').join(',');
+    db.all(`SELECT id, name, how, why FROM yoga_poses WHERE id IN (${ph})`, poseIds, (e2, poseRows) => {
+      if (e2) return dbFail(res, 'yoga poses', e2);
+      const byId = {};
+      (poseRows || []).forEach(r => { byId[r.id] = r; });
+      const gifKeys = poseIds.map(id => 'exercise:gif:yoga:' + id);
+      const gifPh = gifKeys.map(() => '?').join(',');
+      db.all(`SELECT key, value FROM meta WHERE key IN (${gifPh})`, gifKeys, (e3, gifRows) => {
+        if (e3) return dbFail(res, 'yoga gifs', e3);
+        const yGif = {};
+        (gifRows || []).forEach(r => {
+          const idNum = parseInt(String(r.key).slice(18), 10);
+          if (Number.isInteger(idNum)) yGif[idNum] = gifValueFromMeta(r.value);
+        });
+        const enriched = poses
+          .map(p => byId[p.pose_id] ? { ...byId[p.pose_id], seconds: p.seconds, gif_url: yGif[p.pose_id] || null } : null)
+          .filter(p => p && p.id);
+        const p0 = { ...program };
+        delete p0.poses;
+        res.json({ program: p0, poses: enriched });
+      });
+    });
   });
 });
 
@@ -1617,7 +1743,7 @@ app.post('/api/workout/log', (req, res) => {
     [tgId, program_id || null, program_day_id || null, userDay(req),
      Math.max(0, Math.min(Number(duration_minutes) || 0, 600)), _totalVolume, String(notes || '').slice(0, 300)],
     function (err) {
-      if (err) return res.status(500).json({ error: err.message });
+      if (err) return dbFail(res, 'db', err);
       const logId = this.lastID;
       const done = () => { bumpAchievements(tgId); res.json({ status: 'ok', log_id: logId, total_volume: _totalVolume }); };
       if (_cleanSets.length > 0) {
@@ -1627,7 +1753,7 @@ app.post('/api/workout/log', (req, res) => {
         _cleanSets.forEach(s3 => stmt.run(logId, s3.exercise_id, s3.set_number, s3.reps, s3.weight, (e) => {
           if (e && !setErr) setErr = e;
           if (--pending === 0) stmt.finalize(() => {
-            if (setErr) return res.status(500).json({ error: setErr.message });
+            if (setErr) return dbFail(res, 'db', setErr);
             done();
           });
         }));
@@ -1641,7 +1767,7 @@ app.get('/api/workout/logs/:tgId', (req, res) => {
   db.all(`SELECT wl.*, p.name as program_name
       FROM workout_logs wl LEFT JOIN programs p ON wl.program_id = p.id
       WHERE wl.tg_id = ? ORDER BY wl.date DESC LIMIT 50`, [tgId], (err, rows) => {
-    if (err) return res.status(500).json({ error: err.message });
+    if (err) return dbFail(res, 'db', err);
     res.json({ logs: rows || [] });
   });
 });
@@ -1649,13 +1775,15 @@ app.get('/api/workout/logs/:tgId', (req, res) => {
 app.get('/api/workout/log/:id', (req, res) => {
   const tgId = resolveTgId(req);
   if (!tgId) return res.status(401).json({ error: 'Unauthorized' });
-  db.get("SELECT * FROM workout_logs WHERE id = ? AND tg_id = ?", [req.params.id, tgId], (err, log) => {
-    if (err) return res.status(500).json({ error: err.message });
+  const logId = pathInt(req, 'id');
+  if (!logId) return res.status(404).json({ error: 'Not found' });
+  db.get("SELECT * FROM workout_logs WHERE id = ? AND tg_id = ?", [logId, tgId], (err, log) => {
+    if (err) return dbFail(res, 'db', err);
     if (!log) return res.status(404).json({ error: 'Not found' });
     db.all(`SELECT ws.*, e.name as exercise_name
         FROM workout_sets ws LEFT JOIN exercises e ON ws.exercise_id = e.id
         WHERE ws.log_id = ?`, [req.params.id], (err, sets) => {
-      if (err) return res.status(500).json({ error: err.message });
+      if (err) return dbFail(res, 'db', err);
       res.json({ log, sets: sets || [] });
     });
   });
@@ -1670,12 +1798,12 @@ app.post('/api/water/undo', (req, res) => {
   // v24: вода хранится ОДНОЙ строкой на день (UNIQUE(tg_id,date), amount_ml копится через UPDATE +250).
   // Прежний DELETE сносил строку целиком — «−» убирал сразу всю воду за день. Теперь снимаем ровно один стакан, ниже нуля не идём.
   db.get("SELECT amount_ml FROM water_logs WHERE tg_id = ? AND date = ?", [tgId, today], (err, row) => {
-    if (err) return res.status(500).json({ error: err.message });
+    if (err) return dbFail(res, 'db', err);
     const cur = row ? (Number(row.amount_ml) || 0) : 0;
     if (cur <= 0) return res.json({ status: 'ok', removed: 0, total: 0 });
     const next = Math.max(cur - STEP, 0);
     db.run("UPDATE water_logs SET amount_ml = ? WHERE tg_id = ? AND date = ?", [next, tgId, today], (err2) => {
-      if (err2) return res.status(500).json({ error: err2.message });
+      if (err2) return dbFail(res, 'db', err2);
       res.json({ status: 'ok', removed: 1, total: next });
     });
   });
@@ -1693,7 +1821,7 @@ app.post('/api/notifications/toggle', (req, res) => {
     : "UPDATE users SET notify_enabled = ? WHERE tg_id = ?";
   const args = explicit === null ? [tgId] : [explicit ? 1 : 0, tgId];
   db.run(sql, args, function (err) {
-    if (err) return res.status(500).json({ error: err.message });
+    if (err) return dbFail(res, 'db', err);
     db.get("SELECT notify_enabled FROM users WHERE tg_id = ?", [tgId], (e2, row) => {
       res.json({ status: 'ok', notify_enabled: row ? row.notify_enabled : 1 });
     });
@@ -1715,10 +1843,10 @@ app.post('/api/water', (req, res) => {
   };
   db.run("UPDATE water_logs SET amount_ml = amount_ml + ? WHERE tg_id = ? AND date = ?",
     [amount, tgId, today], function (err2) {
-      if (err2) return res.status(500).json({ error: err2.message });
+      if (err2) return dbFail(res, 'db', err2);
       if (this.changes > 0) return respondWithTotal();
       db.run("INSERT OR IGNORE INTO water_logs (tg_id, date, amount_ml) VALUES (?, ?, ?)", [tgId, today, amount], (err3) => {
-        if (err3) return res.status(500).json({ error: err3.message });
+        if (err3) return dbFail(res, 'db', err3);
         respondWithTotal();
       });
     });
@@ -1728,7 +1856,7 @@ app.get('/api/water/:tgId', (req, res) => {
   const tgId = resolveTgId(req);
   if (!tgId) return res.status(401).json({ error: 'Unauthorized' });
   db.get("SELECT amount_ml FROM water_logs WHERE tg_id = ? AND date = ?", [tgId, userDay(req)], (err, row) => {
-    if (err) return res.status(500).json({ error: err.message });
+    if (err) return dbFail(res, 'db', err);
     res.json({ amount: row ? row.amount_ml : 0 });
   });
 });
@@ -1744,7 +1872,7 @@ app.post('/api/weight', (req, res) => {
   db.run("INSERT INTO weight_logs (tg_id, date, weight) VALUES (?, ?, ?) " +
     "ON CONFLICT(tg_id, date) DO UPDATE SET weight = excluded.weight",
     [tgId, userDay(req), weight], (err) => {
-      if (err) return res.status(500).json({ error: err.message });
+      if (err) return dbFail(res, 'db', err);
       db.get("SELECT gender, height, age, activity_level, goal FROM users WHERE tg_id = ?", [tgId], (e2, u) => {
         bumpAchievements(tgId);
         const norm = (e2 || !u) ? null : calcCalories(weight, u.height, u.age, u.gender, u.activity_level, u.goal);
@@ -1763,7 +1891,7 @@ app.get('/api/weight/:tgId', (req, res) => {
   const tgId = resolveTgId(req);
   if (!tgId) return res.status(401).json({ error: 'Unauthorized' });
   db.all("SELECT date, weight FROM weight_logs WHERE tg_id = ? ORDER BY date DESC LIMIT 30", [tgId], (err, rows) => {
-    if (err) return res.status(500).json({ error: err.message });
+    if (err) return dbFail(res, 'db', err);
     res.json({ history: rows || [] });
   });
 });
@@ -1778,9 +1906,9 @@ app.get('/api/achievements/:tgId', (req, res) => {
   // поэтому весь пересчёт (6 запросов к БД) выполнялся дважды на каждый заход в профиль.
   bumpAchievements(tgId);
   db.all("SELECT * FROM achievements", [], (err, allAch) => {
-    if (err) return res.status(500).json({ error: err.message });
+    if (err) return dbFail(res, 'db', err);
     db.all("SELECT achievement_id FROM user_achievements WHERE tg_id = ?", [tgId], (err, userAch) => {
-      if (err) return res.status(500).json({ error: err.message });
+      if (err) return dbFail(res, 'db', err);
       const unlocked = new Set((userAch || []).map(a => a.achievement_id));
       res.json({ achievements: allAch.map(a => ({ ...a, unlocked: unlocked.has(a.id) })) });
     });
@@ -1828,6 +1956,8 @@ const IMG_DIR = path.join(__dirname, 'static', 'images', 'cache');async function
     // Скачивать имеет смысл только удалённый файл: относительный путь — это уже наш
     // локальный файл, и fetch("/images/...") в Node падает с "Failed to parse URL".
     if (!/^https?:\/\//i.test(String(remoteUrl || ''))) return null;
+    // формула слага НЕ меняется (v2.7.4): файлы на диске лежат под старыми хешами,
+    // смена входа md5 инвалидовала бы весь кеш и заставила перекачать фото у Pexels
     const slug = crypto.createHash('md5').update(String(slugBase || remoteUrl)).digest('hex').slice(0, 16) + '.webp';
     const localPath = path.join(IMG_DIR, slug);
     const localUrl = '/images/cache/' + slug;
@@ -1844,8 +1974,10 @@ const IMG_DIR = path.join(__dirname, 'static', 'images', 'cache');async function
 }
 
 app.get('/api/recipe-image/:id', async (req, res) => {
-  db.get("SELECT title, image_url, photo_query FROM recipes WHERE id = ?", [req.params.id], async (err, row) => {
-    if (err) return res.status(500).json({ error: err.message });
+  const id = pathInt(req, 'id');
+  if (!id) return res.status(404).json({ error: 'Not found' });
+  db.get("SELECT title, image_url, photo_query FROM recipes WHERE id = ?", [id], async (err, row) => {
+    if (err) return dbFail(res, 'recipe-image', err);
     if (!row) return res.status(404).json({ error: 'Not found' });
     const hasReal = row.image_url && row.image_url.length > 3 && row.image_url !== 'empty.jpg';
     if (hasReal) {
@@ -1858,7 +1990,7 @@ app.get('/api/recipe-image/:id', async (req, res) => {
       // удалённый URL (Pexels) — переносим в локальный кеш, чтобы не тянуть повторно
       const local = await cacheImageLocally(row.image_url, row.photo_query || row.title || row.image_url);
       if (local) {
-        db.run("UPDATE recipes SET image_url = ? WHERE id = ?", [local, req.params.id], () => {});
+        db.run("UPDATE recipes SET image_url = ? WHERE id = ?", [local, id], () => {});
         return res.json({ image_url: local, cached: true });
       }
       return res.json({ image_url: row.image_url, cached: true });
@@ -1867,7 +1999,7 @@ app.get('/api/recipe-image/:id', async (req, res) => {
     if (url) {
       const local = await cacheImageLocally(url, row.photo_query || row.title || url);
       const finalUrl = local || url;
-      db.run("UPDATE recipes SET image_url = ? WHERE id = ?", [finalUrl, req.params.id],
+      db.run("UPDATE recipes SET image_url = ? WHERE id = ?", [finalUrl, id],
         (err2) => { if (err2) console.error('cache err:', err2.message); });
       return res.json({ image_url: finalUrl, cached: !!local });
     }
@@ -1878,16 +2010,18 @@ app.get('/api/recipe-image/:id', async (req, res) => {
 // --- Йога ---
 app.get('/api/yoga/flows', (req, res) => {
   db.all("SELECT id, title, focus, level, minutes, description FROM yoga_flows ORDER BY id", [], (err, rows) => {
-    if (err) return res.status(500).json({ error: err.message });
+    if (err) return dbFail(res, 'db', err);
     res.json({ flows: rows });
   });
 });
 app.get('/api/yoga/flow/:id', (req, res) => {
-  db.get("SELECT * FROM yoga_flows WHERE id = ?", [req.params.id], (err, flow) => {
-    if (err) return res.status(500).json({ error: err.message });
+  const id = pathInt(req, 'id');
+  if (!id) return res.status(404).json({ error: 'Not found' });
+  db.get("SELECT * FROM yoga_flows WHERE id = ?", [id], (err, flow) => {
+    if (err) return dbFail(res, 'yoga flow', err);
     if (!flow) return res.status(404).json({ error: 'not found' });
-    db.all("SELECT p.name, p.how, p.why, fp.seconds FROM yoga_flow_poses fp JOIN yoga_poses p ON p.id = fp.pose_id WHERE fp.flow_id = ? ORDER BY fp.id", [req.params.id], (e2, poses) => {
-      if (e2) return res.status(500).json({ error: e2.message });
+    db.all("SELECT p.name, p.how, p.why, fp.seconds FROM yoga_flow_poses fp JOIN yoga_poses p ON p.id = fp.pose_id WHERE fp.flow_id = ? ORDER BY fp.id", [id], (e2, poses) => {
+      if (e2) return dbFail(res, 'yoga flow poses', e2);
       res.json({ flow: flow, poses: poses });
     });
   });
